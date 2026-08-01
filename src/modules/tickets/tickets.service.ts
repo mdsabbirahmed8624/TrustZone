@@ -1,0 +1,384 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateTicketDto } from './dto/create-ticket.dto';
+import { AssignTechDto } from './dto/assign-tech.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
+import { UpdateDiagnosticsDto } from './dto/update-diagnostics.dto';
+import { FinanceService } from '../finance/finance.service';
+import { WarrantyService } from '../warranty/warranty.service';
+import { eventBus, AutomationEvents } from '../../common/event-bus';
+
+@Injectable()
+export class TicketsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly financeService: FinanceService,
+    private readonly warrantyService: WarrantyService,
+  ) {}
+
+  // 1. List All Tickets (Filter by status, branch, or technician)
+  async findAll(query: {
+    branchId?: string;
+    status?: string;
+    assignedTechId?: string;
+  }) {
+    const where: any = {};
+    if (query.branchId) {
+      where.branchId = query.branchId;
+    }
+    if (query.status) {
+      where.status = query.status;
+    }
+    if (query.assignedTechId) {
+      where.assignedTechId = query.assignedTechId;
+    }
+
+    return this.prisma.ticket.findMany({
+      where,
+      include: {
+        customer: true,
+        device: true,
+        assignedTech: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // 2. Fetch Single Ticket (with Full History)
+  async findOne(id: string) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        device: true,
+        assignedTech: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+        ticketHistory: {
+          include: {
+            updatedBy: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!ticket) {
+      throw new NotFoundException(`Ticket with ID ${id} not found.`);
+    }
+
+    return ticket;
+  }
+
+  // 3. Create Ticket (Autocreate Customer and/or Device if missing)
+  async create(dto: CreateTicketDto, createdById?: string) {
+    let customerId = dto.customerId;
+
+    // Create Customer on-the-fly if not provided
+    if (!customerId) {
+      if (
+        !dto.customerEmail ||
+        !dto.customerPhone ||
+        !dto.customerFirstName ||
+        !dto.customerLastName
+      ) {
+        throw new BadRequestException(
+          'Provide customerId or complete customer registration details.',
+        );
+      }
+
+      // Check if email already exists
+      let customer = await this.prisma.customer.findUnique({
+        where: { email: dto.customerEmail },
+      });
+
+      if (!customer) {
+        customer = await this.prisma.customer.create({
+          data: {
+            firstName: dto.customerFirstName,
+            lastName: dto.customerLastName,
+            email: dto.customerEmail,
+            phone: dto.customerPhone,
+            branchId: dto.branchId,
+          },
+        });
+      }
+      customerId = customer.id;
+    }
+
+    let deviceId = dto.deviceId;
+
+    // Create Device on-the-fly if not provided
+    if (!deviceId) {
+      if (!dto.deviceBrand || !dto.deviceModel) {
+        throw new BadRequestException(
+          'Provide deviceId or complete device details.',
+        );
+      }
+
+      const device = await this.prisma.device.create({
+        data: {
+          customerId,
+          brand: dto.deviceBrand,
+          model: dto.deviceModel,
+          serialNumber: dto.deviceSerialNumber || null,
+          imei: dto.deviceImei || null,
+        },
+      });
+      deviceId = device.id;
+    }
+
+    // Create the ticket
+    const ticket = await this.prisma.ticket.create({
+      data: {
+        branchId: dto.branchId,
+        customerId,
+        deviceId,
+        status: 'booked',
+        estimatedCost: dto.estimatedCost || 0,
+        slaDeadline: new Date(dto.slaDeadline),
+        faults: dto.faults || [],
+      },
+    });
+
+    // Write Audit Trail
+    await this.prisma.auditTrail.create({
+      data: {
+        userId: createdById || null,
+        action: 'CREATE',
+        affectedModule: 'TICKETS',
+        recordId: ticket.id,
+        afterValue: JSON.parse(JSON.stringify(ticket)),
+      },
+    });
+
+    // Record initial timeline history log
+    await this.prisma.ticketHistory.create({
+      data: {
+        ticketId: ticket.id,
+        oldStatus: '',
+        newStatus: 'booked',
+        updatedById: createdById || null,
+        notes: 'Ticket registered into workspace queue.',
+      },
+    });
+
+    // CRM Activity Log
+    await this.prisma.customerActivity.create({
+      data: {
+        customerId,
+        type: 'TICKET_CREATED',
+        title: 'Repair Ticket Created',
+        description: `Repair ticket registered. Device Brand: ${dto.deviceBrand || 'N/A'} Model: ${dto.deviceModel || 'N/A'}, Est. Cost: ৳${dto.estimatedCost || 0}.`,
+        referenceId: ticket.id,
+        staffId: createdById,
+      },
+    });
+
+    return this.findOne(ticket.id);
+  }
+
+  // 4. Assign Technician
+  async assign(id: string, dto: AssignTechDto, updatedById?: string) {
+    const ticket = await this.findOne(id);
+    let techName = 'Unassigned';
+
+    if (dto.assignedTechId) {
+      const tech = await this.prisma.user.findUnique({
+        where: { id: dto.assignedTechId },
+      });
+      if (!tech) {
+        throw new NotFoundException(
+          `Technician with ID ${dto.assignedTechId} not found.`,
+        );
+      }
+      techName = `${tech.firstName} ${tech.lastName}`;
+    }
+
+    const updated = await this.prisma.ticket.update({
+      where: { id },
+      data: {
+        assignedTechId: dto.assignedTechId || null,
+      },
+    });
+
+    // Log in history
+    await this.prisma.ticketHistory.create({
+      data: {
+        ticketId: id,
+        oldStatus: ticket.status,
+        newStatus: ticket.status,
+        updatedById: updatedById || null,
+        notes: dto.assignedTechId
+          ? `Technician ${techName} assigned to ticket.`
+          : 'Technician unassigned from ticket.',
+      },
+    });
+
+    return this.findOne(id);
+  }
+
+  // 5. Update Diagnostics
+  async updateDiagnostics(
+    id: string,
+    dto: UpdateDiagnosticsDto,
+    updatedById?: string,
+  ) {
+    const ticket = await this.findOne(id);
+
+    // Auto-advance to diagnosing if currently booked
+    const newStatus = ticket.status === 'booked' ? 'diagnosing' : ticket.status;
+
+    await this.prisma.ticket.update({
+      where: { id },
+      data: {
+        status: newStatus,
+        diagnosisNotes: dto.diagnosisNotes,
+        internalNotes: dto.internalNotes || null,
+        faults: dto.faults,
+        tests: dto.tests,
+        photos: dto.photos || [],
+        partsRequired: dto.partsRequired || [],
+        estimatedCost: dto.estimatedCost,
+        customerApproved: dto.customerApproved ?? ticket.customerApproved,
+        diagnosticCompletedAt: new Date(),
+      },
+    });
+
+    // Log history
+    await this.prisma.ticketHistory.create({
+      data: {
+        ticketId: id,
+        oldStatus: ticket.status,
+        newStatus,
+        updatedById: updatedById || null,
+        notes: `Device diagnostics logged. Estimated Cost: ৳${dto.estimatedCost}. Checklist and component testing completed.`,
+      },
+    });
+
+    return this.findOne(id);
+  }
+
+  // 6. Update Ticket Status
+  async updateStatus(id: string, dto: UpdateStatusDto, updatedById?: string) {
+    const ticket = await this.findOne(id);
+
+    if (ticket.status === dto.status) {
+      return ticket;
+    }
+
+    const updateData: any = { status: dto.status };
+
+    // Record lifecycle timestamps
+    if (dto.status === 'ready') {
+      updateData.repairedAt = new Date();
+    } else if (dto.status === 'delivered') {
+      updateData.deliveredAt = new Date();
+    }
+
+    const updatedTicket = await this.prisma.ticket.update({
+      where: { id },
+      data: updateData,
+    });
+
+    // Write Audit Trail
+    await this.prisma.auditTrail.create({
+      data: {
+        userId: updatedById || null,
+        action: 'UPDATE',
+        affectedModule: 'TICKETS',
+        recordId: id,
+        beforeValue: JSON.parse(JSON.stringify(ticket)),
+        afterValue: JSON.parse(JSON.stringify(updatedTicket)),
+      },
+    });
+
+    if (dto.status === 'delivered') {
+      eventBus.emit(AutomationEvents.TICKET_DELIVERED, { ticketId: id });
+      await this.financeService.recordRepairDeliveryJournal(
+        id,
+        updatedById || 'd1111111-1111-1111-1111-111111111111',
+      );
+      try {
+        await this.warrantyService.issueWarrantyForTicket(id);
+      } catch (err) {
+        console.error('Failed to auto-issue warranty:', err);
+      }
+    }
+
+    // Log history
+    await this.prisma.ticketHistory.create({
+      data: {
+        ticketId: id,
+        oldStatus: ticket.status,
+        newStatus: dto.status,
+        updatedById: updatedById || null,
+        notes: dto.notes || `Ticket status advanced to ${dto.status}.`,
+      },
+    });
+
+    // CRM Activity Log
+    await this.prisma.customerActivity.create({
+      data: {
+        customerId: ticket.customerId,
+        type: 'TICKET_STATUS_CHANGED',
+        title: 'Repair Status Updated',
+        description: `Repair ticket status advanced from "${ticket.status}" to "${dto.status}".`,
+        referenceId: id,
+        staffId: updatedById,
+      },
+    });
+
+    return this.findOne(id);
+  }
+
+  // 7. Approve Cost Estimate
+  async approveEstimate(id: string, approved: boolean, updatedById?: string) {
+    const ticket = await this.findOne(id);
+
+    await this.prisma.ticket.update({
+      where: { id },
+      data: { customerApproved: approved },
+    });
+
+    // Log history
+    await this.prisma.ticketHistory.create({
+      data: {
+        ticketId: id,
+        oldStatus: ticket.status,
+        newStatus: ticket.status,
+        updatedById: updatedById || null,
+        notes: approved
+          ? 'Customer approved the cost estimate. Proceeding with repairs.'
+          : 'Cost estimate rejected / pending customer approval.',
+      },
+    });
+
+    return this.findOne(id);
+  }
+}

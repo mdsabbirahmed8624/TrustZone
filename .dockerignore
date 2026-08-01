@@ -1,0 +1,21 @@
+# Dependency & build output directories
+node_modules
+dist
+coverage
+.next
+
+# Frontend code (backend container does not need it)
+frontend
+
+# Version control
+.git
+.gitignore
+
+# Docker config
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Environment files
+.env
+.env.*
