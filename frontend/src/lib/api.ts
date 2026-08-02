@@ -727,7 +727,7 @@ export const api = {
   },
 
   tickets: {
-    async list(query?: { branchId?: string; status?: string; assignedTechId?: string }, token?: string): Promise<ApiResponse<TicketModel[]>> {
+    async list(query?: { branchId?: string; status?: string; assignedTechId?: string; search?: string; page?: number; limit?: number }, token?: string): Promise<ApiResponse<TicketModel[]>> {
       try {
         let qStr = '';
         if (query) {
@@ -735,6 +735,9 @@ export const api = {
           if (query.branchId) parts.push(`branchId=${query.branchId}`);
           if (query.status) parts.push(`status=${query.status}`);
           if (query.assignedTechId) parts.push(`assignedTechId=${query.assignedTechId}`);
+          if (query.search) parts.push(`search=${encodeURIComponent(query.search)}`);
+          if (query.page) parts.push(`page=${query.page}`);
+          if (query.limit) parts.push(`limit=${query.limit}`);
           if (parts.length > 0) qStr = '?' + parts.join('&');
         }
         return await apiRequest<ApiResponse<TicketModel[]>>(`/tickets${qStr}`, {
@@ -1120,6 +1123,35 @@ export const api = {
         }
         throw err;
       }
+    },
+
+    async dashboardStats(branchId?: string, token?: string): Promise<ApiResponse<any>> {
+      const q = branchId ? `?branchId=${branchId}` : '';
+      return apiRequest<ApiResponse<any>>(`/tickets/dashboard/stats${q}`, { token });
+    },
+
+    async consumeParts(id: string, parts: { partId: string; quantity: number }[], token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/tickets/${id}/consume-parts`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ parts }),
+      });
+    },
+
+    async logTimeTrack(id: string, durationMinutes: number, notes?: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/tickets/${id}/time-log`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ durationMinutes, notes }),
+      });
+    },
+
+    async sendNotify(id: string, recipientRole: string, channel: string, message: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/tickets/${id}/notify`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ recipientRole, channel, message }),
+      });
     }
   },
 

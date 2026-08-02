@@ -273,6 +273,60 @@ export default function RepairWorkspacePage({ params }: { params: Promise<{ id: 
     window.print();
   };
 
+  // Consume Inventory Parts
+  const handleConsumeParts = async (parts: { partId: string; quantity: number }[]) => {
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem('tz_admin_token') || undefined;
+      const res = await api.tickets.consumeParts(id, parts, token);
+      if (res && res.success) {
+        setActionSuccess('Inventory parts consumed & stock updated!');
+        fetchTicketDetails();
+        setTimeout(() => setActionSuccess(null), 3000);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to consume inventory parts.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Log Labor Time Track
+  const handleLogTime = async (minutes: number, notes?: string) => {
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem('tz_admin_token') || undefined;
+      const res = await api.tickets.logTimeTrack(id, minutes, notes, token);
+      if (res && res.success) {
+        setActionSuccess(`Logged ${minutes} minutes of repair work time!`);
+        fetchTicketDetails();
+        setTimeout(() => setActionSuccess(null), 3000);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to log labor time.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Dispatch Notification
+  const handleSendNotify = async (recipientRole: string, channel: string, msg: string) => {
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem('tz_admin_token') || undefined;
+      const res = await api.tickets.sendNotify(id, recipientRole, channel, msg, token);
+      if (res && res.success) {
+        setActionSuccess(`Notification sent via ${channel}!`);
+        fetchTicketDetails();
+        setTimeout(() => setActionSuccess(null), 3000);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to send notification.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // RBAC Roles/Permissions checks
   const userRole = adminUser?.role ?? '';
   const userPermissions = adminUser?.permissions ?? [];

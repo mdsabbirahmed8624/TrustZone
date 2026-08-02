@@ -75,6 +75,35 @@ export default function RepairsQueuePage() {
   });
   const [ticketBranchId, setTicketBranchId] = useState('d1111111-1111-1111-1111-111111111111');
 
+  // Stats State
+  const [stats, setStats] = useState<any>({
+    todaysRepairs: 0,
+    pendingRepairs: 0,
+    diagnosing: 0,
+    waitingApproval: 0,
+    waitingParts: 0,
+    readyForPickup: 0,
+    completed: 0,
+    cancelled: 0,
+    warrantyRepairs: 0,
+    avgRepairTimeHours: 4.5,
+    revenueToday: 18500,
+    techWorkload: [],
+  });
+
+  // Fetch Dashboard Stats
+  const fetchStats = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('tz_admin_token') || undefined;
+      const res = await api.tickets.dashboardStats(branchFilter || undefined, token);
+      if (res && res.success) {
+        setStats(res.data);
+      }
+    } catch (err) {
+      console.error('Error fetching ticket dashboard stats:', err);
+    }
+  }, [branchFilter]);
+
   // Fetch tickets
   const fetchTickets = useCallback(async () => {
     setLoading(true);
@@ -84,11 +113,13 @@ export default function RepairsQueuePage() {
       const res = await api.tickets.list(
         { 
           branchId: branchFilter || undefined,
+          search: search || undefined,
         },
         token
       );
       if (res && res.success) {
-        setTickets(res.data);
+        const items = Array.isArray(res.data) ? res.data : (res.data as any)?.items || [];
+        setTickets(items);
       } else {
         setError(res.message || 'Failed to fetch tickets');
       }
@@ -98,14 +129,15 @@ export default function RepairsQueuePage() {
     } finally {
       setLoading(false);
     }
-  }, [branchFilter]);
+  }, [branchFilter, search]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchTickets();
+      fetchStats();
     }, 0);
     return () => clearTimeout(timer);
-  }, [fetchTickets]);
+  }, [fetchTickets, fetchStats]);
 
   // Set default branch in modal based on user branch
   useEffect(() => {

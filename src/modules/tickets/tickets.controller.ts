@@ -28,6 +28,16 @@ import { Public } from '../../common/decorators/public.decorator';
 export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
+  @Get('dashboard/stats')
+  @Permissions('read:repairs')
+  @HttpCode(HttpStatus.OK)
+  async getDashboardStats(@Query('branchId') branchId?: string) {
+    return {
+      success: true,
+      data: await this.ticketsService.getDashboardStats(branchId),
+    };
+  }
+
   @Public()
   @Post('public-booking')
   @HttpCode(HttpStatus.CREATED)
@@ -209,5 +219,46 @@ export class TicketsController {
       success: true,
       data: await this.ticketsService.addPhotos(id, photos, updatedById),
     };
+  }
+
+  @Post(':id/consume-parts')
+  @Permissions('write:repairs')
+  @HttpCode(HttpStatus.OK)
+  async consumeParts(
+    @Param('id') id: string,
+    @Body('parts') parts: { partId: string; quantity: number }[],
+    @CurrentUser('id') userId?: string,
+  ) {
+    return {
+      success: true,
+      data: await this.ticketsService.consumeParts(id, parts, userId),
+    };
+  }
+
+  @Post(':id/time-log')
+  @Permissions('write:repairs')
+  @HttpCode(HttpStatus.OK)
+  async logTimeTrack(
+    @Param('id') id: string,
+    @Body('durationMinutes') durationMinutes: number,
+    @Body('notes') notes?: string,
+    @CurrentUser('id') userId?: string,
+  ) {
+    return {
+      success: true,
+      data: await this.ticketsService.logTimeTrack(id, durationMinutes, notes, userId),
+    };
+  }
+
+  @Post(':id/notify')
+  @Permissions('write:repairs')
+  @HttpCode(HttpStatus.OK)
+  async sendNotification(
+    @Param('id') id: string,
+    @Body('recipientRole') recipientRole: string,
+    @Body('channel') channel: string,
+    @Body('message') message: string,
+  ) {
+    return await this.ticketsService.sendNotification(id, recipientRole, channel, message);
   }
 }
