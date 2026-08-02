@@ -1396,6 +1396,52 @@ export const api = {
     }
   },
 
+  invoices: {
+    async dashboardStats(branchId?: string, token?: string): Promise<ApiResponse<any>> {
+      const q = branchId ? `?branchId=${branchId}` : '';
+      return apiRequest<ApiResponse<any>>(`/invoices/dashboard/stats${q}`, { token });
+    },
+    async list(params?: { search?: string; status?: string; branchId?: string; page?: number; limit?: number }, token?: string): Promise<ApiResponse<any>> {
+      const q = new URLSearchParams();
+      if (params?.search) q.set('search', params.search);
+      if (params?.status) q.set('status', params.status);
+      if (params?.branchId) q.set('branchId', params.branchId);
+      if (params?.page) q.set('page', String(params.page));
+      if (params?.limit) q.set('limit', String(params.limit));
+      return apiRequest<ApiResponse<any>>(`/invoices?${q.toString()}`, { token });
+    },
+    async get(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/invoices/${id}`, { token });
+    },
+    async create(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/invoices/create', {
+        method: 'POST',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+    async fromTicket(ticketId: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/invoices/from-ticket/${ticketId}`, {
+        method: 'POST',
+        token,
+      });
+    },
+    async recordPayment(id: string, data: { paymentMethod: string; amount: number; reference?: string }, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/invoices/${id}/payment`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+    async processRefund(id: string, data: { amount: number; reason?: string }, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/invoices/${id}/refund`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+  },
+
   finance: {
     async dashboard(params?: { branchId?: string }, token?: string): Promise<ApiResponse<any>> {
       try {
