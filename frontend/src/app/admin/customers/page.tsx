@@ -72,6 +72,37 @@ export default function CustomersPage() {
   const [fileName, setFileName] = useState('');
   const [docLoading, setDocLoading] = useState(false);
 
+  // Dashboard Stats State
+  const [stats, setStats] = useState<any>({
+    totalCustomers: 0,
+    activeCustomers: 0,
+    returningCustomers: 0,
+    vipCustomers: 0,
+    growthRate: 0,
+    totalDevices: 0,
+  });
+
+  // Device Modal State
+  const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
+  const [deviceBrand, setDeviceBrand] = useState('Apple');
+  const [deviceModel, setDeviceModel] = useState('');
+  const [deviceSerial, setDeviceSerial] = useState('');
+  const [deviceImei, setDeviceImei] = useState('');
+  const [deviceLoading, setDeviceLoading] = useState(false);
+
+  // Fetch Dashboard Stats
+  const fetchStats = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('tz_admin_token') || undefined;
+      const res = await api.customers.dashboardStats(branchFilter || undefined, token);
+      if (res && res.success) {
+        setStats(res.data);
+      }
+    } catch (err) {
+      console.error('Error fetching customer stats:', err);
+    }
+  }, [branchFilter]);
+
   // Fetch Customers
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -87,7 +118,8 @@ export default function CustomersPage() {
         token
       );
       if (res && res.success) {
-        setCustomers(res.data);
+        const items = Array.isArray(res.data) ? res.data : (res.data as any)?.items || [];
+        setCustomers(items);
       } else {
         setError(res.message || 'Failed to fetch customers');
       }
@@ -101,9 +133,10 @@ export default function CustomersPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchCustomers();
+      fetchStats();
     }, 0);
     return () => clearTimeout(timer);
-  }, [fetchCustomers]);
+  }, [fetchCustomers, fetchStats]);
 
   // Fetch Single Customer Details
   const fetchCustomerDetails = async (id: string) => {
@@ -147,9 +180,52 @@ export default function CustomersPage() {
         setModalError(res.message || 'Failed to create customer');
       }
     } catch (err: any) {
-      setModalError(err.message || 'Validation error or duplicate record detected.');
+      setModalError(err.message || 'Error connecting to server.');
     } finally {
       setModalLoading(false);
+    }
+  };
+
+  // Delete Customer
+  const handleDeleteCustomer = async (id: string) => {
+    if (!confirm('Are you sure you want to soft delete this customer profile?')) return;
+    try {
+      const token = localStorage.getItem('tz_admin_token') || undefined;
+      await api.customers.delete(id, token);
+      setSelectedCustomer(null);
+      fetchCustomers();
+      fetchStats();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete customer.');
+    }
+  };
+
+  // Add Device Handler
+  const handleAddDevice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCustomer) return;
+    setDeviceLoading(true);
+    try {
+      const token = localStorage.getItem('tz_admin_token') || undefined;
+      const res = await api.customers.addDevice(selectedCustomer.id, {
+        brand: deviceBrand,
+        model: deviceModel,
+        serialNumber: deviceSerial || undefined,
+        imei: deviceImei || undefined,
+      }, token);
+
+      if (res && res.success) {
+        setIsDeviceModalOpen(false);
+        setDeviceModel('');
+        setDeviceSerial('');
+        setDeviceImei('');
+        fetchCustomerDetails(selectedCustomer.id);
+        fetchStats();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to add device.');
+    } finally {
+      setDeviceLoading(false);
     }
   };
 
@@ -246,6 +322,34 @@ export default function CustomersPage() {
               <Plus className="h-5 w-5" />
               Register Customer
             </button>
+          </div>
+
+          {/* KPI Stat Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <div className="text-xs font-semibold text-slate-400">Total Customers</div>
+              <div className="text-2xl font-bold text-white mt-1">{stats.totalCustomers || 0}</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <div className="text-xs font-semibold text-slate-400">Active Clients</div>
+              <div className="text-2xl font-bold text-emerald-400 mt-1">{stats.activeCustomers || 0}</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <div className="text-xs font-semibold text-slate-400">Returning</div>
+              <div className="text-2xl font-bold text-blue-400 mt-1">{stats.returningCustomers || 0}</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <div className="text-xs font-semibold text-slate-400">VIP Members</div>
+              <div className="text-2xl font-bold text-amber-400 mt-1">{stats.vipCustomers || 0}</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <div className="text-xs font-semibold text-slate-400">Monthly Growth</div>
+              <div className="text-2xl font-bold text-indigo-400 mt-1">+{stats.growthRate || 0}%</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <div className="text-xs font-semibold text-slate-400">Total Devices</div>
+              <div className="text-2xl font-bold text-purple-400 mt-1">{stats.totalDevices || 0}</div>
+            </div>
           </div>
 
           {/* Filter Bar */}

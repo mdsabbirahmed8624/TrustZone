@@ -52,5 +52,37 @@ export class CreateCustomerDto {
 
   @IsString()
   @IsOptional()
+  altPhone?: string;
+
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @IsString()
+  @IsOptional()
+  district?: string;
+
+  @IsString()
+  @IsOptional()
+  area?: string;
+
+  @IsString()
+  @IsOptional()
+  postalCode?: string;
+
+  @IsString()
+  @IsOptional()
+  photoUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  nid?: string;
+
+  @IsString()
+  @IsOptional()
+  businessName?: string;
+
+  @IsString()
+  @IsOptional()
   notes?: string;
 }

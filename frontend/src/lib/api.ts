@@ -1161,6 +1161,46 @@ export const api = {
         token,
         body: JSON.stringify(data)
       });
+    },
+    async dashboardStats(branchId?: string, token?: string): Promise<ApiResponse<any>> {
+      const q = branchId ? `?branchId=${branchId}` : '';
+      return apiRequest<ApiResponse<any>>(`/customers/dashboard/stats${q}`, { token });
+    },
+    async delete(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/customers/${id}`, { method: 'DELETE', token });
+    },
+    async addDevice(id: string, data: { brand: string; model: string; serialNumber?: string; imei?: string }, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/customers/${id}/devices`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+    async deleteDevice(id: string, deviceId: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/customers/${id}/devices/${deviceId}`, {
+        method: 'DELETE',
+        token,
+      });
+    },
+    async sendComm(id: string, data: { type: string; channel: string; message: string }, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/customers/${id}/send-communication`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+    async deleteDoc(id: string, docId: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/customers/${id}/documents/${docId}`, {
+        method: 'DELETE',
+        token,
+      });
+    },
+    async mergeDuplicates(primaryId: string, duplicateIds: string[], token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/customers/merge', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ primaryId, duplicateIds }),
+      });
     }
   },
 

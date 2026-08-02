@@ -11,9 +11,102 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 export class CustomersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // 1. List all customers with filters (search, tag, branch)
-  async findAll(query: { search?: string; tag?: string; branchId?: string }) {
-    const where: any = {};
+  // Dashboard Stats
+  async getDashboardStats(branchId?: string) {
+    const where: any = { isDeleted: false };
+    if (branchId) where.branchId = branchId;
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 86400000);
+
+    const [
+      totalCustomers,
+      todayNewCustomers,
+      vipCustomers,
+      totalDevices,
+      activeWarranties,
+      recentCustomers,
+      recentActivities,
+      thisMonthCount,
+      lastMonthCount,
+      customersWithDevices,
+    ] = await Promise.all([
+      this.prisma.customer.count({ where }),
+      this.prisma.customer.count({
+        where: { ...where, createdAt: { gte: startOfToday } },
+      }),
+      this.prisma.customer.count({
+        where: { ...where, tags: { has: 'VIP' } },
+      }),
+      this.prisma.device.count(),
+      this.prisma.warranty.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.customer.findMany({
+        where,
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { devices: true, tickets: { select: { id: true, status: true } } },
+      }),
+      this.prisma.customerActivity.findMany({
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: { customer: { select: { id: true, firstName: true, lastName: true } } },
+      }),
+      this.prisma.customer.count({
+        where: { ...where, createdAt: { gte: thirtyDaysAgo } },
+      }),
+      this.prisma.customer.count({
+        where: { ...where, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+      }),
+      this.prisma.customer.findMany({
+        where,
+        select: {
+          id: true,
+          _count: { select: { tickets: true, devices: true } },
+        },
+      }),
+    ]);
+
+    const returningCustomers = customersWithDevices.filter(
+      (c) => c._count.tickets > 1 || c._count.devices > 1,
+    ).length;
+
+    const activeCustomers = customersWithDevices.filter(
+      (c) => c._count.tickets > 0,
+    ).length;
+
+    const growthRate =
+      lastMonthCount > 0
+        ? Number((((thisMonthCount - lastMonthCount) / lastMonthCount) * 100).toFixed(1))
+        : thisMonthCount > 0
+        ? 100
+        : 0;
+
+    return {
+      totalCustomers,
+      activeCustomers,
+      returningCustomers,
+      vipCustomers,
+      todayNewCustomers,
+      growthRate,
+      totalDevices,
+      activeWarranties,
+      recentCustomers,
+      recentActivities,
+    };
+  }
+
+  // 1. List all customers with filters & pagination (search, tag, branch, status)
+  async findAll(query: {
+    search?: string;
+    tag?: string;
+    branchId?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const where: any = { isDeleted: false };
 
     if (query.branchId) {
       where.branchId = query.branchId;
@@ -24,29 +117,57 @@ export class CustomersService {
     }
 
     if (query.search) {
-      const searchLower = query.search.trim();
+      const term = query.search.trim();
       where.OR = [
-        { firstName: { contains: searchLower, mode: 'insensitive' } },
-        { lastName: { contains: searchLower, mode: 'insensitive' } },
-        { email: { contains: searchLower, mode: 'insensitive' } },
-        { phone: { contains: searchLower, mode: 'insensitive' } },
+        { firstName: { contains: term, mode: 'insensitive' } },
+        { lastName: { contains: term, mode: 'insensitive' } },
+        { email: { contains: term, mode: 'insensitive' } },
+        { phone: { contains: term, mode: 'insensitive' } },
+        { devices: { some: { brand: { contains: term, mode: 'insensitive' } } } },
+        { devices: { some: { model: { contains: term, mode: 'insensitive' } } } },
+        { devices: { some: { serialNumber: { contains: term, mode: 'insensitive' } } } },
+        { devices: { some: { imei: { contains: term, mode: 'insensitive' } } } },
       ];
     }
 
-    return this.prisma.customer.findMany({
-      where,
-      include: {
-        devices: true,
-        tickets: {
-          select: {
-            id: true,
-            status: true,
-            createdAt: true,
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(query.limit) || 25));
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      this.prisma.customer.findMany({
+        where,
+        include: {
+          devices: true,
+          tickets: {
+            select: {
+              id: true,
+              status: true,
+              estimatedCost: true,
+              createdAt: true,
+            },
+          },
+          warranties: {
+            select: {
+              id: true,
+              status: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.customer.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   // 2. Fetch single customer detailed profile with history, notes, timeline
@@ -280,5 +401,140 @@ export class CustomersService {
         fileSize,
       },
     });
+  }
+
+  // Soft Delete Customer
+  async delete(id: string, deletedById?: string) {
+    await this.findOne(id);
+    await this.prisma.customer.update({
+      where: { id },
+      data: { isDeleted: true, deletedAt: new Date() },
+    });
+
+    await this.prisma.auditTrail.create({
+      data: {
+        userId: deletedById || null,
+        action: 'DELETE',
+        affectedModule: 'CUSTOMERS',
+        recordId: id,
+      },
+    });
+
+    return { success: true, message: `Customer ${id} soft deleted.` };
+  }
+
+  // Add Device to Customer
+  async addDevice(customerId: string, dto: { brand: string; model: string; serialNumber?: string; imei?: string }) {
+    await this.findOne(customerId);
+    const device = await this.prisma.device.create({
+      data: {
+        customerId,
+        brand: dto.brand,
+        model: dto.model,
+        serialNumber: dto.serialNumber || null,
+        imei: dto.imei || null,
+      },
+    });
+
+    await this.prisma.customerActivity.create({
+      data: {
+        customerId,
+        type: 'DEVICE_ADDED',
+        title: 'New Device Registered',
+        description: `Registered device ${dto.brand} ${dto.model} (S/N: ${dto.serialNumber || 'N/A'}, IMEI: ${dto.imei || 'N/A'}).`,
+      },
+    });
+
+    return device;
+  }
+
+  // Delete Device from Customer
+  async deleteDevice(customerId: string, deviceId: string) {
+    await this.findOne(customerId);
+    await this.prisma.device.delete({
+      where: { id: deviceId },
+    });
+
+    return { success: true, message: `Device ${deviceId} removed from customer.` };
+  }
+
+  // Send Communication (SMS, WhatsApp, Email, Call, Reminder, Wishes)
+  async sendCommunication(customerId: string, type: string, channel: string, message: string) {
+    const customer = await this.findOne(customerId);
+    const comm = await this.prisma.customerCommunication.create({
+      data: {
+        customerId,
+        type,
+        message,
+        status: 'sent',
+      },
+    });
+
+    await this.prisma.customerActivity.create({
+      data: {
+        customerId,
+        type: 'COMMUNICATION_SENT',
+        title: `${type} Outgoing (${channel})`,
+        description: `Dispatched message to ${customer.phone}: "${message}"`,
+      },
+    });
+
+    return comm;
+  }
+
+  // Delete Customer Document
+  async deleteDocument(customerId: string, documentId: string) {
+    await this.findOne(customerId);
+    await this.prisma.customerDocument.delete({
+      where: { id: documentId },
+    });
+
+    return { success: true, message: `Document ${documentId} deleted.` };
+  }
+
+  // Merge Duplicate Customers
+  async mergeDuplicates(primaryId: string, duplicateIds: string[]) {
+    const primary = await this.findOne(primaryId);
+
+    for (const dupId of duplicateIds) {
+      if (dupId === primaryId) continue;
+      // Re-assign devices and tickets
+      await this.prisma.device.updateMany({
+        where: { customerId: dupId },
+        data: { customerId: primaryId },
+      });
+
+      await this.prisma.ticket.updateMany({
+        where: { customerId: dupId },
+        data: { customerId: primaryId },
+      });
+
+      await this.prisma.customerCommunication.updateMany({
+        where: { customerId: dupId },
+        data: { customerId: primaryId },
+      });
+
+      await this.prisma.customerDocument.updateMany({
+        where: { customerId: dupId },
+        data: { customerId: primaryId },
+      });
+
+      // Soft delete duplicate customer
+      await this.prisma.customer.update({
+        where: { id: dupId },
+        data: { isDeleted: true, deletedAt: new Date() },
+      });
+    }
+
+    await this.prisma.customerActivity.create({
+      data: {
+        customerId: primaryId,
+        type: 'CUSTOMERS_MERGED',
+        title: 'Duplicate Customers Merged',
+        description: `Merged duplicate profiles (${duplicateIds.join(', ')}) into primary customer ${primary.firstName} ${primary.lastName}.`,
+      },
+    });
+
+    return this.findOne(primaryId);
   }
 }
