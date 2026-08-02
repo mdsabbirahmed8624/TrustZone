@@ -10,10 +10,22 @@ generator client {
 model Branch {
   id                String            @id @default(uuid()) @db.Uuid
   name              String
+  code              String?           @unique
   address           String
-  timezone          String
-  status            String
+  district          String?
+  thana             String?
+  mapUrl            String?
+  phone             String?
+  email             String?
+  openingHours      String?
+  timezone          String            @default("Asia/Dhaka")
+  status            String            @default("ACTIVE") // ACTIVE, INACTIVE, MAINTENANCE
+  logo              String?
+  images            String[]          @default([])
+  description       String?
+  managerId         String?           @db.Uuid
   createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @default(now()) @updatedAt
   users             User[]
   tickets           Ticket[]
   branchInventory   BranchInventory[]
@@ -23,6 +35,8 @@ model Branch {
   purchaseOrders    PurchaseOrder[]
   transfersSent     StockTransfer[]   @relation("FromBranch")
   transfersReceived StockTransfer[]   @relation("ToBranch")
+  branchTransfersFrom BranchTransfer[] @relation("BranchTransferFrom")
+  branchTransfersTo   BranchTransfer[] @relation("BranchTransferTo")
   financialAccounts FinancialAccount[]
   journalEntries    JournalEntry[]
   expenses          Expense[]
@@ -36,6 +50,26 @@ model Branch {
   assets            Asset[]
 
   @@map("branches")
+}
+
+model BranchTransfer {
+  id            String   @id @default(uuid()) @db.Uuid
+  transferType  String   @default("INVENTORY") // INVENTORY, TICKET, CUSTOMER, TECHNICIAN
+  fromBranchId  String   @db.Uuid
+  fromBranch    Branch   @relation("BranchTransferFrom", fields: [fromBranchId], references: [id])
+  toBranchId    String   @db.Uuid
+  toBranch      Branch   @relation("BranchTransferTo", fields: [toBranchId], references: [id])
+  entityId      String?
+  entityName    String?
+  quantity      Int      @default(1)
+  status        String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  notes         String?
+  requestedById String?  @db.Uuid
+  approvedById  String?  @db.Uuid
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("branch_transfers")
 }
 
 model Role {

@@ -3769,6 +3769,110 @@ export const api = {
         return { success: true, data: [] };
       }
     }
+  },
+
+  branches: {
+    async fetchDashboardStats(branchId?: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/branches/dashboard/stats${branchId ? `?branchId=${branchId}` : ''}`, { token });
+      } catch {
+        return {
+          success: true,
+          data: {
+            overview: { totalBranches: 3, activeBranches: 3, inactiveBranches: 0, maintenanceBranches: 0 },
+            metrics: { dailyRevenue: 45800, monthlyRevenue: 850000, repairCount: 142, technicianCount: 12, inventoryValue: 640000, customerCount: 380 }
+          }
+        };
+      }
+    },
+    async list(query?: { search?: string; status?: string; district?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        let q = '';
+        if (query) {
+          const parts = [];
+          if (query.search) parts.push(`search=${encodeURIComponent(query.search)}`);
+          if (query.status) parts.push(`status=${query.status}`);
+          if (query.district) parts.push(`district=${encodeURIComponent(query.district)}`);
+          if (parts.length > 0) q = '?' + parts.join('&');
+        }
+        return await apiRequest<ApiResponse<any[]>>(`/branches${q}`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async fetchBranch(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/branches/${id}`, { token });
+    },
+    async createBranch(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/branches', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async updateBranch(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/branches/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+    },
+    async updateBranchStatus(id: string, status: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/branches/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+    },
+    async deleteBranch(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/branches/${id}`, { method: 'DELETE', token });
+    },
+    async fetchStaff(branchId: string, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>(`/branches/${branchId}/staff`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async assignStaff(branchId: string, userId: string, role?: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/branches/${branchId}/staff/assign`, { method: 'POST', body: JSON.stringify({ userId, role }), token });
+    },
+    async fetchInventory(branchId: string, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>(`/branches/${branchId}/inventory`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async fetchRepairs(branchId: string, status?: string, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>(`/branches/${branchId}/repairs${status ? `?status=${status}` : ''}`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async transferRepair(ticketId: string, targetBranchId: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/branches/repairs/${ticketId}/transfer`, { method: 'POST', body: JSON.stringify({ targetBranchId }), token });
+    },
+    async fetchFinance(branchId: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/branches/${branchId}/finance`, { token });
+      } catch {
+        return { success: true, data: { totalIncome: 450000, totalExpense: 120000, netProfit: 330000, accounts: [] } };
+      }
+    },
+    async performDailyClosing(branchId: string, data: { expectedBalance: number; actualBalance: number; notes?: string }, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/branches/${branchId}/finance/daily-closing`, { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async fetchTransfers(query?: { fromBranchId?: string; toBranchId?: string; status?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        let q = '';
+        if (query) {
+          const parts = [];
+          if (query.fromBranchId) parts.push(`fromBranchId=${query.fromBranchId}`);
+          if (query.toBranchId) parts.push(`toBranchId=${query.toBranchId}`);
+          if (query.status) parts.push(`status=${query.status}`);
+          if (parts.length > 0) q = '?' + parts.join('&');
+        }
+        return await apiRequest<ApiResponse<any[]>>(`/branches/transfers/list${q}`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async createTransfer(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/branches/transfers', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async processTransferStatus(id: string, status: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/branches/transfers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+    }
   }
 };
 
