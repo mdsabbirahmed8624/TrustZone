@@ -1809,4 +1809,121 @@ export class FinanceService {
       taxRate: '15% (VAT included)',
     };
   }
+
+  // Update Expense
+  async updateExpense(id: string, dto: any) {
+    const expense = await this.prisma.expense.findUnique({ where: { id } });
+    if (!expense) throw new NotFoundException(`Expense ${id} not found.`);
+
+    return this.prisma.expense.update({
+      where: { id },
+      data: {
+        category: dto.category ?? expense.category,
+        amount: dto.amount !== undefined ? Number(dto.amount) : expense.amount,
+        notes: dto.notes ?? expense.notes,
+      },
+    });
+  }
+
+  // Delete Expense
+  async deleteExpense(id: string) {
+    const expense = await this.prisma.expense.findUnique({ where: { id } });
+    if (!expense) throw new NotFoundException(`Expense ${id} not found.`);
+
+    await this.prisma.expense.delete({ where: { id } });
+    return { success: true, message: `Expense ${id} deleted successfully.` };
+  }
+
+  // Update Income
+  async updateIncome(id: string, dto: any) {
+    const income = await this.prisma.income.findUnique({ where: { id } });
+    if (!income) throw new NotFoundException(`Income ${id} not found.`);
+
+    return this.prisma.income.update({
+      where: { id },
+      data: {
+        category: dto.category ?? income.category,
+        amount: dto.amount !== undefined ? Number(dto.amount) : income.amount,
+        description: dto.description ?? dto.notes ?? income.description,
+      },
+    });
+  }
+
+  // Delete Income
+  async deleteIncome(id: string) {
+    const income = await this.prisma.income.findUnique({ where: { id } });
+    if (!income) throw new NotFoundException(`Income ${id} not found.`);
+
+    await this.prisma.income.delete({ where: { id } });
+    return { success: true, message: `Income ${id} deleted successfully.` };
+  }
+
+  // Cash / Bank Reconciliation
+  async reconcileAccount(data: { accountId: string; statementBalance: number; notes?: string }) {
+    const account = await this.prisma.financialAccount.findUnique({ where: { id: data.accountId } });
+    if (!account) throw new NotFoundException(`Account ${data.accountId} not found.`);
+
+    const systemBalance = Number(account.currentBalance);
+    const variance = data.statementBalance - systemBalance;
+
+    return {
+      success: true,
+      accountId: account.id,
+      accountName: account.name,
+      systemBalance,
+      statementBalance: data.statementBalance,
+      variance,
+      isReconciled: Math.abs(variance) < 0.01,
+      message: Math.abs(variance) < 0.01
+        ? 'Account balance reconciled perfectly with bank statement.'
+        : `Variance of BDT ${variance.toFixed(2)} detected between system and bank statement.`,
+    };
+  }
+
+  // Balance Sheet Report
+  async getBalanceSheetReport(query?: { branchId?: string }) {
+    const accounts = await this.getAccounts({ branchId: query?.branchId });
+
+    const assets = accounts.filter((a) => a.accountClass === 'ASSET');
+    const liabilities = accounts.filter((a) => a.accountClass === 'LIABILITY');
+    const equity = accounts.filter((a) => a.accountClass === 'EQUITY');
+
+    const totalAssets = assets.reduce((acc, a) => acc + Number(a.currentBalance || 0), 0);
+    const totalLiabilities = liabilities.reduce((acc, a) => acc + Number(a.currentBalance || 0), 0);
+    const totalEquity = equity.reduce((acc, a) => acc + Number(a.currentBalance || 0), 0);
+
+    return {
+      asOfDate: new Date().toISOString(),
+      assets: { items: assets, total: totalAssets },
+      liabilities: { items: liabilities, total: totalLiabilities },
+      equity: { items: equity, total: totalEquity },
+      isBalanced: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 1.0,
+    };
+  }
+
+  // Cash Flow Report
+  async getCashFlowReport(query: { startDate: string; endDate: string }) {
+    const start = new Date(query.startDate);
+    const end = new Date(query.endDate);
+
+    const [incomes, expenses] = await Promise.all([
+      this.prisma.income.findMany({ where: { date: { gte: start, lte: end } } }),
+      this.prisma.expense.findMany({ where: { date: { gte: start, lte: end } } }),
+    ]);
+
+    const operatingInflow = incomes.reduce((acc, i) => acc + Number(i.amount || 0), 0);
+    const operatingOutflow = expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+    const netCashFlow = operatingInflow - operatingOutflow;
+
+    return {
+      startDate: query.startDate,
+      endDate: query.endDate,
+      operatingActivities: {
+        inflow: operatingInflow,
+        outflow: operatingOutflow,
+        net: netCashFlow,
+      },
+      netCashIncrease: netCashFlow,
+    };
+  }
 }

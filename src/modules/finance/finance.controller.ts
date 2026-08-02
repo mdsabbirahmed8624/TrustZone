@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -402,6 +403,81 @@ export class FinanceController {
         startDate,
         endDate,
         accountId,
+      }),
+    };
+  }
+
+  @Patch('expenses/:id')
+  @Permissions('finance.write')
+  @HttpCode(HttpStatus.OK)
+  async updateExpense(@Param('id') id: string, @Body() dto: any) {
+    return {
+      success: true,
+      data: await this.financeService.updateExpense(id, dto),
+    };
+  }
+
+  @Delete('expenses/:id')
+  @Permissions('finance.write')
+  @HttpCode(HttpStatus.OK)
+  async deleteExpense(@Param('id') id: string) {
+    return await this.financeService.deleteExpense(id);
+  }
+
+  @Patch('incomes/:id')
+  @Permissions('finance.write')
+  @HttpCode(HttpStatus.OK)
+  async updateIncome(@Param('id') id: string, @Body() dto: any) {
+    return {
+      success: true,
+      data: await this.financeService.updateIncome(id, dto),
+    };
+  }
+
+  @Delete('incomes/:id')
+  @Permissions('finance.write')
+  @HttpCode(HttpStatus.OK)
+  async deleteIncome(@Param('id') id: string) {
+    return await this.financeService.deleteIncome(id);
+  }
+
+  @Post('reconcile')
+  @Permissions('finance.write')
+  @HttpCode(HttpStatus.OK)
+  async reconcileAccount(
+    @Body('accountId') accountId: string,
+    @Body('statementBalance') statementBalance: number,
+    @Body('notes') notes?: string,
+  ) {
+    return await this.financeService.reconcileAccount({
+      accountId,
+      statementBalance,
+      notes,
+    });
+  }
+
+  @Get('reports/balance-sheet')
+  @Permissions('finance.read')
+  @HttpCode(HttpStatus.OK)
+  async getBalanceSheetReport(@Query('branchId') branchId?: string) {
+    return {
+      success: true,
+      data: await this.financeService.getBalanceSheetReport({ branchId }),
+    };
+  }
+
+  @Get('reports/cash-flow')
+  @Permissions('finance.read')
+  @HttpCode(HttpStatus.OK)
+  async getCashFlowReport(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return {
+      success: true,
+      data: await this.financeService.getCashFlowReport({
+        startDate,
+        endDate,
       }),
     };
   }

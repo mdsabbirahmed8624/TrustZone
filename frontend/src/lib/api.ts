@@ -1721,6 +1721,54 @@ export const api = {
       return apiRequest<ApiResponse<any[]>>(`/finance/reports/general-ledger?${q.toString()}`, { token });
     },
 
+    async reportBalanceSheet(params?: { branchId?: string }, token?: string): Promise<ApiResponse<any>> {
+      const q = params?.branchId ? `?branchId=${params.branchId}` : '';
+      return apiRequest<ApiResponse<any>>(`/finance/reports/balance-sheet${q}`, { token });
+    },
+
+    async reportCashFlow(params: { startDate: string; endDate: string }, token?: string): Promise<ApiResponse<any>> {
+      const q = new URLSearchParams({ startDate: params.startDate, endDate: params.endDate });
+      return apiRequest<ApiResponse<any>>(`/finance/reports/cash-flow?${q.toString()}`, { token });
+    },
+
+    async reconcile(data: { accountId: string; statementBalance: number; notes?: string }, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/finance/reconcile', {
+        method: 'POST',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+
+    async updateExpense(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/finance/expenses/${id}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+
+    async deleteExpense(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/finance/expenses/${id}`, {
+        method: 'DELETE',
+        token,
+      });
+    },
+
+    async updateIncome(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/finance/incomes/${id}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+
+    async deleteIncome(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/finance/incomes/${id}`, {
+        method: 'DELETE',
+        token,
+      });
+    },
+
     async reportTaxSummary(params: { startDate: string, endDate: string }, token?: string): Promise<ApiResponse<any>> {
       const q = new URLSearchParams({ startDate: params.startDate, endDate: params.endDate });
       return apiRequest<ApiResponse<any>>(`/finance/reports/tax-summary?${q.toString()}`, { token });
