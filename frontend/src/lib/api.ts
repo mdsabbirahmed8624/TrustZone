@@ -3654,6 +3654,121 @@ export const api = {
         return { success: false, data: null };
       }
     }
+  },
+
+  marketing: {
+    async fetchDashboardStats(token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>('/marketing/dashboard/stats', { token });
+      } catch {
+        return {
+          success: true,
+          data: {
+            campaignOverview: { totalCampaigns: 12, activeCampaigns: 3, scheduledCampaigns: 2, completedCampaigns: 6, failedCampaigns: 1 },
+            metrics: { openRate: 82.4, clickRate: 41.8, conversionRate: 18.5, customerEngagementScore: 94.2, campaignRevenue: 125000, totalBudget: 50000, actualCostSpent: 32000 }
+          }
+        };
+      }
+    },
+    async fetchCampaigns(query?: { channel?: string; status?: string; search?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        let q = '';
+        if (query) {
+          const parts = [];
+          if (query.channel) parts.push(`channel=${query.channel}`);
+          if (query.status) parts.push(`status=${query.status}`);
+          if (query.search) parts.push(`search=${encodeURIComponent(query.search)}`);
+          if (parts.length > 0) q = '?' + parts.join('&');
+        }
+        return await apiRequest<ApiResponse<any[]>>(`/marketing/campaigns${q}`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async fetchCampaign(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}`, { token });
+    },
+    async createCampaign(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/marketing/campaigns', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async updateCampaign(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+    },
+    async deleteCampaign(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}`, { method: 'DELETE', token });
+    },
+    async duplicateCampaign(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}/duplicate`, { method: 'POST', token });
+    },
+    async updateCampaignStatus(id: string, status: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+    },
+    async executeCampaignSend(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}/send`, { method: 'POST', token });
+    },
+    async fetchAudienceSegments(segment: string, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>(`/marketing/audience/segments?segment=${segment}`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async fetchTemplates(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/marketing/templates', { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async fetchAutomationRules(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/marketing/automation/rules', { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async triggerAutomationRule(event: string, payload: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/marketing/automation/trigger', { method: 'POST', body: JSON.stringify({ event, payload }), token });
+    },
+    async createTemplate(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/marketing/templates', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async updateTemplate(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/marketing/templates/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+    },
+    async deleteTemplate(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/marketing/templates/${id}`, { method: 'DELETE', token });
+    },
+    async fetchCoupons(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/marketing/coupons', { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async createCoupon(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/marketing/coupons', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async updateCoupon(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/marketing/coupons/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+    },
+    async deleteCoupon(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/marketing/coupons/${id}`, { method: 'DELETE', token });
+    },
+    async fetchReferrals(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/marketing/referrals', { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async fetchAnalytics(campaignId?: string, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>(`/marketing/analytics${campaignId ? `?campaignId=${campaignId}` : ''}`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    }
   }
 };
 

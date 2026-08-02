@@ -39,6 +39,7 @@ import { FranchiseModule } from './modules/franchise/franchise.module';
 import { EnterpriseBIModule } from './modules/enterprise-bi/enterprise-bi.module';
 import { AutonomousAIModule } from './modules/autonomous-ai/autonomous-ai.module';
 import { IamModule } from './modules/iam/iam.module';
+import { MarketingModule } from './modules/marketing/marketing.module';
 import { HealthController } from './health/health.controller';
 
 function validateEnvironment(config: Record<string, any>): Record<string, any> {
@@ -126,6 +127,7 @@ function validateEnvironment(config: Record<string, any>): Record<string, any> {
     EnterpriseBIModule,
     AutonomousAIModule,
     IamModule,
+    MarketingModule,
   ],
   controllers: [HealthController],
   providers: [
