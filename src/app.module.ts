@@ -41,6 +41,7 @@ import { AutonomousAIModule } from './modules/autonomous-ai/autonomous-ai.module
 import { IamModule } from './modules/iam/iam.module';
 import { MarketingModule } from './modules/marketing/marketing.module';
 import { BranchesModule } from './modules/branches/branches.module';
+import { UsersModule } from './modules/users/users.module';
 import { HealthController } from './health/health.controller';
 
 function validateEnvironment(config: Record<string, any>): Record<string, any> {
@@ -130,6 +131,7 @@ function validateEnvironment(config: Record<string, any>): Record<string, any> {
     IamModule,
     MarketingModule,
     BranchesModule,
+    UsersModule,
   ],
   controllers: [HealthController],
   providers: [

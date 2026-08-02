@@ -3873,6 +3873,94 @@ export const api = {
     async processTransferStatus(id: string, status: string, token?: string): Promise<ApiResponse<any>> {
       return apiRequest<ApiResponse<any>>(`/branches/transfers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
     }
+  },
+
+  users: {
+    async list(query?: { search?: string; role?: string; branchId?: string; status?: string; department?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        let q = '';
+        if (query) {
+          const parts = [];
+          if (query.search) parts.push(`search=${encodeURIComponent(query.search)}`);
+          if (query.role) parts.push(`role=${encodeURIComponent(query.role)}`);
+          if (query.branchId) parts.push(`branchId=${query.branchId}`);
+          if (query.status) parts.push(`status=${query.status}`);
+          if (query.department) parts.push(`department=${encodeURIComponent(query.department)}`);
+          if (parts.length > 0) q = '?' + parts.join('&');
+        }
+        return await apiRequest<ApiResponse<any[]>>(`/users${q}`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async getUser(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/users/${id}`, { token });
+    },
+    async createUser(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/users', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async updateUser(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+    },
+    async updateUserStatus(id: string, status: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+    },
+    async deleteUser(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/users/${id}`, { method: 'DELETE', token });
+    },
+    async fetchRoles(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/users/roles/list', { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async createRole(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/users/roles', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async updateRole(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/users/roles/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+    },
+    async deleteRole(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/users/roles/${id}`, { method: 'DELETE', token });
+    },
+    async fetchPermissionMatrix(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/users/permissions/matrix', { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async fetchSessions(userId: string, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>(`/users/${userId}/sessions`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async terminateSession(sessionId: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/users/sessions/${sessionId}`, { method: 'DELETE', token });
+    },
+    async logoutAllDevices(userId: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/users/${userId}/sessions/logout-all`, { method: 'POST', token });
+    },
+    async fetchActivityLogs(query?: { userId?: string; action?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        let q = '';
+        if (query) {
+          const parts = [];
+          if (query.userId) parts.push(`userId=${query.userId}`);
+          if (query.action) parts.push(`action=${query.action}`);
+          if (parts.length > 0) q = '?' + parts.join('&');
+        }
+        return await apiRequest<ApiResponse<any[]>>(`/users/logs/activity${q}`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async handleBulkAction(data: { userIds: string[]; action: string; targetValue?: string }, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/users/bulk-action', { method: 'POST', body: JSON.stringify(data), token });
+    }
   }
 };
 

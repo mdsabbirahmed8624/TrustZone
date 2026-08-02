@@ -88,14 +88,30 @@ model Role {
 model User {
   id                       String          @id @default(uuid()) @db.Uuid
   email                    String          @unique
+  username                 String?         @unique
+  mobile                   String?
+  employeeId               String?         @unique
   password                 String
   firstName                String
   lastName                 String
+  avatar                   String?
   role                     String
   roleId                   String?         @db.Uuid
   roleRelation             Role?           @relation(fields: [roleId], references: [id])
   branchId                 String?         @db.Uuid
   branch                   Branch?         @relation(fields: [branchId], references: [id])
+  department               String?
+  designation              String?
+  status                   String          @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED, LOCKED
+  joiningDate              DateTime?
+  language                 String          @default("en")
+  theme                    String          @default("dark")
+  notificationPref         Json?
+  mfaEnabled               Boolean         @default(false)
+  mfaSecret                String?
+  lastLogin                DateTime?
+  lastLoginIp              String?
+  passwordExpiresAt        DateTime?
   tickets                  Ticket[]        @relation("AssignedTech")
   ticketHistory            TicketHistory[]
   failedLoginAttempts      Int             @default(0)
