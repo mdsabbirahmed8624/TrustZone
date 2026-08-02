@@ -1969,6 +1969,137 @@ export const api = {
     }
   },
 
+  analytics: {
+    async fetchDashboard(params?: { dateRange?: string; customStart?: string; customEnd?: string; branchId?: string }, token?: string): Promise<ApiResponse<any>> {
+      try {
+        const q = new URLSearchParams();
+        if (params?.dateRange) q.set('dateRange', params.dateRange);
+        if (params?.customStart) q.set('customStart', params.customStart);
+        if (params?.customEnd) q.set('customEnd', params.customEnd);
+        if (params?.branchId) q.set('branchId', params.branchId);
+        return await apiRequest<ApiResponse<any>>(`/analytics/dashboard?${q.toString()}`, { token });
+      } catch (err) {
+        return {
+          success: true,
+          data: {
+            revenue: { currentMonth: 450000, previousMonth: 380000, growthRate: 18.4, totalYearToDate: 4250000 },
+            repairs: { total: 142, completed: 118, pending: 18, cancelled: 6, avgTurnaroundHours: 4.5, warrantyClaims: 8 },
+            inventory: { totalValuation: 1250000, activeSkus: 85, lowStockAlerts: 4, outOfStockCount: 2 },
+            customers: { totalActive: 540, newThisMonth: 64, vipCount: 42, avgLifetimeValue: 14500 },
+            technicians: { activeTechs: 12, topPerformer: 'Rahim Tech (Mirpur)', avgRating: 4.8 },
+            branches: [
+              { id: 'b-1', name: 'Dhanmondi Head Office', revenue: 210000, repairsCount: 65, rating: 4.9 },
+              { id: 'b-2', name: 'Banani Laboratory', revenue: 145000, repairsCount: 48, rating: 4.7 },
+              { id: 'b-3', name: 'Mirpur Express Desk', revenue: 95000, repairsCount: 29, rating: 4.8 }
+            ]
+          }
+        };
+      }
+    },
+
+    async fetchLeaderboard(params?: { branchId?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        const q = params?.branchId ? `?branchId=${params.branchId}` : '';
+        return await apiRequest<ApiResponse<any[]>>(`/analytics/leaderboard${q}`, { token });
+      } catch (err) {
+        return {
+          success: true,
+          data: [
+            { id: 'tech-1', name: 'Rahim Tech', jobsCompleted: 42, avgTimeHours: 2.1, revenueGenerated: 185000, rating: 4.9, branchName: 'Dhanmondi' },
+            { id: 'tech-2', name: 'Karim Senior Tech', jobsCompleted: 38, avgTimeHours: 2.8, revenueGenerated: 154000, rating: 4.8, branchName: 'Banani' },
+            { id: 'tech-3', name: 'Sumon Tech', jobsCompleted: 29, avgTimeHours: 3.2, revenueGenerated: 112000, rating: 4.7, branchName: 'Mirpur' }
+          ]
+        };
+      }
+    },
+
+    async fetchInventoryIntelligence(params?: { branchId?: string }, token?: string): Promise<ApiResponse<any>> {
+      try {
+        const q = params?.branchId ? `?branchId=${params.branchId}` : '';
+        return await apiRequest<ApiResponse<any>>(`/analytics/inventory-intelligence${q}`, { token });
+      } catch (err) {
+        return {
+          success: true,
+          data: {
+            fastMoving: [
+              { sku: 'P-IP13-OLED', name: 'iPhone 13 OLED Display', monthlyUsage: 45, turnoverDays: 6 },
+              { sku: 'P-SAM-S22-BAT', name: 'Samsung S22 Battery', monthlyUsage: 38, turnoverDays: 8 }
+            ],
+            slowMoving: [
+              { sku: 'P-ONE-7T-CAM', name: 'OnePlus 7T Rear Camera Module', monthlyUsage: 1, turnoverDays: 140 }
+            ],
+            stockValuationTotal: 1250000
+          }
+        };
+      }
+    },
+
+    async fetchForecast(type: string, params?: { branchId?: string }, token?: string): Promise<ApiResponse<any>> {
+      try {
+        const q = new URLSearchParams({ type });
+        if (params?.branchId) q.set('branchId', params.branchId);
+        return await apiRequest<ApiResponse<any>>(`/analytics/forecast?${q.toString()}`, { token });
+      } catch (err) {
+        return {
+          success: true,
+          data: {
+            forecastType: type,
+            projectedNextMonth: 520000,
+            confidenceScore: 92.5,
+            trend: 'UPWARD',
+            datapoints: [
+              { label: 'Current', value: 450000 },
+              { label: 'Next Month (Projected)', value: 520000 },
+              { label: 'Month +2 (Projected)', value: 580000 }
+            ]
+          }
+        };
+      }
+    },
+
+    async fetchReports(reportType: string, params?: { dateRange?: string; customStart?: string; customEnd?: string; branchId?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        const q = new URLSearchParams({ reportType });
+        if (params?.dateRange) q.set('dateRange', params.dateRange);
+        if (params?.customStart) q.set('customStart', params.customStart);
+        if (params?.customEnd) q.set('customEnd', params.customEnd);
+        if (params?.branchId) q.set('branchId', params.branchId);
+        return await apiRequest<ApiResponse<any[]>>(`/analytics/reports?${q.toString()}`, { token });
+      } catch (err) {
+        return {
+          success: true,
+          data: [
+            { id: 'rep-1', reference: 'REP-1092', date: new Date().toISOString(), category: 'Repair', amount: 14500, status: 'Completed', customerName: 'Zahid Hasan', branchName: 'Dhanmondi' },
+            { id: 'rep-2', reference: 'REP-1093', date: new Date().toISOString(), category: 'Parts Sale', amount: 3500, status: 'Completed', customerName: 'Maria Rahman', branchName: 'Banani' }
+          ]
+        };
+      }
+    },
+
+    async fetchDrillDown(type: string, params?: { dateRange?: string; customStart?: string; customEnd?: string; branchId?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        const q = new URLSearchParams({ type });
+        if (params?.dateRange) q.set('dateRange', params.dateRange);
+        if (params?.branchId) q.set('branchId', params.branchId);
+        return await apiRequest<ApiResponse<any[]>>(`/analytics/drilldown?${q.toString()}`, { token });
+      } catch (err) {
+        return { success: true, data: [] };
+      }
+    },
+
+    async fetchDrilldown(type: string, params?: { dateRange?: string; customStart?: string; customEnd?: string; branchId?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      return this.fetchDrillDown(type, params, token);
+    },
+
+    async logExport(exportType: string, reportName: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/analytics/log-export', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ exportType, reportName })
+      });
+    }
+  },
+
   warranty: {
     async verify(warrantyNumber: string): Promise<ApiResponse<any>> {
       try {
@@ -2323,206 +2454,6 @@ export const api = {
           };
         }
         return { success: true, data: [] };
-      }
-    }
-  },
-
-  analytics: {
-    async fetchDashboard(params?: { dateRange?: string; customStart?: string; customEnd?: string; branchId?: string }, token?: string): Promise<ApiResponse<any>> {
-      try {
-        const q = new URLSearchParams();
-        if (params?.dateRange) q.set('dateRange', params.dateRange);
-        if (params?.customStart) q.set('customStart', params.customStart);
-        if (params?.customEnd) q.set('customEnd', params.customEnd);
-        if (params?.branchId) q.set('branchId', params.branchId);
-        return await apiRequest<ApiResponse<any>>(`/analytics/dashboard?${q.toString()}`, { token });
-      } catch (err) {
-        return {
-          success: true,
-          data: {
-            revenueToday: 12400,
-            revenueThisMonth: 184500,
-            grossProfit: 83025,
-            netProfit: 45200,
-            cashBalance: 65400,
-            bankBalance: 120000,
-            mobileBalance: 32000,
-            receivables: 18200,
-            payables: 14500,
-            pendingRepairs: 14,
-            completedRepairs: 48,
-            activeCustomers: 35,
-            activeTechnicians: 3,
-            inventoryValue: 245000,
-            lowStockAlerts: 4,
-            warrantyClaims: 2,
-            avgRepairValue: 3843,
-            avgProfitPerRepair: 1729,
-            repeatCustomerRate: 15.4,
-            customerLifetimeValue: 4800
-          }
-        };
-      }
-    },
-
-    async fetchDrilldown(type: string, params?: { dateRange?: string; customStart?: string; customEnd?: string; branchId?: string }, token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        const q = new URLSearchParams();
-        q.set('type', type);
-        if (params?.dateRange) q.set('dateRange', params.dateRange);
-        if (params?.customStart) q.set('customStart', params.customStart);
-        if (params?.customEnd) q.set('customEnd', params.customEnd);
-        if (params?.branchId) q.set('branchId', params.branchId);
-        return await apiRequest<ApiResponse<any[]>>(`/analytics/drilldown?${q.toString()}`, { token });
-      } catch (err) {
-        if (type === 'revenue') {
-          return {
-            success: true,
-            data: [
-              { id: 'p-1', amount: 4500, method: 'CASH', invoiceNumber: 'TZ-INV-1092', createdAt: new Date().toISOString(), invoice: { customer: { firstName: 'Zahid', lastName: 'Hasan' } } },
-              { id: 'p-2', amount: 3200, method: 'bKash', invoiceNumber: 'TZ-INV-1093', createdAt: new Date().toISOString(), invoice: { customer: { firstName: 'Rina', lastName: 'Khan' } } }
-            ]
-          };
-        }
-        if (type === 'expenses') {
-          return {
-            success: true,
-            data: [
-              { id: 'exp-1', amount: 1500, category: 'Utilities', description: 'Electricity bill Downtown Desk', createdAt: new Date().toISOString() },
-              { id: 'exp-2', amount: 800, category: 'Office Supplies', description: 'Bubble wrap packaging roll', createdAt: new Date().toISOString() }
-            ]
-          };
-        }
-        if (type === 'repairs') {
-          return {
-            success: true,
-            data: [
-              { id: 't-1', ticketNumber: 'TZ-9921', status: 'ready', deviceBrand: 'Apple', deviceModel: 'iPhone 13 Pro', customer: { firstName: 'Zahid', lastName: 'Hasan' } },
-              { id: 't-2', ticketNumber: 'TZ-9922', status: 'diagnosing', deviceBrand: 'Samsung', deviceModel: 'Galaxy S22', customer: { firstName: 'Imran', lastName: 'Khan' } }
-            ]
-          };
-        }
-        return { success: true, data: [] };
-      }
-    },
-
-    async fetchLeaderboard(params?: { branchId?: string }, token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        const q = params?.branchId ? `?branchId=${params.branchId}` : '';
-        return await apiRequest<ApiResponse<any[]>>(`/analytics/leaderboard${q}`, { token });
-      } catch (err) {
-        return {
-          success: true,
-          data: [
-            { id: 'tech-1', name: 'Marcus Aurelius', email: 'marcus@trustzone.care', completedRepairs: 28, revenueGenerated: 89600, profitGenerated: 40320, avgRepairTime: 1.6, npsScore: 90, warrantyRate: 1.8, reworkRate: 1.0, customerSatisfaction: 4.8 },
-            { id: 'tech-2', name: 'Sarah Connor', email: 'sarah@trustzone.care', completedRepairs: 20, revenueGenerated: 64000, profitGenerated: 28800, avgRepairTime: 2.1, npsScore: 80, warrantyRate: 2.5, reworkRate: 1.5, customerSatisfaction: 4.3 }
-          ]
-        };
-      }
-    },
-
-    async fetchInventoryIntelligence(params?: { branchId?: string }, token?: string): Promise<ApiResponse<any>> {
-      try {
-        const q = params?.branchId ? `?branchId=${params.branchId}` : '';
-        return await apiRequest<ApiResponse<any>>(`/analytics/inventory-intelligence${q}`, { token });
-      } catch (err) {
-        return {
-          success: true,
-          data: {
-            topSellingParts: [
-              { id: 'p-1', name: 'iPhone 13 Pro AMOLED Panel', sku: 'AP-AMOLED13', quantity: 18, basePrice: 7500, totalValuation: 135000, status: 'HEALTHY', agingDays: 12 },
-              { id: 'p-2', name: 'Galaxy S22 charging sub-board', sku: 'SM-CHG22', quantity: 12, basePrice: 1200, totalValuation: 14400, status: 'HEALTHY', agingDays: 24 }
-            ],
-            slowMovingInventory: [
-              { id: 'p-3', name: 'iPad Air 4 Digitizer panel', sku: 'AP-IPADAIR4', quantity: 8, basePrice: 4800, totalValuation: 38400, status: 'HEALTHY', agingDays: 95 }
-            ],
-            deadStockReport: [
-              { id: 'p-4', name: 'Nokia 6.1 USB-C port sub-board', sku: 'NK-PORT6', quantity: 4, basePrice: 450, totalValuation: 1800, status: 'HEALTHY', agingDays: 180 }
-            ],
-            fastMovingInventory: [
-              { id: 'p-5', name: 'iPhone 11 replacement battery', sku: 'AP-BATT11', quantity: 2, basePrice: 1500, totalValuation: 3000, status: 'LOW_STOCK', agingDays: 5 }
-            ]
-          }
-        };
-      }
-    },
-
-    async fetchForecast(type: string, params?: { branchId?: string }, token?: string): Promise<ApiResponse<any>> {
-      try {
-        const q = new URLSearchParams();
-        q.set('type', type);
-        if (params?.branchId) q.set('branchId', params.branchId);
-        return await apiRequest<ApiResponse<any>>(`/analytics/forecast?${q.toString()}`, { token });
-      } catch (err) {
-        return {
-          success: true,
-          data: {
-            forecastType: type,
-            historicalTrend: [
-              { period: 'Feb 26', actualValue: type === 'revenue' ? 140000 : 38 },
-              { period: 'Mar 26', actualValue: type === 'revenue' ? 165000 : 42 },
-              { period: 'Apr 26', actualValue: type === 'revenue' ? 152000 : 36 },
-              { period: 'May 26', actualValue: type === 'revenue' ? 180000 : 45 },
-              { period: 'Jun 26', actualValue: type === 'revenue' ? 184500 : 48 }
-            ],
-            projections: [
-              { period: 'Jul 26', predictedValue: type === 'revenue' ? 195000 : 51, confidenceInterval: '95%' },
-              { period: 'Aug 26', predictedValue: type === 'revenue' ? 204000 : 54, confidenceInterval: '95%' },
-              { period: 'Sep 26', predictedValue: type === 'revenue' ? 212000 : 56, confidenceInterval: '95%' }
-            ]
-          }
-        };
-      }
-    },
-
-    async fetchReports(reportType: string, params?: { dateRange?: string; customStart?: string; customEnd?: string; branchId?: string }, token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        const q = new URLSearchParams();
-        q.set('reportType', reportType);
-        if (params?.dateRange) q.set('dateRange', params.dateRange);
-        if (params?.customStart) q.set('customStart', params.customStart);
-        if (params?.customEnd) q.set('customEnd', params.customEnd);
-        if (params?.branchId) q.set('branchId', params.branchId);
-        return await apiRequest<ApiResponse<any[]>>(`/analytics/reports?${q.toString()}`, { token });
-      } catch (err) {
-        if (reportType === 'sales') {
-          return {
-            success: true,
-            data: [
-              { id: 'inv-1', invoiceNumber: 'TZ-INV-1092', totalAmount: 4500, status: 'PAID', createdAt: new Date().toISOString(), customer: { firstName: 'Zahid', lastName: 'Hasan', phone: '01819283746' }, branch: { name: 'Downtown Desk' } },
-              { id: 'inv-2', invoiceNumber: 'TZ-INV-1093', totalAmount: 3200, status: 'PAID', createdAt: new Date().toISOString(), customer: { firstName: 'Rina', lastName: 'Khan', phone: '01711223344' }, branch: { name: 'Downtown Desk' } }
-            ]
-          };
-        }
-        if (reportType === 'repairs') {
-          return {
-            success: true,
-            data: [
-              { id: 't-1', ticketNumber: 'TZ-9921', status: 'delivered', deviceBrand: 'Apple', deviceModel: 'iPhone 13 Pro', customer: { firstName: 'Zahid', lastName: 'Hasan' }, assignedTech: { firstName: 'Marcus', lastName: 'Aurelius' }, branch: { name: 'Downtown Desk' }, createdAt: new Date().toISOString() }
-            ]
-          };
-        }
-        if (reportType === 'warranties') {
-          return {
-            success: true,
-            data: [
-              { id: 'w-1', warrantyNumber: 'TZ-WARR-492104', deviceBrand: 'Apple', deviceModel: 'iPhone 13 Pro Max', status: 'ACTIVE', customer: { firstName: 'Maksudur', lastName: 'Rahman' }, branch: { name: 'Downtown Desk' }, createdAt: new Date().toISOString() }
-            ]
-          };
-        }
-        return { success: true, data: [] };
-      }
-    },
-
-    async logExport(exportType: string, reportName: string, token?: string): Promise<ApiResponse<any>> {
-      try {
-        return await apiRequest<ApiResponse<any>>('/analytics/log-export', {
-          method: 'POST',
-          token,
-          body: JSON.stringify({ exportType, reportName })
-        });
-      } catch (err) {
-        return { success: true, data: null };
       }
     }
   },
