@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -14,6 +16,9 @@ import { AdjustPointsDto } from './dto/adjust-points.dto';
 import { RedeemPointsDto } from './dto/redeem-points.dto';
 import { CreateCommunicationDto } from './dto/create-communication.dto';
 import { SubmitFeedbackDto } from './dto/submit-feedback.dto';
+import { CreateNoteDto } from './dto/create-note.dto';
+import { CreateFollowUpDto } from './dto/create-followup.dto';
+import { IssueRewardDto } from './dto/issue-reward.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
@@ -184,6 +189,186 @@ export class CrmController {
         startDate,
         endDate,
       }),
+    };
+  }
+
+  @Get('customers/:id/notes')
+  @Permissions('read:crm')
+  @HttpCode(HttpStatus.OK)
+  async getCustomerNotes(
+    @Param('id') customerId: string,
+    @Query('category') category?: string,
+  ) {
+    return {
+      success: true,
+      data: await this.crmService.getCustomerNotes(customerId, category),
+    };
+  }
+
+  @Post('notes')
+  @Permissions('write:crm')
+  @HttpCode(HttpStatus.CREATED)
+  async createCustomerNote(
+    @Body() dto: CreateNoteDto,
+    @CurrentUser() staff: any,
+  ) {
+    const staffName = staff ? `${staff.firstName} ${staff.lastName}`.trim() : 'System';
+    return {
+      success: true,
+      data: await this.crmService.createCustomerNote(dto, staff?.id, staffName),
+    };
+  }
+
+  @Patch('notes/:id')
+  @Permissions('write:crm')
+  @HttpCode(HttpStatus.OK)
+  async updateCustomerNote(
+    @Param('id') id: string,
+    @Body() dto: { content?: string; category?: string; attachments?: string[] },
+  ) {
+    return {
+      success: true,
+      data: await this.crmService.updateCustomerNote(id, dto),
+    };
+  }
+
+  @Delete('notes/:id')
+  @Permissions('write:crm')
+  @HttpCode(HttpStatus.OK)
+  async deleteCustomerNote(@Param('id') id: string) {
+    return {
+      success: true,
+      data: await this.crmService.deleteCustomerNote(id),
+    };
+  }
+
+  @Get('followups')
+  @Permissions('read:crm')
+  @HttpCode(HttpStatus.OK)
+  async getFollowUps(
+    @Query('customerId') customerId?: string,
+    @Query('status') status?: string,
+    @Query('priority') priority?: string,
+    @Query('channel') channel?: string,
+  ) {
+    return {
+      success: true,
+      data: await this.crmService.getFollowUps({ customerId, status, priority, channel }),
+    };
+  }
+
+  @Post('followups')
+  @Permissions('write:crm')
+  @HttpCode(HttpStatus.CREATED)
+  async createFollowUp(
+    @Body() dto: CreateFollowUpDto,
+    @CurrentUser() staff: any,
+  ) {
+    const staffName = staff ? `${staff.firstName} ${staff.lastName}`.trim() : 'System';
+    return {
+      success: true,
+      data: await this.crmService.createFollowUp(dto, staff?.id, staffName),
+    };
+  }
+
+  @Patch('followups/:id')
+  @Permissions('write:crm')
+  @HttpCode(HttpStatus.OK)
+  async updateFollowUp(@Param('id') id: string, @Body() dto: any) {
+    return {
+      success: true,
+      data: await this.crmService.updateFollowUp(id, dto),
+    };
+  }
+
+  @Post('followups/:id/complete')
+  @Permissions('write:crm')
+  @HttpCode(HttpStatus.OK)
+  async completeFollowUp(
+    @Param('id') id: string,
+    @Body('completionNotes') completionNotes?: string,
+    @CurrentUser() staff?: any,
+  ) {
+    const staffName = staff ? `${staff.firstName} ${staff.lastName}`.trim() : 'System';
+    return {
+      success: true,
+      data: await this.crmService.completeFollowUp(id, completionNotes, staff?.id, staffName),
+    };
+  }
+
+  @Get('rewards')
+  @Permissions('read:crm')
+  @HttpCode(HttpStatus.OK)
+  async getRewards(@Query('activeOnly') activeOnly?: string) {
+    return {
+      success: true,
+      data: await this.crmService.getRewards({ activeOnly: activeOnly === 'true' }),
+    };
+  }
+
+  @Post('rewards/issue')
+  @Permissions('write:crm')
+  @HttpCode(HttpStatus.CREATED)
+  async issueRewardCoupon(
+    @Body() dto: IssueRewardDto,
+    @CurrentUser() staff: any,
+  ) {
+    const staffName = staff ? `${staff.firstName} ${staff.lastName}`.trim() : 'System';
+    return {
+      success: true,
+      data: await this.crmService.issueRewardCoupon(dto, staff?.id, staffName),
+    };
+  }
+
+  @Post('rewards/validate')
+  @Permissions('read:crm')
+  @HttpCode(HttpStatus.OK)
+  async validateRewardCoupon(
+    @Body('code') code: string,
+    @Body('customerId') customerId?: string,
+    @Body('orderValue') orderValue?: number,
+  ) {
+    return {
+      success: true,
+      data: await this.crmService.validateRewardCoupon(code, customerId, orderValue),
+    };
+  }
+
+  @Post('reminders/trigger')
+  @Permissions('write:crm')
+  @HttpCode(HttpStatus.OK)
+  async triggerReminderEngine() {
+    return {
+      success: true,
+      data: await this.crmService.runReminderEngine(),
+    };
+  }
+
+  @Get('customers/segmented')
+  @Permissions('read:crm')
+  @HttpCode(HttpStatus.OK)
+  async getSegmentedCustomers(
+    @Query('segment') segment?: string,
+    @Query('search') search?: string,
+    @Query('tag') tag?: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    return {
+      success: true,
+      data: await this.crmService.getSegmentedCustomers({ segment, search, tag, branchId }),
+    };
+  }
+
+  @Get('reports')
+  @Permissions('read:crm')
+  @HttpCode(HttpStatus.OK)
+  async getCrmReports(
+    @Query('type') type: string,
+    @Query('dateRange') dateRange?: string,
+  ) {
+    return {
+      success: true,
+      data: await this.crmService.getCrmReports(type, dateRange),
     };
   }
 }

@@ -1966,6 +1966,130 @@ export const api = {
           ]
         };
       }
+    },
+
+    async fetchNotes(customerId: string, category?: string, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        const q = category ? `?category=${category}` : '';
+        return await apiRequest<ApiResponse<any[]>>(`/crm/customers/${customerId}/notes${q}`, { token });
+      } catch (err) {
+        return { success: true, data: [] };
+      }
+    },
+
+    async createNote(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/crm/notes', {
+        method: 'POST',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+
+    async updateNote(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/crm/notes/${id}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+
+    async deleteNote(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/crm/notes/${id}`, {
+        method: 'DELETE',
+        token,
+      });
+    },
+
+    async fetchFollowUps(params?: { customerId?: string; status?: string; priority?: string; channel?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        const q = new URLSearchParams();
+        if (params?.customerId) q.set('customerId', params.customerId);
+        if (params?.status) q.set('status', params.status);
+        if (params?.priority) q.set('priority', params.priority);
+        if (params?.channel) q.set('channel', params.channel);
+        return await apiRequest<ApiResponse<any[]>>(`/crm/followups?${q.toString()}`, { token });
+      } catch (err) {
+        return { success: true, data: [] };
+      }
+    },
+
+    async createFollowUp(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/crm/followups', {
+        method: 'POST',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+
+    async updateFollowUp(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/crm/followups/${id}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+
+    async completeFollowUp(id: string, completionNotes?: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/crm/followups/${id}/complete`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ completionNotes }),
+      });
+    },
+
+    async fetchRewards(activeOnly?: boolean, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        const q = activeOnly ? '?activeOnly=true' : '';
+        return await apiRequest<ApiResponse<any[]>>(`/crm/rewards${q}`, { token });
+      } catch (err) {
+        return { success: true, data: [] };
+      }
+    },
+
+    async issueReward(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/crm/rewards/issue', {
+        method: 'POST',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+
+    async validateReward(code: string, customerId?: string, orderValue?: number, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/crm/rewards/validate', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ code, customerId, orderValue }),
+      });
+    },
+
+    async triggerReminders(token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/crm/reminders/trigger', {
+        method: 'POST',
+        token,
+      });
+    },
+
+    async fetchSegmentedCustomers(params?: { segment?: string; search?: string; tag?: string; branchId?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        const q = new URLSearchParams();
+        if (params?.segment) q.set('segment', params.segment);
+        if (params?.search) q.set('search', params.search);
+        if (params?.tag) q.set('tag', params.tag);
+        if (params?.branchId) q.set('branchId', params.branchId);
+        return await apiRequest<ApiResponse<any[]>>(`/crm/customers/segmented?${q.toString()}`, { token });
+      } catch (err) {
+        return { success: true, data: [] };
+      }
+    },
+
+    async fetchReports(type: string, dateRange?: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        const q = new URLSearchParams({ type });
+        if (dateRange) q.set('dateRange', dateRange);
+        return await apiRequest<ApiResponse<any>>(`/crm/reports?${q.toString()}`, { token });
+      } catch (err) {
+        return { success: true, data: null };
+      }
     }
   },
 

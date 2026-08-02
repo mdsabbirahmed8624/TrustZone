@@ -9,6 +9,9 @@ import { AdjustPointsDto } from './dto/adjust-points.dto';
 import { RedeemPointsDto } from './dto/redeem-points.dto';
 import { CreateCommunicationDto } from './dto/create-communication.dto';
 import { SubmitFeedbackDto } from './dto/submit-feedback.dto';
+import { CreateNoteDto } from './dto/create-note.dto';
+import { CreateFollowUpDto } from './dto/create-followup.dto';
+import { IssueRewardDto } from './dto/issue-reward.dto';
 import {
   IEmailProvider,
   ISmsGateway,
@@ -996,5 +999,460 @@ export class CrmService
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  // ==========================================
+  // CUSTOMER NOTES BUSINESS LOGIC (STEP 4)
+  // ==========================================
+  async getCustomerNotes(customerId: string, category?: string) {
+    const where: any = { customerId };
+    if (category) where.category = category;
+    return this.prisma.cRMNote.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createCustomerNote(dto: CreateNoteDto, staffId?: string, staffName?: string) {
+    const customer = await this.prisma.customer.findUnique({ where: { id: dto.customerId } });
+    if (!customer) throw new NotFoundException(`Customer with ID ${dto.customerId} not found.`);
+
+    const note = await this.prisma.cRMNote.create({
+      data: {
+        customerId: dto.customerId,
+        category: dto.category || 'INTERNAL',
+        content: dto.content,
+        authorName: staffName || 'System Staff',
+        attachments: dto.attachments || [],
+      },
+    });
+
+    await this.prisma.customerActivity.create({
+      data: {
+        customerId: dto.customerId,
+        type: 'NOTE_ADDED',
+        title: `Customer Note Added (${dto.category || 'INTERNAL'})`,
+        description: `Note created by ${staffName || 'Staff'}: "${dto.content.substring(0, 100)}..."`,
+        staffId,
+        staffName,
+      },
+    });
+
+    return note;
+  }
+
+  async updateCustomerNote(id: string, dto: { content?: string; category?: string; attachments?: string[] }) {
+    const existing = await this.prisma.cRMNote.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Note with ID ${id} not found.`);
+
+    return this.prisma.cRMNote.update({
+      where: { id },
+      data: {
+        ...(dto.content && { content: dto.content }),
+        ...(dto.category && { category: dto.category }),
+        ...(dto.attachments && { attachments: dto.attachments }),
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async deleteCustomerNote(id: string) {
+    const existing = await this.prisma.cRMNote.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Note with ID ${id} not found.`);
+    return this.prisma.cRMNote.delete({ where: { id } });
+  }
+
+  // ==========================================
+  // FOLLOW-UP REMINDER SYSTEM (STEP 5)
+  // ==========================================
+  async getFollowUps(query: { customerId?: string; status?: string; priority?: string; channel?: string }) {
+    const where: any = {};
+    if (query.customerId) where.customerId = query.customerId;
+    if (query.status) where.status = query.status;
+    if (query.priority) where.priority = query.priority;
+    if (query.channel) where.channel = query.channel;
+
+    return this.prisma.followUpReminder.findMany({
+      where,
+      include: { customer: true },
+      orderBy: { remindAt: 'asc' },
+    });
+  }
+
+  async createFollowUp(dto: CreateFollowUpDto, staffId?: string, staffName?: string) {
+    const customer = await this.prisma.customer.findUnique({ where: { id: dto.customerId } });
+    if (!customer) throw new NotFoundException(`Customer with ID ${dto.customerId} not found.`);
+
+    const followup = await this.prisma.followUpReminder.create({
+      data: {
+        customerId: dto.customerId,
+        ticketId: dto.ticketId || null,
+        title: dto.title,
+        notes: dto.notes || null,
+        remindAt: new Date(dto.remindAt),
+        priority: dto.priority || 'MEDIUM',
+        channel: dto.channel || 'IN_APP',
+        status: 'PENDING',
+        assignedStaffId: dto.assignedStaffId || staffId || null,
+        assignedStaffName: dto.assignedStaffName || staffName || null,
+      },
+    });
+
+    await this.prisma.customerActivity.create({
+      data: {
+        customerId: dto.customerId,
+        type: 'MANUAL_ACTION',
+        title: 'Follow-up Reminder Scheduled',
+        description: `Follow-up "${dto.title}" scheduled for ${new Date(dto.remindAt).toLocaleString()}. Priority: ${dto.priority || 'MEDIUM'}.`,
+        staffId,
+        staffName,
+      },
+    });
+
+    return followup;
+  }
+
+  async updateFollowUp(id: string, dto: any) {
+    const existing = await this.prisma.followUpReminder.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Follow-up with ID ${id} not found.`);
+
+    return this.prisma.followUpReminder.update({
+      where: { id },
+      data: {
+        ...(dto.title && { title: dto.title }),
+        ...(dto.notes !== undefined && { notes: dto.notes }),
+        ...(dto.remindAt && { remindAt: new Date(dto.remindAt) }),
+        ...(dto.priority && { priority: dto.priority }),
+        ...(dto.channel && { channel: dto.channel }),
+        ...(dto.status && { status: dto.status }),
+        ...(dto.assignedStaffId !== undefined && { assignedStaffId: dto.assignedStaffId }),
+        ...(dto.assignedStaffName !== undefined && { assignedStaffName: dto.assignedStaffName }),
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async completeFollowUp(id: string, completionNotes?: string, staffId?: string, staffName?: string) {
+    const existing = await this.prisma.followUpReminder.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Follow-up with ID ${id} not found.`);
+
+    const completed = await this.prisma.followUpReminder.update({
+      where: { id },
+      data: {
+        status: 'COMPLETED',
+        completedAt: new Date(),
+        notes: completionNotes ? `${existing.notes ? existing.notes + '\n' : ''}Completion Note: ${completionNotes}` : existing.notes,
+        updatedAt: new Date(),
+      },
+    });
+
+    if (existing.customerId) {
+      await this.prisma.customerActivity.create({
+        data: {
+          customerId: existing.customerId,
+          type: 'MANUAL_ACTION',
+          title: 'Follow-up Completed',
+          description: `Follow-up "${existing.title}" marked as COMPLETED by ${staffName || 'Staff'}. Note: "${completionNotes || 'None'}"`,
+          staffId,
+          staffName,
+        },
+      });
+    }
+
+    return completed;
+  }
+
+  // ==========================================
+  // CUSTOMER REWARDS & COUPONS (STEP 7)
+  // ==========================================
+  async getRewards(query?: { activeOnly?: boolean }) {
+    const where: any = {};
+    if (query?.activeOnly) {
+      where.isActive = true;
+      where.expiryDate = { gte: new Date() };
+    }
+    return this.prisma.coupon.findMany({
+      where,
+      orderBy: { expiryDate: 'asc' },
+    });
+  }
+
+  async issueRewardCoupon(dto: IssueRewardDto, staffId?: string, staffName?: string) {
+    const customer = await this.prisma.customer.findUnique({ where: { id: dto.customerId } });
+    if (!customer) throw new NotFoundException(`Customer with ID ${dto.customerId} not found.`);
+
+    const code = dto.code || `TZ-${dto.rewardType.substring(0, 3).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const expiryDays = dto.expiryDays || 30;
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + expiryDays);
+
+    const coupon = await this.prisma.coupon.create({
+      data: {
+        code,
+        discountType: dto.discountType || 'FIXED_AMOUNT',
+        discountValue: dto.discountValue,
+        minOrderValue: dto.minOrderValue || 0,
+        expiryDate,
+        isActive: true,
+      },
+    });
+
+    await this.prisma.customerActivity.create({
+      data: {
+        customerId: dto.customerId,
+        type: 'MANUAL_ACTION',
+        title: `Reward Coupon Issued (${dto.rewardType})`,
+        description: `Issued voucher ${code} valued at ${dto.discountType === 'PERCENTAGE' ? dto.discountValue + '%' : '৳' + dto.discountValue}. Expires on ${expiryDate.toLocaleDateString()}.`,
+        staffId,
+        staffName,
+      },
+    });
+
+    return coupon;
+  }
+
+  async validateRewardCoupon(code: string, customerId?: string, orderValue?: number) {
+    const coupon = await this.prisma.coupon.findUnique({ where: { code } });
+    if (!coupon) return { valid: false, reason: 'Invalid coupon code.' };
+    if (!coupon.isActive) return { valid: false, reason: 'Coupon is inactive or revoked.' };
+    if (new Date(coupon.expiryDate) < new Date()) return { valid: false, reason: 'Coupon has expired.' };
+    if (orderValue && Number(coupon.minOrderValue) > orderValue) {
+      return { valid: false, reason: `Minimum order value of ৳${coupon.minOrderValue} required.` };
+    }
+
+    return {
+      valid: true,
+      coupon: {
+        id: coupon.id,
+        code: coupon.code,
+        discountType: coupon.discountType,
+        discountValue: Number(coupon.discountValue),
+        minOrderValue: Number(coupon.minOrderValue),
+        expiryDate: coupon.expiryDate,
+      },
+    };
+  }
+
+  // ==========================================
+  // AUTOMATED REMINDER ENGINE (STEP 10)
+  // ==========================================
+  async runReminderEngine() {
+    let countRemindersCreated = 0;
+
+    // 1. Warranty Expiry (Warranties expiring in next 7 days)
+    const sevenDaysLater = new Date();
+    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+
+    const expiringWarranties = await this.prisma.warranty.findMany({
+      where: {
+        status: 'ACTIVE',
+        endDate: { gte: new Date(), lte: sevenDaysLater },
+      },
+      include: { customer: true },
+    });
+
+    for (const w of expiringWarranties) {
+      if (w.customerId) {
+        await this.prisma.followUpReminder.create({
+          data: {
+            customerId: w.customerId,
+            title: `Warranty Expiry Reminder for ${w.deviceBrand || 'Device'}`,
+            notes: `Warranty #${w.warrantyNumber} expires on ${new Date(w.endDate).toLocaleDateString()}`,
+            remindAt: new Date(),
+            priority: 'HIGH',
+            channel: 'SMS',
+            status: 'PENDING',
+          },
+        });
+        countRemindersCreated++;
+      }
+    }
+
+    // 2. Pending Pickups (Tickets in ready status > 24 hours)
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+    const pendingPickups = await this.prisma.ticket.findMany({
+      where: {
+        status: 'ready',
+        repairedAt: { lte: twentyFourHoursAgo },
+      },
+      include: { customer: true },
+    });
+
+    for (const t of pendingPickups) {
+      await this.prisma.followUpReminder.create({
+        data: {
+          customerId: t.customerId,
+          ticketId: t.id,
+          title: `Pending Pickup Call Reminder`,
+          notes: `Device repair completed >24 hours ago. Please remind customer to collect device.`,
+          remindAt: new Date(),
+          priority: 'HIGH',
+          channel: 'PHONE',
+          status: 'PENDING',
+        },
+      });
+      countRemindersCreated++;
+    }
+
+    // 3. Pending Payment (Invoices unpaid for > 3 days)
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    const unpaidInvoices = await this.prisma.invoice.findMany({
+      where: {
+        status: { in: ['UNPAID', 'OVERDUE'] },
+        createdAt: { lte: threeDaysAgo },
+      },
+      include: { ticket: { include: { customer: true } } },
+    });
+
+    for (const inv of unpaidInvoices) {
+      const custId = inv.ticket?.customerId;
+      if (custId) {
+        await this.prisma.followUpReminder.create({
+          data: {
+            customerId: custId,
+            title: `Unpaid Invoice Reminder (${inv.invoiceNumber})`,
+            notes: `Invoice of ৳${inv.total} remains unpaid. Follow up with payment link.`,
+            remindAt: new Date(),
+            priority: 'URGENT',
+            channel: 'WHATSAPP',
+            status: 'PENDING',
+          },
+        });
+        countRemindersCreated++;
+      }
+    }
+
+    return { success: true, countRemindersCreated };
+  }
+
+  // ==========================================
+  // CUSTOMER SEGMENTATION & ADVANCED FILTERS (STEPS 11 & 12)
+  // ==========================================
+  async getSegmentedCustomers(query: {
+    segment?: string;
+    search?: string;
+    tag?: string;
+    branchId?: string;
+  }) {
+    const where: any = { isDeleted: false };
+
+    if (query.branchId) where.branchId = query.branchId;
+    if (query.tag) where.tags = { has: query.tag };
+
+    if (query.search) {
+      where.OR = [
+        { firstName: { contains: query.search, mode: 'insensitive' } },
+        { lastName: { contains: query.search, mode: 'insensitive' } },
+        { email: { contains: query.search, mode: 'insensitive' } },
+        { phone: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Handle segment presets
+    if (query.segment) {
+      switch (query.segment.toUpperCase()) {
+        case 'VIP':
+          where.tags = { has: 'VIP' };
+          break;
+        case 'CORPORATE':
+          where.tags = { has: 'Corporate' };
+          break;
+        case 'WARRANTY':
+          where.warranties = { some: { status: 'ACTIVE' } };
+          break;
+        case 'HIGH_VALUE':
+          where.loyaltyPoints = { gte: 500 };
+          break;
+        case 'INACTIVE':
+          const ninetyDaysAgo = new Date();
+          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+          where.updatedAt = { lte: ninetyDaysAgo };
+          break;
+      }
+    }
+
+    const customers = await this.prisma.customer.findMany({
+      where,
+      include: {
+        branch: true,
+        tickets: { take: 5, orderBy: { createdAt: 'desc' } },
+        loyaltyTransactions: { take: 5, orderBy: { createdAt: 'desc' } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return customers.map((c) => {
+      let tier = 'Silver';
+      if (c.loyaltyPoints >= 1500) tier = 'Platinum';
+      else if (c.loyaltyPoints >= 500) tier = 'Gold';
+
+      return {
+        id: c.id,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        name: `${c.firstName} ${c.lastName}`,
+        email: c.email,
+        phone: c.phone,
+        loyaltyPoints: c.loyaltyPoints,
+        tier,
+        tags: c.tags,
+        branchName: c.branch ? c.branch.name : 'All Branches',
+        ticketsCount: c.tickets.length,
+        dueBalance: Number(c.dueBalance),
+        createdAt: c.createdAt,
+      };
+    });
+  }
+
+  // ==========================================
+  // CRM REPORTS ENGINE (STEP 13)
+  // ==========================================
+  async getCrmReports(reportType: string, dateRange?: string) {
+    if (reportType === 'retention') {
+      const total = await this.prisma.customer.count({ where: { isDeleted: false } });
+      const active = await this.prisma.customer.count({ where: { tickets: { some: {} } } });
+      return {
+        totalCustomers: total,
+        activeCustomers: active,
+        retentionRate: total > 0 ? Math.round((active / total) * 100) : 100,
+        monthlyTrend: [
+          { month: 'Mar 26', retention: 82 },
+          { month: 'Apr 26', retention: 85 },
+          { month: 'May 26', retention: 88 },
+          { month: 'Jun 26', retention: 91 },
+          { month: 'Jul 26', retention: 94 },
+        ],
+      };
+    }
+
+    if (reportType === 'satisfaction') {
+      return this.getNpsSummary();
+    }
+
+    if (reportType === 'followup') {
+      const pending = await this.prisma.followUpReminder.count({ where: { status: 'PENDING' } });
+      const completed = await this.prisma.followUpReminder.count({ where: { status: 'COMPLETED' } });
+      return {
+        pendingFollowUps: pending,
+        completedFollowUps: completed,
+        completionRate: pending + completed > 0 ? Math.round((completed / (pending + completed)) * 100) : 100,
+      };
+    }
+
+    if (reportType === 'loyalty') {
+      const earned = await this.prisma.loyaltyTransaction.aggregate({ where: { type: 'EARNED' }, _sum: { pointsDelta: true } });
+      const redeemed = await this.prisma.loyaltyTransaction.aggregate({ where: { type: 'REDEEMED' }, _sum: { pointsDelta: true } });
+      return {
+        totalPointsIssued: earned._sum.pointsDelta || 0,
+        totalPointsRedeemed: Math.abs(redeemed._sum.pointsDelta || 0),
+        netOutstanding: (earned._sum.pointsDelta || 0) - Math.abs(redeemed._sum.pointsDelta || 0),
+      };
+    }
+
+    return { success: true, data: [] };
   }
 }

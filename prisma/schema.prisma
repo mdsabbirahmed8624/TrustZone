@@ -213,6 +213,7 @@ model Customer {
   supportTickets                   SupportTicket[]
   customerComplaints               CustomerComplaint[]
   satisfactionSurveys              SatisfactionSurvey[]
+  crmNotes                         CRMNote[]
 
   isDeleted                        Boolean                 @default(false)
   deletedAt                        DateTime?
@@ -3500,11 +3501,16 @@ model CustomerSegment {
 
 model CRMNote {
   id            String       @id @default(uuid()) @db.Uuid
+  customerId    String?      @db.Uuid
+  customer      Customer?    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   opportunityId String?      @db.Uuid
   opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  category      String       @default("INTERNAL") // INTERNAL, FOLLOW_UP, TECHNICIAN, RECEPTION, MANAGER
   content       String
   authorName    String
+  attachments   String[]     @default([])
   createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt
 
   @@map("crm_notes")
 }
@@ -3523,14 +3529,21 @@ model CRMAttachment {
 }
 
 model FollowUpReminder {
-  id           String    @id @default(uuid()) @db.Uuid
-  customerId   String?   @db.Uuid
-  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  title        String
-  remindAt     DateTime
-  channel      String    @default("IN_APP") // IN_APP, EMAIL, SMS
-  status       String    @default("PENDING") // PENDING, SENT, CANCELLED
-  createdAt    DateTime  @default(now())
+  id                String    @id @default(uuid()) @db.Uuid
+  customerId        String?   @db.Uuid
+  customer          Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  ticketId          String?   @db.Uuid
+  title             String
+  notes             String?
+  remindAt          DateTime
+  priority          String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  channel           String    @default("IN_APP") // IN_APP, EMAIL, SMS, WHATSAPP, PHONE
+  status            String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+  assignedStaffId   String?   @db.Uuid
+  assignedStaffName String?
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @default(now()) @updatedAt
 
   @@map("followup_reminders")
 }
