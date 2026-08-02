@@ -3961,6 +3961,66 @@ export const api = {
     async handleBulkAction(data: { userIds: string[]; action: string; targetValue?: string }, token?: string): Promise<ApiResponse<any>> {
       return apiRequest<ApiResponse<any>>('/users/bulk-action', { method: 'POST', body: JSON.stringify(data), token });
     }
+  },
+
+  integrations: {
+    async fetchProviders(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/integrations/providers', { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async configureCredential(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/integrations/credentials', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async testConnection(providerCode: string, environment = 'SANDBOX', token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/integrations/test', { method: 'POST', body: JSON.stringify({ providerCode, environment }), token });
+    },
+    async createPaymentSession(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/integrations/payments/create', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async sendSMS(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/integrations/sms/send', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async sendOTP(recipient: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/integrations/sms/otp', { method: 'POST', body: JSON.stringify({ recipient }), token });
+    },
+    async sendEmail(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/integrations/email/send', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async sendWhatsApp(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/integrations/whatsapp/send', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async sendPush(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/integrations/push/send', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async geocodeAddress(address: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/integrations/google/maps/geocode', { method: 'POST', body: JSON.stringify({ address }), token });
+    },
+    async fetchWebhooks(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/integrations/webhooks', { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async createWebhook(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/integrations/webhooks', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async fetchApiKeys(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/integrations/api-keys', { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async generateApiKey(name: string, scopes?: string[], token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/integrations/api-keys', { method: 'POST', body: JSON.stringify({ name, scopes }), token });
+    },
+    async revokeApiKey(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/integrations/api-keys/${id}`, { method: 'DELETE', token });
+    }
   }
 };
 
