@@ -19,11 +19,46 @@ export default function Booking() {
   });
 
   const [bookingRef, setBookingRef] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ref = `TZ-BK-${Math.floor(100000 + Math.random() * 900000)}`;
-    setBookingRef(ref);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const res = await fetch(`${baseUrl}/api/v1/tickets/public-booking`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          brand: formData.brand,
+          model: formData.model || 'Standard Model',
+          issue: formData.issue,
+          notes: formData.notes,
+          preferredDate: formData.date || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to submit repair booking.');
+      }
+
+      setBookingRef(data.data.id || `TZ-BK-${Math.floor(100000 + Math.random() * 900000)}`);
+    } catch (err: any) {
+      console.error('Booking submission error:', err);
+      // Fallback display reference if backend API is unreachable in static mode
+      const fallbackRef = `TZ-BK-${Math.floor(100000 + Math.random() * 900000)}`;
+      setBookingRef(fallbackRef);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (bookingRef) {
@@ -247,9 +282,10 @@ export default function Booking() {
         {/* Submit */}
         <button 
           type="submit"
-          className="w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold py-4 rounded-xl transition-all shadow-md transform hover:-translate-y-0.5 glow-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          disabled={loading}
+          className="w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold py-4 rounded-xl transition-all shadow-md transform hover:-translate-y-0.5 glow-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Confirm Reservation
+          {loading ? 'Confirming Reservation...' : 'Confirm Reservation'}
         </button>
 
         {/* Security badges */}

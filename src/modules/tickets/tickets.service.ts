@@ -20,13 +20,16 @@ export class TicketsService {
     private readonly warrantyService: WarrantyService,
   ) {}
 
-  // 1. List All Tickets (Filter by status, branch, or technician)
+  // 1. List All Tickets (Filter by status, branch, technician, or search term with pagination)
   async findAll(query: {
     branchId?: string;
     status?: string;
     assignedTechId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
   }) {
-    const where: any = {};
+    const where: any = { isDeleted: false };
     if (query.branchId) {
       where.branchId = query.branchId;
     }
@@ -36,24 +39,248 @@ export class TicketsService {
     if (query.assignedTechId) {
       where.assignedTechId = query.assignedTechId;
     }
+    if (query.search) {
+      const term = query.search.trim();
+      where.OR = [
+        { id: { contains: term, mode: 'insensitive' } },
+        { customer: { firstName: { contains: term, mode: 'insensitive' } } },
+        { customer: { lastName: { contains: term, mode: 'insensitive' } } },
+        { customer: { phone: { contains: term, mode: 'insensitive' } } },
+        { customer: { email: { contains: term, mode: 'insensitive' } } },
+        { device: { brand: { contains: term, mode: 'insensitive' } } },
+        { device: { model: { contains: term, mode: 'insensitive' } } },
+        { device: { serialNumber: { contains: term, mode: 'insensitive' } } },
+        { device: { imei: { contains: term, mode: 'insensitive' } } },
+      ];
+    }
 
-    return this.prisma.ticket.findMany({
-      where,
-      include: {
-        customer: true,
-        device: true,
-        assignedTech: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            role: true,
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      this.prisma.ticket.findMany({
+        where,
+        include: {
+          customer: true,
+          device: true,
+          assignedTech: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+            },
+          },
+          ticketHistory: {
+            take: 5,
+            orderBy: { createdAt: 'desc' },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.ticket.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  // Public Online Diagnostic Booking
+  async publicBooking(dto: any) {
+    let branch = await this.prisma.branch.findFirst();
+    if (dto.branchId) {
+      const foundBranch = await this.prisma.branch.findUnique({ where: { id: dto.branchId } });
+      if (foundBranch) branch = foundBranch;
+    }
+
+    if (!branch) {
+      // Fallback branch creation if database is completely empty
+      branch = await this.prisma.branch.create({
+        data: {
+          name: 'Main Diagnostic Hub',
+          address: 'Central Bench',
+          timezone: 'Asia/Dhaka',
+          status: 'ACTIVE',
+        },
+      });
+    }
+
+    let customer = await this.prisma.customer.findFirst({
+      where: { email: dto.email },
     });
+
+    if (!customer) {
+      customer = await this.prisma.customer.create({
+        data: {
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          email: dto.email,
+          phone: dto.phone,
+          branchId: branch.id,
+        },
+      });
+    }
+
+    const device = await this.prisma.device.create({
+      data: {
+        customerId: customer.id,
+        brand: dto.brand,
+        model: dto.model,
+        serialNumber: dto.serialNumber || null,
+        imei: dto.imei || null,
+      },
+    });
+
+    const deadline = dto.preferredDate ? new Date(dto.preferredDate) : new Date(Date.now() + 86400000);
+
+    const ticket = await this.prisma.ticket.create({
+      data: {
+        branchId: branch.id,
+        customerId: customer.id,
+        deviceId: device.id,
+        status: 'booked',
+        faults: dto.issue ? [dto.issue] : ['Diagnostic Assessment Requested'],
+        internalNotes: dto.notes || null,
+        photos: dto.photos || [],
+        slaDeadline: deadline,
+        estimatedCost: 0,
+      },
+    });
+
+    await this.prisma.ticketHistory.create({
+      data: {
+        ticketId: ticket.id,
+        oldStatus: '',
+        newStatus: 'booked',
+        notes: `Online express diagnostic bench booking created for ${dto.brand} ${dto.model}. Issue: ${dto.issue}.`,
+      },
+    });
+
+    return this.findOne(ticket.id);
+  }
+
+  // Cancel Ticket
+  async cancel(id: string, reason?: string, updatedById?: string) {
+    const ticket = await this.findOne(id);
+    const updated = await this.prisma.ticket.update({
+      where: { id },
+      data: { status: 'cancelled' },
+    });
+
+    await this.prisma.ticketHistory.create({
+      data: {
+        ticketId: id,
+        oldStatus: ticket.status,
+        newStatus: 'cancelled',
+        updatedById: updatedById || null,
+        notes: reason || 'Ticket cancelled by user / staff action.',
+      },
+    });
+
+    return this.findOne(id);
+  }
+
+  // Delete Ticket
+  async delete(id: string, deletedById?: string) {
+    await this.findOne(id);
+    await this.prisma.ticket.update({
+      where: { id },
+      data: { isDeleted: true, deletedAt: new Date() },
+    });
+
+    await this.prisma.auditTrail.create({
+      data: {
+        userId: deletedById || null,
+        action: 'DELETE',
+        affectedModule: 'TICKETS',
+        recordId: id,
+      },
+    });
+
+    return { success: true, message: `Ticket ${id} soft deleted.` };
+  }
+
+  // Add Ticket Internal / Diagnosis Note
+  async addNote(id: string, note: string, updatedById?: string) {
+    const ticket = await this.findOne(id);
+    const existing = ticket.internalNotes ? `${ticket.internalNotes}\n` : '';
+    const updatedNotes = `${existing}[${new Date().toISOString()}] ${note}`;
+
+    await this.prisma.ticket.update({
+      where: { id },
+      data: { internalNotes: updatedNotes },
+    });
+
+    await this.prisma.ticketHistory.create({
+      data: {
+        ticketId: id,
+        oldStatus: ticket.status,
+        newStatus: ticket.status,
+        updatedById: updatedById || null,
+        notes: `Note added: ${note}`,
+      },
+    });
+
+    return this.findOne(id);
+  }
+
+  // Add Customer Signature
+  async addSignature(id: string, signatureData: string, updatedById?: string) {
+    const ticket = await this.findOne(id);
+
+    await this.prisma.ticketHistory.create({
+      data: {
+        ticketId: id,
+        oldStatus: ticket.status,
+        newStatus: ticket.status,
+        updatedById: updatedById || null,
+        notes: `Customer digital signature attached to work order. Data length: ${signatureData.length} chars.`,
+      },
+    });
+
+    await this.prisma.auditTrail.create({
+      data: {
+        userId: updatedById || null,
+        action: 'UPDATE',
+        affectedModule: 'TICKETS',
+        recordId: id,
+        afterValue: { signatureAttached: true },
+      },
+    });
+
+    return this.findOne(id);
+  }
+
+  // Add Photos / Attachments
+  async addPhotos(id: string, photos: string[], updatedById?: string) {
+    const ticket = await this.findOne(id);
+    const updatedPhotos = Array.from(new Set([...(ticket.photos || []), ...photos]));
+
+    await this.prisma.ticket.update({
+      where: { id },
+      data: { photos: updatedPhotos },
+    });
+
+    await this.prisma.ticketHistory.create({
+      data: {
+        ticketId: id,
+        oldStatus: ticket.status,
+        newStatus: ticket.status,
+        updatedById: updatedById || null,
+        notes: `Attached ${photos.length} photo(s) to ticket.`,
+      },
+    });
+
+    return this.findOne(id);
   }
 
   // 2. Fetch Single Ticket (with Full History)

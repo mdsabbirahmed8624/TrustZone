@@ -1016,6 +1016,110 @@ export const api = {
         }
         throw err;
       }
+    },
+
+    async cancel(id: string, reason?: string, token?: string): Promise<ApiResponse<TicketModel>> {
+      try {
+        return await apiRequest<ApiResponse<TicketModel>>(`/tickets/${id}/cancel`, {
+          method: 'PATCH',
+          token,
+          body: JSON.stringify({ reason }),
+        });
+      } catch (err: unknown) {
+        const errorObj = err as Error;
+        if (errorObj.message === 'BACKEND_OFFLINE') {
+          const tickets = getMockTickets();
+          const ticketIdx = tickets.findIndex(t => t.id === id);
+          if (ticketIdx !== -1) {
+            tickets[ticketIdx].status = 'cancelled';
+            saveMockTickets(tickets);
+            return { success: true, data: tickets[ticketIdx] };
+          }
+        }
+        throw err;
+      }
+    },
+
+    async delete(id: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/tickets/${id}`, {
+          method: 'DELETE',
+          token,
+        });
+      } catch (err: unknown) {
+        const errorObj = err as Error;
+        if (errorObj.message === 'BACKEND_OFFLINE') {
+          const tickets = getMockTickets().filter(t => t.id !== id);
+          saveMockTickets(tickets);
+          return { success: true, data: { id, message: 'Ticket removed' } };
+        }
+        throw err;
+      }
+    },
+
+    async addNote(id: string, note: string, token?: string): Promise<ApiResponse<TicketModel>> {
+      try {
+        return await apiRequest<ApiResponse<TicketModel>>(`/tickets/${id}/notes`, {
+          method: 'POST',
+          token,
+          body: JSON.stringify({ note }),
+        });
+      } catch (err: unknown) {
+        const errorObj = err as Error;
+        if (errorObj.message === 'BACKEND_OFFLINE') {
+          const tickets = getMockTickets();
+          const ticketIdx = tickets.findIndex(t => t.id === id);
+          if (ticketIdx !== -1) {
+            const existing = tickets[ticketIdx].internalNotes || '';
+            tickets[ticketIdx].internalNotes = existing ? `${existing}\n${note}` : note;
+            saveMockTickets(tickets);
+            return { success: true, data: tickets[ticketIdx] };
+          }
+        }
+        throw err;
+      }
+    },
+
+    async addSignature(id: string, signatureData: string, token?: string): Promise<ApiResponse<TicketModel>> {
+      try {
+        return await apiRequest<ApiResponse<TicketModel>>(`/tickets/${id}/signature`, {
+          method: 'PATCH',
+          token,
+          body: JSON.stringify({ signatureData }),
+        });
+      } catch (err: unknown) {
+        const errorObj = err as Error;
+        if (errorObj.message === 'BACKEND_OFFLINE') {
+          const tickets = getMockTickets();
+          const ticketIdx = tickets.findIndex(t => t.id === id);
+          if (ticketIdx !== -1) {
+            return { success: true, data: tickets[ticketIdx] };
+          }
+        }
+        throw err;
+      }
+    },
+
+    async addPhotos(id: string, photos: string[], token?: string): Promise<ApiResponse<TicketModel>> {
+      try {
+        return await apiRequest<ApiResponse<TicketModel>>(`/tickets/${id}/photos`, {
+          method: 'PATCH',
+          token,
+          body: JSON.stringify({ photos }),
+        });
+      } catch (err: unknown) {
+        const errorObj = err as Error;
+        if (errorObj.message === 'BACKEND_OFFLINE') {
+          const tickets = getMockTickets();
+          const ticketIdx = tickets.findIndex(t => t.id === id);
+          if (ticketIdx !== -1) {
+            tickets[ticketIdx].photos = Array.from(new Set([...(tickets[ticketIdx].photos || []), ...photos]));
+            saveMockTickets(tickets);
+            return { success: true, data: tickets[ticketIdx] };
+          }
+        }
+        throw err;
+      }
     }
   },
 

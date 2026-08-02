@@ -8,6 +8,8 @@ import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
+import { Reflector } from '@nestjs/core';
+import { IS_PUBLIC_KEY } from '../../../common/decorators/public.decorator';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -15,9 +17,18 @@ export class JwtAuthGuard implements CanActivate {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
 

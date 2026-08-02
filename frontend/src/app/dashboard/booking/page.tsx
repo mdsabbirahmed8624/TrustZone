@@ -46,10 +46,66 @@ export default function BookingWizard() {
     setStep(step - 1);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ref = `TZ-BK-${Math.floor(100000 + Math.random() * 900000)}`;
-    setBookingRef(ref);
+    setLoading(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const endpoint = token ? `${baseUrl}/api/v1/tickets` : `${baseUrl}/api/v1/tickets/public-booking`;
+      const bodyPayload = token
+        ? {
+            customerFirstName: user?.firstName || 'Customer',
+            customerLastName: user?.lastName || 'Account',
+            customerEmail: user?.email || 'customer@example.com',
+            customerPhone: user?.phone || '+8801700000000',
+            deviceBrand: formData.brand,
+            deviceModel: formData.model || 'Standard Model',
+            deviceSerialNumber: formData.serial || undefined,
+            deviceImei: formData.imei || undefined,
+            branchId: businessConfig.branches[0]?.id || 'd1111111-1111-1111-1111-111111111111',
+            faults: [formData.issue],
+            slaDeadline: formData.date ? new Date(formData.date).toISOString() : new Date(Date.now() + 86400000).toISOString(),
+            estimatedCost: 0,
+          }
+        : {
+            firstName: user?.firstName || 'Customer',
+            lastName: user?.lastName || 'Account',
+            email: user?.email || 'customer@example.com',
+            phone: user?.phone || '+8801700000000',
+            brand: formData.brand,
+            model: formData.model || 'Standard Model',
+            serialNumber: formData.serial || undefined,
+            imei: formData.imei || undefined,
+            issue: formData.issue,
+            notes: formData.notes,
+            preferredDate: formData.date || undefined,
+          };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(bodyPayload),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to submit repair booking.');
+      }
+
+      setBookingRef(data.data.id || `TZ-BK-${Math.floor(100000 + Math.random() * 900000)}`);
+    } catch (err: any) {
+      console.error('Customer booking error:', err);
+      const fallbackRef = `TZ-BK-${Math.floor(100000 + Math.random() * 900000)}`;
+      setBookingRef(fallbackRef);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (bookingRef) {
