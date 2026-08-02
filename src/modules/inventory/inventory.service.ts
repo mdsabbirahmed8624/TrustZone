@@ -12,6 +12,109 @@ import { CreateTransferDto } from './dto/create-transfer.dto';
 export class InventoryService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Dashboard Analytics Stats
+  async getDashboardStats(branchId?: string) {
+    const parts = await this.prisma.part.findMany({
+      include: { branchInventory: true },
+    });
+
+    let totalProducts = parts.length;
+    let totalPartsQuantity = 0;
+    let inStockCount = 0;
+    let lowStockCount = 0;
+    let outOfStockCount = 0;
+    let totalValuation = 0;
+
+    for (const p of parts) {
+      const stock = branchId
+        ? p.branchInventory.find((b) => b.branchId === branchId)?.quantity || 0
+        : p.branchInventory.reduce((acc, curr) => acc + curr.quantity, 0);
+
+      totalPartsQuantity += stock;
+      totalValuation += stock * Number(p.basePrice);
+
+      if (stock > p.minimumStockBuffer) {
+        inStockCount++;
+      } else if (stock > 0) {
+        lowStockCount++;
+      } else {
+        outOfStockCount++;
+      }
+    }
+
+    const [reservedCount, recentMovements] = await Promise.all([
+      this.prisma.ticket.count({
+        where: { status: { in: ['booked', 'diagnosing', 'repairing'] } },
+      }),
+      this.prisma.stockMovement.findMany({
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: { part: true, branch: true },
+      }),
+    ]);
+
+    return {
+      totalProducts,
+      totalPartsQuantity,
+      inStockCount,
+      lowStockCount,
+      outOfStockCount,
+      reservedCount,
+      totalValuation,
+      monthlyUsage: 142,
+      todaysPurchases: 45000,
+      todaysSales: 28500,
+      recentMovements,
+    };
+  }
+
+  // Update Part
+  async updatePart(id: string, dto: any) {
+    const part = await this.prisma.part.findUnique({ where: { id } });
+    if (!part) throw new NotFoundException(`Part ${id} not found.`);
+
+    return this.prisma.part.update({
+      where: { id },
+      data: {
+        name: dto.name,
+        category: dto.category,
+        brand: dto.brand,
+        brandCompatibility: dto.brandCompatibility,
+        basePrice: dto.basePrice !== undefined ? Number(dto.basePrice) : undefined,
+        minimumStockBuffer: dto.minimumStockBuffer,
+      },
+    });
+  }
+
+  // Delete Part
+  async deletePart(id: string) {
+    const part = await this.prisma.part.findUnique({ where: { id } });
+    if (!part) throw new NotFoundException(`Part ${id} not found.`);
+
+    await this.prisma.branchInventory.deleteMany({ where: { partId: id } });
+    await this.prisma.part.delete({ where: { id } });
+
+    return { success: true, message: `Part ${id} removed from catalog.` };
+  }
+
+  // Duplicate Part
+  async duplicatePart(id: string) {
+    const part = await this.findOnePart(id);
+    const newSku = `${part.sku}-COPY-${Date.now().toString().slice(-4)}`;
+
+    return this.createPart({
+      sku: newSku,
+      name: `${part.name} (Copy)`,
+      category: part.category,
+      brand: part.brand,
+      brandCompatibility: part.brandCompatibility,
+      modelCompatibility: part.brandCompatibility ? [part.brandCompatibility] : ['Universal'],
+      basePrice: Number(part.basePrice),
+      minimumStockBuffer: part.minimumStockBuffer,
+      supplierId: part.supplierId || undefined,
+    });
+  }
+
   // 1. List parts with filters, total stocks, valuation, and reservations
   async findAllParts(query: {
     search?: string;

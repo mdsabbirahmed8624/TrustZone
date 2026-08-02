@@ -1275,6 +1275,29 @@ export const api = {
   },
 
   inventory: {
+    async dashboardStats(branchId?: string, token?: string): Promise<ApiResponse<any>> {
+      const q = branchId ? `?branchId=${branchId}` : '';
+      return apiRequest<ApiResponse<any>>(`/inventory/dashboard/stats${q}`, { token });
+    },
+    async updatePart(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/inventory/parts/${id}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify(data),
+      });
+    },
+    async deletePart(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/inventory/parts/${id}`, {
+        method: 'DELETE',
+        token,
+      });
+    },
+    async duplicatePart(id: string, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/inventory/parts/${id}/duplicate`, {
+        method: 'POST',
+        token,
+      });
+    },
     async parts(params: { search?: string; category?: string; brand?: string; branchId?: string }, token?: string): Promise<ApiResponse<any[]>> {
       const q = new URLSearchParams();
       if (params.search) q.set('search', params.search);

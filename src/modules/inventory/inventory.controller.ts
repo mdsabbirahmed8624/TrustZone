@@ -54,6 +54,16 @@ export class InventoryController {
     private readonly auditService: InventoryAuditService,
   ) {}
 
+  @Get('dashboard/stats')
+  @Permissions('read:inventory')
+  @HttpCode(HttpStatus.OK)
+  async getDashboardStats(@Query('branchId') branchId?: string) {
+    return {
+      success: true,
+      data: await this.inventoryService.getDashboardStats(branchId),
+    };
+  }
+
   @Get('parts')
   @Permissions('read:inventory')
   @HttpCode(HttpStatus.OK)
@@ -91,6 +101,36 @@ export class InventoryController {
     return {
       success: true,
       data: await this.inventoryService.createPart(createPartDto),
+    };
+  }
+
+  @Patch('parts/:id')
+  @Permissions('write:inventory')
+  @HttpCode(HttpStatus.OK)
+  async updatePart(
+    @Param('id') id: string,
+    @Body() dto: any,
+  ) {
+    return {
+      success: true,
+      data: await this.inventoryService.updatePart(id, dto),
+    };
+  }
+
+  @Delete('parts/:id')
+  @Permissions('write:inventory')
+  @HttpCode(HttpStatus.OK)
+  async deletePart(@Param('id') id: string) {
+    return await this.inventoryService.deletePart(id);
+  }
+
+  @Post('parts/:id/duplicate')
+  @Permissions('write:inventory')
+  @HttpCode(HttpStatus.CREATED)
+  async duplicatePart(@Param('id') id: string) {
+    return {
+      success: true,
+      data: await this.inventoryService.duplicatePart(id),
     };
   }
 

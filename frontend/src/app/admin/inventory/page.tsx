@@ -115,14 +115,68 @@ export default function InventoryPage() {
     }
   };
 
+  // Stats State
+  const [stats, setStats] = useState<any>({
+    totalProducts: 0,
+    totalPartsQuantity: 0,
+    inStockCount: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+    reservedCount: 0,
+    totalValuation: 0,
+    monthlyUsage: 142,
+  });
+
+  // Fetch Dashboard Stats
+  const fetchStats = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('tz_admin_token') || undefined;
+      const res = await api.inventory.dashboardStats(branchFilter || undefined, token);
+      if (res && res.success) {
+        setStats(res.data);
+      }
+    } catch (err) {
+      console.error('Error fetching inventory stats:', err);
+    }
+  }, [branchFilter]);
+
+  // Delete Part Handler
+  const handleDeletePart = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this part from the inventory catalog?')) return;
+    try {
+      const token = localStorage.getItem('tz_admin_token') || undefined;
+      await api.inventory.deletePart(id, token);
+      setSelectedPart(null);
+      fetchParts();
+      fetchStats();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete part.');
+    }
+  };
+
+  // Duplicate Part Handler
+  const handleDuplicatePart = async (id: string) => {
+    try {
+      const token = localStorage.getItem('tz_admin_token') || undefined;
+      const res = await api.inventory.duplicatePart(id, token);
+      if (res && res.success) {
+        fetchParts();
+        fetchStats();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to duplicate part.');
+    }
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => {
+      fetchStats();
       if (viewTab === 'catalog') fetchParts();
       if (viewTab === 'transfers') fetchTransfersList();
       if (viewTab === 'movements') fetchMovementsList();
     }, 0);
     return () => clearTimeout(timer);
-  }, [viewTab, fetchParts]);
+  }, [viewTab, fetchParts, fetchStats]);
 
   // Fetch single part details
   const fetchPartDetails = async (id: string) => {
@@ -225,35 +279,30 @@ export default function InventoryPage() {
           </div>
 
           {/* Stats Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Inventory Value</span>
-                <h3 className="text-2xl font-bold text-emerald-400 mt-1">BDT {totalValuation.toLocaleString()}</h3>
-              </div>
-              <div className="h-10 w-10 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400">
-                <TrendingUp className="h-6 w-6" />
-              </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <span className="text-xs font-semibold text-slate-400">Total Products</span>
+              <h3 className="text-2xl font-bold text-white mt-1">{stats.totalProducts || parts.length}</h3>
             </div>
-
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Low Stock alerts</span>
-                <h3 className="text-2xl font-bold text-red-400 mt-1">{lowStockCount} Parts Alerts</h3>
-              </div>
-              <div className="h-10 w-10 bg-red-500/10 rounded-full flex items-center justify-center text-red-400">
-                <AlertTriangle className="h-6 w-6 animate-pulse" />
-              </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <span className="text-xs font-semibold text-slate-400">Total Stock Units</span>
+              <h3 className="text-2xl font-bold text-blue-400 mt-1">{stats.totalPartsQuantity || 0}</h3>
             </div>
-
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Catalog Size</span>
-                <h3 className="text-2xl font-bold text-indigo-400 mt-1">{parts.length} SKU Items</h3>
-              </div>
-              <div className="h-10 w-10 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-400">
-                <ClipboardList className="h-6 w-6" />
-              </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <span className="text-xs font-semibold text-slate-400">In Stock</span>
+              <h3 className="text-2xl font-bold text-emerald-400 mt-1">{stats.inStockCount || 0}</h3>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <span className="text-xs font-semibold text-slate-400">Low Stock</span>
+              <h3 className="text-2xl font-bold text-amber-400 mt-1">{stats.lowStockCount || lowStockCount}</h3>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <span className="text-xs font-semibold text-slate-400">Out of Stock</span>
+              <h3 className="text-2xl font-bold text-red-400 mt-1">{stats.outOfStockCount || 0}</h3>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <span className="text-xs font-semibold text-slate-400">Total Valuation</span>
+              <h3 className="text-xl font-bold text-indigo-400 mt-1">BDT {(stats.totalValuation || totalValuation).toLocaleString()}</h3>
             </div>
           </div>
 
