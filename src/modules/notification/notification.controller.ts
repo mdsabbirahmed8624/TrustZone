@@ -154,4 +154,53 @@ export class NotificationController {
     const data = await this.notificationService.deleteTemplate(id);
     return { success: true, data };
   }
+
+  // ==========================================
+  // Broadcasts & Event Automation & Reports
+  // ==========================================
+
+  @Get('broadcasts')
+  @Permissions('read:support')
+  async getBroadcasts() {
+    const data = await this.notificationService.getBroadcasts();
+    return { success: true, data };
+  }
+
+  @Post('broadcasts')
+  @Permissions('write:support')
+  async createBroadcast(
+    @Body()
+    body: {
+      name: string;
+      subject: string;
+      body: string;
+      targetAudience: 'ALL' | 'BRANCH' | 'ROLE' | 'TECHNICIANS' | 'CUSTOMERS';
+      targetId?: string;
+      scheduledAt?: string;
+    },
+  ) {
+    const data = await this.notificationService.createBroadcast(body);
+    return { success: true, data };
+  }
+
+  @Post('trigger-event')
+  @Permissions('write:support')
+  async triggerEvent(
+    @Body()
+    body: {
+      event: 'BOOKING_CREATED' | 'REPAIR_ASSIGNED' | 'REPAIR_STATUS_CHANGED' | 'INVOICE_PAID' | 'WARRANTY_EXPIRING' | 'LOW_STOCK';
+      userId?: string;
+      variables: Record<string, any>;
+    },
+  ) {
+    const data = await this.notificationService.triggerEventNotification(body);
+    return { success: true, data };
+  }
+
+  @Get('reports')
+  @Permissions('read:support')
+  async getReports() {
+    const data = await this.notificationService.getNotificationReports();
+    return { success: true, data };
+  }
 }

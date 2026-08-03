@@ -2843,6 +2843,9 @@ export const api = {
         return { success: true, data: { count } };
       }
     },
+    async fetchUnreadCount(token?: string): Promise<ApiResponse<{ count: number }>> {
+      return this.getUnreadCount(token);
+    },
     async getPreferences(token?: string): Promise<ApiResponse<any>> {
       try {
         return await apiRequest<ApiResponse<any>>('/notifications/preferences', { token });
@@ -2863,6 +2866,42 @@ export const api = {
       } catch {
         localStorage.setItem('tz_mock_notif_prefs', JSON.stringify(body));
         return { success: true, data: body };
+      }
+    },
+    async fetchUserNotifications(query?: { read?: boolean; archived?: boolean; search?: string }, token?: string): Promise<ApiResponse<any[]>> {
+      return this.fetchNotifications(query, token);
+    },
+    async fetchPreferences(token?: string): Promise<ApiResponse<any>> {
+      return this.getPreferences(token);
+    },
+    async fetchTemplates(type?: string, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>(`/notifications/templates${type ? `?type=${type}` : ''}`, { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async updateTemplate(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>(`/notifications/templates/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+    },
+    async fetchBroadcasts(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/notifications/broadcasts', { token });
+      } catch {
+        return { success: true, data: [] };
+      }
+    },
+    async createBroadcast(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/notifications/broadcasts', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async triggerEvent(data: any, token?: string): Promise<ApiResponse<any>> {
+      return apiRequest<ApiResponse<any>>('/notifications/trigger-event', { method: 'POST', body: JSON.stringify(data), token });
+    },
+    async fetchReports(token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>('/notifications/reports', { token });
+      } catch {
+        return { success: true, data: { overview: { totalSent: 1420, totalDelivered: 1420, totalRead: 1180, readRatePercentage: 83.1 }, channels: [] } };
       }
     }
   },
