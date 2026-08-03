@@ -1,5 +1,7 @@
 # Compiled output
 /dist
+/build
+/.next
 /node_modules
 
 # Environment variables
