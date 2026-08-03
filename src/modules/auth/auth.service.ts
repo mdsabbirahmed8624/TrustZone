@@ -1155,21 +1155,25 @@ export class AuthService implements OnModuleInit {
     const tokenHash = this.hashToken(refreshToken);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await this.prisma.session.create({
-      data: {
-        userId: user.id,
-        tokenHash,
-        deviceFingerprint: userAgent || null,
-        ipAddress: ipAddress || null,
-        expiresAt,
-      },
-    });
+    try {
+      await this.prisma.session.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          deviceFingerprint: userAgent || null,
+          ipAddress: ipAddress || null,
+          expiresAt,
+        },
+      });
 
-    await this.logAction(user.id, 'admin_login_success', ipAddress, {
-      userAgent,
-      browser: this.parseBrowser(userAgent),
-      device: this.parseDevice(userAgent),
-    });
+      await this.logAction(user.id, 'admin_login_success', ipAddress, {
+        userAgent,
+        browser: userAgent?.includes('Chrome') ? 'Chrome' : 'Web Browser',
+        device: userAgent?.includes('Mobile') ? 'Mobile Device' : 'Desktop PC',
+      });
+    } catch (err) {
+      console.warn('Session creation warning during admin login:', err);
+    }
 
     return {
       accessToken,
