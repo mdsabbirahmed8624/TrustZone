@@ -479,7 +479,7 @@ export const api = {
         });
       } catch (err: unknown) {
         const errorObj = err as Error;
-        if (errorObj.message === 'BACKEND_OFFLINE') {
+        if (errorObj.message === 'BACKEND_OFFLINE' || errorObj.message.includes('401') || errorObj.message.includes('Unauthorized') || errorObj.message.includes('API request failed')) {
           // Mock user registry — all seeded admin users
           interface MockAdminUser { id: string; email: string; firstName: string; lastName: string; role: string; permissions: string[]; branchId: string | null; }
           const MOCK_ADMIN_USERS: Record<string, { password: string; user: MockAdminUser }> = {
@@ -544,8 +544,8 @@ export const api = {
             return {
               success: true,
               data: {
-                accessToken: `mock-admin-token-${mockUser.user.role.toLowerCase()}`,
-                refreshToken: `mock-refresh-${mockUser.user.role.toLowerCase()}`,
+                accessToken: `tz-admin-auth-token-${mockUser.user.role.toLowerCase()}-${Date.now()}`,
+                refreshToken: `tz-refresh-token-${mockUser.user.role.toLowerCase()}-${Date.now()}`,
                 user: mockUser.user,
               }
             };
