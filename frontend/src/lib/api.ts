@@ -6,7 +6,9 @@
  * if the NestJS backend (http://localhost:4000/api/v1) is offline.
  */
 
-const API_BASE = 'http://localhost:4000/api/v1';
+const API_BASE = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL)
+  ? process.env.NEXT_PUBLIC_API_URL
+  : (typeof window !== 'undefined' ? '/api/v1' : 'http://localhost:4000/api/v1');
 
 export interface RequestOptions extends RequestInit {
   token?: string;
@@ -113,6 +115,47 @@ export interface TicketModel {
   deliveredAt?: string | null;
   createdAt: string;
   ticketHistory?: TicketHistoryModel[];
+}
+
+// ----------------------------------------------------
+// Core HTTP Request Handler
+// ----------------------------------------------------
+export async function apiRequest<T = unknown>(
+  endpoint: string,
+  options: RequestOptions = {}
+): Promise<T> {
+  const { token, ...init } = options;
+
+  const headers = new Headers(init.headers || {});
+  headers.set('Content-Type', 'application/json');
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const config: RequestInit = {
+    ...init,
+    headers,
+  };
+
+  const baseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL)
+    ? process.env.NEXT_PUBLIC_API_URL
+    : (typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : 'http://localhost:4000/api/v1');
+
+  try {
+    const response = await fetch(`${baseUrl}${endpoint}`, config);
+    if (!response.ok) {
+      const errBody = (await response.json().catch(() => ({}))) as { message?: string };
+      throw new Error(errBody.message || `API request failed: ${response.status}`);
+    }
+    return await response.json() as T;
+  } catch (error: unknown) {
+    const err = error as Error;
+    if (err.message && (err.message.includes('fetch') || err.message.includes('Failed to fetch') || err.message.includes('BACKEND_OFFLINE'))) {
+      throw new Error('BACKEND_OFFLINE');
+    }
+    throw error;
+  }
 }
 
 // ----------------------------------------------------
@@ -409,41 +452,8 @@ function saveMockTickets(tickets: TicketModel[]) {
 }
 
 // ----------------------------------------------------
-// Core HTTP Request Handler
+// Centralized API Services Wrapper (With Local fallbacks)
 // ----------------------------------------------------
-export async function apiRequest<T = unknown>(
-  endpoint: string,
-  options: RequestOptions = {}
-): Promise<T> {
-  const { token, ...init } = options;
-
-  const headers = new Headers(init.headers || {});
-  headers.set('Content-Type', 'application/json');
-
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const config: RequestInit = {
-    ...init,
-    headers,
-  };
-
-  try {
-    const response = await fetch(`${API_BASE}${endpoint}`, config);
-    if (!response.ok) {
-      const errBody = (await response.json().catch(() => ({}))) as { message?: string };
-      throw new Error(errBody.message || `API request failed: ${response.status}`);
-    }
-    return await response.json() as T;
-  } catch (error: unknown) {
-    const err = error as Error;
-    if (err.message && (err.message.includes('fetch') || err.message.includes('Failed to fetch') || err.message.includes('BACKEND_OFFLINE'))) {
-      throw new Error('BACKEND_OFFLINE');
-    }
-    throw error;
-  }
-}
 
 // ----------------------------------------------------
 // Centralized API Services Wrapper (With Local fallbacks)
