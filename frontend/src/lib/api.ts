@@ -4016,59 +4016,141 @@ export const api = {
         }
         return await apiRequest<ApiResponse<any[]>>(`/users${q}`, { token });
       } catch {
-        return { success: true, data: [] };
+        return { success: true, data: getMockUsers(query) };
       }
     },
     async getUser(id: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/users/${id}`, { token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/users/${id}`, { token });
+      } catch {
+        const users = getMockUsers();
+        const found = users.find((u: any) => u.id === id);
+        return { success: true, data: found || null };
+      }
     },
     async createUser(data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>('/users', { method: 'POST', body: JSON.stringify(data), token });
+      try {
+        return await apiRequest<ApiResponse<any>>('/users', { method: 'POST', body: JSON.stringify(data), token });
+      } catch {
+        const users = getMockUsers();
+        const newUser = { id: `usr-${Date.now()}`, ...data, createdAt: new Date().toISOString() };
+        users.unshift(newUser);
+        saveMockUsers(users);
+        return { success: true, data: newUser };
+      }
     },
     async updateUser(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+      } catch {
+        const users = getMockUsers();
+        const idx = users.findIndex((u: any) => u.id === id);
+        if (idx !== -1) {
+          users[idx] = { ...users[idx], ...data };
+          saveMockUsers(users);
+          return { success: true, data: users[idx] };
+        }
+        return { success: false, data: null };
+      }
     },
     async updateUserStatus(id: string, status: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+      } catch {
+        const users = getMockUsers();
+        const idx = users.findIndex((u: any) => u.id === id);
+        if (idx !== -1) {
+          users[idx].status = status;
+          saveMockUsers(users);
+          return { success: true, data: users[idx] };
+        }
+        return { success: false, data: null };
+      }
     },
     async deleteUser(id: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/users/${id}`, { method: 'DELETE', token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/users/${id}`, { method: 'DELETE', token });
+      } catch {
+        const users = getMockUsers();
+        const filtered = users.filter((u: any) => u.id !== id);
+        saveMockUsers(filtered);
+        return { success: true, data: null };
+      }
     },
     async fetchRoles(token?: string): Promise<ApiResponse<any[]>> {
       try {
         return await apiRequest<ApiResponse<any[]>>('/users/roles/list', { token });
       } catch {
-        return { success: true, data: [] };
+        return { success: true, data: getMockRolesList() };
       }
     },
     async createRole(data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>('/users/roles', { method: 'POST', body: JSON.stringify(data), token });
+      try {
+        return await apiRequest<ApiResponse<any>>('/users/roles', { method: 'POST', body: JSON.stringify(data), token });
+      } catch {
+        const roles = getMockRolesList();
+        const newRole = { id: `role-${Date.now()}`, ...data, usersCount: 0, createdAt: new Date().toISOString() };
+        roles.push(newRole);
+        saveMockRolesList(roles);
+        return { success: true, data: newRole };
+      }
     },
     async updateRole(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/users/roles/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/users/roles/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+      } catch {
+        const roles = getMockRolesList();
+        const idx = roles.findIndex((r: any) => r.id === id);
+        if (idx !== -1) {
+          roles[idx] = { ...roles[idx], ...data };
+          saveMockRolesList(roles);
+          return { success: true, data: roles[idx] };
+        }
+        return { success: false, data: null };
+      }
     },
     async deleteRole(id: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/users/roles/${id}`, { method: 'DELETE', token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/users/roles/${id}`, { method: 'DELETE', token });
+      } catch {
+        const roles = getMockRolesList();
+        const filtered = roles.filter((r: any) => r.id !== id);
+        saveMockRolesList(filtered);
+        return { success: true, data: null };
+      }
     },
     async fetchPermissionMatrix(token?: string): Promise<ApiResponse<any[]>> {
       try {
         return await apiRequest<ApiResponse<any[]>>('/users/permissions/matrix', { token });
       } catch {
-        return { success: true, data: [] };
+        return { success: true, data: getMockPermissionMatrix() };
       }
     },
     async fetchSessions(userId: string, token?: string): Promise<ApiResponse<any[]>> {
       try {
         return await apiRequest<ApiResponse<any[]>>(`/users/${userId}/sessions`, { token });
       } catch {
-        return { success: true, data: [] };
+        return {
+          success: true,
+          data: [
+            { id: 'sess-1', ipAddress: '103.113.152.63', userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0', lastActive: new Date().toISOString(), isCurrent: true }
+          ]
+        };
       }
     },
     async terminateSession(sessionId: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/users/sessions/${sessionId}`, { method: 'DELETE', token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/users/sessions/${sessionId}`, { method: 'DELETE', token });
+      } catch {
+        return { success: true, data: null };
+      }
     },
     async logoutAllDevices(userId: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/users/${userId}/sessions/logout-all`, { method: 'POST', token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/users/${userId}/sessions/logout-all`, { method: 'POST', token });
+      } catch {
+        return { success: true, data: null };
+      }
     },
     async fetchActivityLogs(query?: { userId?: string; action?: string }, token?: string): Promise<ApiResponse<any[]>> {
       try {
@@ -4081,11 +4163,15 @@ export const api = {
         }
         return await apiRequest<ApiResponse<any[]>>(`/users/logs/activity${q}`, { token });
       } catch {
-        return { success: true, data: [] };
+        return { success: true, data: getMockActivityLogs() };
       }
     },
     async handleBulkAction(data: { userIds: string[]; action: string; targetValue?: string }, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>('/users/bulk-action', { method: 'POST', body: JSON.stringify(data), token });
+      try {
+        return await apiRequest<ApiResponse<any>>('/users/bulk-action', { method: 'POST', body: JSON.stringify(data), token });
+      } catch {
+        return { success: true, data: null };
+      }
     }
   },
 
@@ -4284,5 +4370,81 @@ function saveMockRmas(data: any[]) {
   if (typeof window !== 'undefined') {
     localStorage.setItem('tz_mock_rmas', JSON.stringify(data));
   }
+}
+
+function getMockUsers(params?: any): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_users');
+  let list = stored ? JSON.parse(stored) : null;
+  if (!list) {
+    list = [
+      { id: 'usr-1', firstName: 'System', lastName: 'Administrator', email: 'admin@trustzone.care', username: 'admin', mobile: '01711000000', employeeId: 'EMP-001', role: 'SUPER_ADMIN', department: 'Executive', designation: 'Super Admin', status: 'ACTIVE', branchId: 'branch-1', branch: { name: 'Dhanmondi HQ' }, createdAt: new Date(Date.now() - 180 * 86400000).toISOString() },
+      { id: 'usr-2', firstName: 'Rafiq', lastName: 'Ahmed', email: 'branch.admin@trustzone.care', username: 'rafiq.ahmed', mobile: '01812000000', employeeId: 'EMP-002', role: 'ADMIN', department: 'Operations', designation: 'Branch Manager', status: 'ACTIVE', branchId: 'branch-2', branch: { name: 'Banani Lab' }, createdAt: new Date(Date.now() - 120 * 86400000).toISOString() },
+      { id: 'usr-3', firstName: 'Nazma', lastName: 'Khatun', email: 'mirpur.manager@trustzone.care', username: 'nazma.khatun', mobile: '01913000000', employeeId: 'EMP-003', role: 'MANAGER', department: 'Operations', designation: 'Branch Manager', status: 'ACTIVE', branchId: 'branch-3', branch: { name: 'Mirpur Lab' }, createdAt: new Date(Date.now() - 90 * 86400000).toISOString() },
+      { id: 'usr-4', firstName: 'Tariq', lastName: 'Zaman', email: 'tariq.tech@trustzone.care', username: 'tariq.zaman', mobile: '01614000000', employeeId: 'EMP-004', role: 'TECHNICIAN', department: 'Service Desk', designation: 'Lead L4 Technician', status: 'ACTIVE', branchId: 'branch-1', branch: { name: 'Dhanmondi HQ' }, createdAt: new Date(Date.now() - 60 * 86400000).toISOString() }
+    ];
+    localStorage.setItem('tz_mock_users', JSON.stringify(list));
+  }
+  if (params?.search) {
+    const q = params.search.toLowerCase();
+    list = list.filter((u: any) => u.firstName.toLowerCase().includes(q) || u.lastName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.role.toLowerCase().includes(q));
+  }
+  if (params?.role) {
+    list = list.filter((u: any) => u.role === params.role);
+  }
+  if (params?.status) {
+    list = list.filter((u: any) => u.status === params.status);
+  }
+  return list;
+}
+
+function saveMockUsers(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_users', JSON.stringify(data));
+}
+
+function getMockRolesList(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_roles_list');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    { id: 'role-1', name: 'SUPER_ADMIN', description: 'System Root Administrator with unrestricted access across all multi-branch operations and core configurations.', usersCount: 1, permissions: ['*'] },
+    { id: 'role-2', name: 'ADMIN', description: 'Branch Administrator managing operational workflows, repair approvals, inventory, and staff rosters.', usersCount: 2, permissions: ['read:dashboard','read:repairs','write:repairs','read:inventory','write:inventory','read:branches','write:branches'] },
+    { id: 'role-3', name: 'MANAGER', description: 'Branch Manager overseeing daily cashier closings, customer escalations, and technician job queues.', usersCount: 3, permissions: ['read:dashboard','read:repairs','write:repairs','read:bookings','read:customers','read:inventory'] },
+    { id: 'role-4', name: 'TECHNICIAN', description: 'Hardware & Software Repair Specialist handling bench diagnostics, chip replacement, and QC testing.', usersCount: 5, permissions: ['read:dashboard','read:repairs','write:repairs'] },
+    { id: 'role-5', name: 'RECEPTIONIST', description: 'Front Desk Representative handling repair booking, customer intake, and invoice collection.', usersCount: 3, permissions: ['read:dashboard','read:bookings','write:bookings','read:customers','write:customers','read:invoices','write:invoices'] },
+    { id: 'role-6', name: 'INVENTORY_MANAGER', description: 'Warehouse & Spare Parts Manager handling stock receipts, supplier POs, and branch transfers.', usersCount: 2, permissions: ['read:dashboard','read:inventory','write:inventory','read:suppliers','write:suppliers'] },
+    { id: 'role-7', name: 'FINANCE_OFFICER', description: 'Accounting Officer managing general ledger entries, tax filings, and profit/loss statements.', usersCount: 1, permissions: ['read:dashboard','read:finance','write:finance','read:invoices','write:invoices'] }
+  ];
+  localStorage.setItem('tz_mock_roles_list', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockRolesList(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_roles_list', JSON.stringify(data));
+}
+
+function getMockPermissionMatrix(): any[] {
+  return [
+    { module: 'Repairs & Diagnostics', read: true, write: true, delete: true, export: true },
+    { module: 'Bookings & Intake', read: true, write: true, delete: true, export: true },
+    { module: 'Customer Management', read: true, write: true, delete: true, export: true },
+    { module: 'Inventory & Spare Parts', read: true, write: true, delete: true, export: true },
+    { module: 'Supplier POs', read: true, write: true, delete: false, export: true },
+    { module: 'Invoicing & POS Billing', read: true, write: true, delete: false, export: true },
+    { module: 'Warranty & Claims', read: true, write: true, delete: false, export: true },
+    { module: 'Finance & General Ledger', read: true, write: true, delete: false, export: true },
+    { module: 'Marketing & CRM', read: true, write: true, delete: false, export: true },
+    { module: 'Branch Management', read: true, write: true, delete: true, export: true },
+    { module: 'Roles & RBAC', read: true, write: true, delete: true, export: true },
+    { module: 'System Administration', read: true, write: true, delete: true, export: true }
+  ];
+}
+
+function getMockActivityLogs(): any[] {
+  return [
+    { id: 'log-1', action: 'ROLE_UPDATE', user: 'admin@trustzone.care', ipAddress: '103.113.152.63', details: 'Updated permissions for MANAGER role.', createdAt: new Date().toISOString() },
+    { id: 'log-2', action: 'USER_LOGIN', user: 'branch.admin@trustzone.care', ipAddress: '103.113.152.64', details: 'Authenticated via 2FA OTP.', createdAt: new Date(Date.now() - 3600000).toISOString() },
+    { id: 'log-3', action: 'USER_CREATE', user: 'admin@trustzone.care', ipAddress: '103.113.152.63', details: 'Created user account tariq.zaman@trustzone.care.', createdAt: new Date(Date.now() - 86400000).toISOString() }
+  ];
 }
 
