@@ -212,16 +212,22 @@ export default function MarketingConsolePage() {
   });
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
+    <div className="min-h-screen flex bg-slate-950 text-slate-100 font-sans">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+      <div
+        className={`flex-grow flex flex-col transition-all duration-300 min-w-0 ${
+          sidebarOpen ? 'md:pl-64' : 'md:pl-20'
+        }`}
+      >
         <Header
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
           onOpenCommandPalette={() => {}}
           onOpenNotifications={() => {}}
         />
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
+
+        <main className="flex-grow p-4 sm:p-6 lg:p-8 space-y-6 overflow-y-auto">
 
           {/* Title Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-800 pb-5">
@@ -753,32 +759,63 @@ export default function MarketingConsolePage() {
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider font-bold">
-                          <th className="py-3">Campaign Name</th>
-                          <th className="py-3">Channel</th>
-                          <th className="py-3">Recipients</th>
-                          <th className="py-3">Delivered / Opened</th>
-                          <th className="py-3">Revenue / Budget</th>
-                          <th className="py-3">ROI</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {analytics.map((a, idx) => (
-                          <tr key={idx} className="border-b border-slate-850 hover:bg-slate-950/20">
-                            <td className="py-3 font-bold text-slate-200">{a.campaignName}</td>
-                            <td className="py-3 font-mono text-slate-400">{a.channel}</td>
-                            <td className="py-3 font-mono text-slate-300">{a.metrics.totalRecipients}</td>
-                            <td className="py-3 font-mono text-emerald-400">{a.metrics.sentCount} / {a.metrics.openedCount}</td>
-                            <td className="py-3 font-mono text-slate-200">৳{a.metrics.revenueGenerated} / ৳{a.metrics.budget}</td>
-                            <td className="py-3 font-mono font-black text-emerald-400">{a.metrics.roi}%</td>
+                  {analytics.length === 0 ? (
+                    <EmptyState
+                      icon={PieChart}
+                      title="No Campaign Analytics Records Found"
+                      description="No performance telemetry has been recorded for your marketing campaigns yet. Launch a campaign to view delivery, open rate, and ROI metrics."
+                      action={
+                        <button
+                          onClick={loadMarketingData}
+                          className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition-colors shadow-md flex items-center gap-1.5"
+                        >
+                          <RefreshCw className="h-4 w-4" /> Refresh Analytics
+                        </button>
+                      }
+                    />
+                  ) : (
+                    <div className="overflow-x-auto border border-slate-800 rounded-lg">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider font-bold bg-slate-950/50">
+                            <th className="py-3 px-4">Campaign Name</th>
+                            <th className="py-3 px-4">Channel</th>
+                            <th className="py-3 px-4">Recipients</th>
+                            <th className="py-3 px-4">Delivered / Opened</th>
+                            <th className="py-3 px-4">Revenue / Budget</th>
+                            <th className="py-3 px-4">ROI</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {analytics.map((a: any, idx: number) => {
+                            const name = a.campaignName || a.name || a.month || `Campaign #${idx + 1}`;
+                            const channel = a.channel || (a.emailSent ? 'EMAIL & SMS' : 'MULTI_CHANNEL');
+                            const recipients = a.metrics?.totalRecipients ?? a.recipients ?? (a.emailSent ? a.emailSent + a.smsSent : 0);
+                            const sent = a.metrics?.sentCount ?? a.sent ?? a.emailSent ?? 0;
+                            const opened = a.metrics?.openedCount ?? a.opened ?? a.conversions ?? 0;
+                            const revenue = a.metrics?.revenueGenerated ?? a.revenue ?? 0;
+                            const budget = a.metrics?.budget ?? a.budget ?? 5000;
+                            const roi = a.metrics?.roi ?? (budget > 0 ? Math.round(((revenue - budget) / budget) * 100) : 0);
+
+                            return (
+                              <tr key={a.id || idx} className="border-b border-slate-850 hover:bg-slate-950/40 transition-colors">
+                                <td className="py-3 px-4 font-bold text-slate-200">{name}</td>
+                                <td className="py-3 px-4 font-mono text-slate-400">
+                                  <span className="bg-slate-950 px-2 py-0.5 rounded text-[10px] border border-slate-800">
+                                    {channel}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 font-mono text-slate-300">{recipients.toLocaleString()}</td>
+                                <td className="py-3 px-4 font-mono text-emerald-400">{sent.toLocaleString()} / {opened.toLocaleString()}</td>
+                                <td className="py-3 px-4 font-mono text-slate-200">৳{revenue.toLocaleString()} / ৳{budget.toLocaleString()}</td>
+                                <td className="py-3 px-4 font-mono font-black text-emerald-400">{roi > 0 ? `+${roi}%` : `${roi}%`}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </>

@@ -3980,12 +3980,34 @@ export const api = {
       try {
         return await apiRequest<ApiResponse<any[]>>('/marketing/analytics', { token });
       } catch {
+        const camps = getMockCampaigns();
         return {
           success: true,
           data: [
-            { month: 'Jan', emailSent: 1200, smsSent: 3500, conversions: 480, revenue: 95000 },
-            { month: 'Feb', emailSent: 1800, smsSent: 4200, conversions: 620, revenue: 110000 },
-            { month: 'Mar', emailSent: 2200, smsSent: 5000, conversions: 780, revenue: 125000 }
+            {
+              id: 'an-1',
+              campaignName: camps[0]?.name || 'Eid Screen Repair Blast 2026',
+              channel: camps[0]?.channel || 'EMAIL',
+              metrics: { totalRecipients: 5000, sentCount: 4980, openedCount: 4120, conversionCount: 925, revenueGenerated: 48500, budget: 12000, roi: 304 }
+            },
+            {
+              id: 'an-2',
+              campaignName: camps[1]?.name || 'Instant Battery Health SMS Promo',
+              channel: camps[1]?.channel || 'SMS',
+              metrics: { totalRecipients: 3500, sentCount: 3490, openedCount: 2950, conversionCount: 540, revenueGenerated: 22000, budget: 5000, roi: 340 }
+            },
+            {
+              id: 'an-3',
+              campaignName: camps[2]?.name || 'VIP Loyalty Thanks WhatsApp',
+              channel: camps[2]?.channel || 'WHATSAPP',
+              metrics: { totalRecipients: 1200, sentCount: 1200, openedCount: 1150, conversionCount: 410, revenueGenerated: 34500, budget: 8000, roi: 331 }
+            },
+            {
+              id: 'an-4',
+              campaignName: camps[3]?.name || 'Back-To-School Tablet Diagnostic',
+              channel: camps[3]?.channel || 'EMAIL',
+              metrics: { totalRecipients: 2800, sentCount: 2780, openedCount: 2100, conversionCount: 320, revenueGenerated: 20000, budget: 7000, roi: 185 }
+            }
           ]
         };
       }
