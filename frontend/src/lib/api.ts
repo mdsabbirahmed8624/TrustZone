@@ -4697,26 +4697,33 @@ function saveMockRolesList(data: any[]) {
 
 function getMockPermissionMatrix(): any[] {
   return [
-    { module: 'Repairs & Diagnostics', read: true, write: true, delete: true, export: true },
-    { module: 'Bookings & Intake', read: true, write: true, delete: true, export: true },
-    { module: 'Customer Management', read: true, write: true, delete: true, export: true },
-    { module: 'Inventory & Spare Parts', read: true, write: true, delete: true, export: true },
-    { module: 'Supplier POs', read: true, write: true, delete: false, export: true },
-    { module: 'Invoicing & POS Billing', read: true, write: true, delete: false, export: true },
-    { module: 'Warranty & Claims', read: true, write: true, delete: false, export: true },
-    { module: 'Finance & General Ledger', read: true, write: true, delete: false, export: true },
-    { module: 'Marketing & CRM', read: true, write: true, delete: false, export: true },
-    { module: 'Branch Management', read: true, write: true, delete: true, export: true },
-    { module: 'Roles & RBAC', read: true, write: true, delete: true, export: true },
-    { module: 'System Administration', read: true, write: true, delete: true, export: true }
+    { module: 'repairs', label: 'Repairs & Diagnostics', create: true, read: true, update: true, delete: true, approve: true, export: true, print: true, assign: true },
+    { module: 'bookings', label: 'Bookings & Intake', create: true, read: true, update: true, delete: true, approve: true, export: true, print: true, assign: true },
+    { module: 'customers', label: 'Customer Management', create: true, read: true, update: true, delete: true, approve: false, export: true, print: true, assign: false },
+    { module: 'inventory', label: 'Inventory & Spare Parts', create: true, read: true, update: true, delete: true, approve: true, export: true, print: true, assign: true },
+    { module: 'suppliers', label: 'Supplier POs', create: true, read: true, update: true, delete: false, approve: true, export: true, print: true, assign: false },
+    { module: 'invoices', label: 'Invoicing & POS Billing', create: true, read: true, update: true, delete: false, approve: true, export: true, print: true, assign: false },
+    { module: 'warranty', label: 'Warranty & Claims', create: true, read: true, update: true, delete: false, approve: true, export: true, print: true, assign: false },
+    { module: 'finance', label: 'Finance & General Ledger', create: true, read: true, update: true, delete: false, approve: true, export: true, print: true, assign: false },
+    { module: 'marketing', label: 'Marketing & CRM', create: true, read: true, update: true, delete: false, approve: false, export: true, print: false, assign: false },
+    { module: 'branches', label: 'Branch Management', create: true, read: true, update: true, delete: true, approve: true, export: true, print: true, assign: true },
+    { module: 'roles', label: 'Roles & RBAC', create: true, read: true, update: true, delete: true, approve: true, export: true, print: false, assign: true },
+    { module: 'hrms', label: 'HR Management', create: true, read: true, update: true, delete: false, approve: true, export: true, print: true, assign: true },
+    { module: 'reports', label: 'Reports & Analytics', create: false, read: true, update: false, delete: false, approve: false, export: true, print: true, assign: false },
+    { module: 'settings', label: 'System Administration', create: true, read: true, update: true, delete: true, approve: true, export: true, print: false, assign: false }
   ];
 }
 
 function getMockActivityLogs(): any[] {
   return [
-    { id: 'log-1', action: 'ROLE_UPDATE', user: 'admin@trustzone.care', ipAddress: '103.113.152.63', details: 'Updated permissions for MANAGER role.', createdAt: new Date().toISOString() },
-    { id: 'log-2', action: 'USER_LOGIN', user: 'branch.admin@trustzone.care', ipAddress: '103.113.152.64', details: 'Authenticated via 2FA OTP.', createdAt: new Date(Date.now() - 3600000).toISOString() },
-    { id: 'log-3', action: 'USER_CREATE', user: 'admin@trustzone.care', ipAddress: '103.113.152.63', details: 'Created user account tariq.zaman@trustzone.care.', createdAt: new Date(Date.now() - 86400000).toISOString() }
+    { id: 'log-1', action: 'ROLE_UPDATE', user: 'admin@trustzone.care', ipAddress: '103.113.152.63', details: 'Updated permissions for MANAGER role — added write:inventory.', createdAt: new Date().toISOString() },
+    { id: 'log-2', action: 'USER_LOGIN', user: 'branch.admin@trustzone.care', ipAddress: '103.113.152.64', details: 'Authenticated via 2FA OTP from Banani Lab terminal.', createdAt: new Date(Date.now() - 3600000).toISOString() },
+    { id: 'log-3', action: 'USER_CREATE', user: 'admin@trustzone.care', ipAddress: '103.113.152.63', details: 'Created user account tariq.zaman@trustzone.care (TECHNICIAN).', createdAt: new Date(Date.now() - 86400000).toISOString() },
+    { id: 'log-4', action: 'PASSWORD_RESET', user: 'admin@trustzone.care', ipAddress: '103.113.152.63', details: 'Force-reset password for nazma.khatun@trustzone.care.', createdAt: new Date(Date.now() - 172800000).toISOString() },
+    { id: 'log-5', action: 'USER_STATUS_CHANGE', user: 'admin@trustzone.care', ipAddress: '103.113.152.63', details: 'Changed status of EMP-007 from ACTIVE to SUSPENDED.', createdAt: new Date(Date.now() - 259200000).toISOString() },
+    { id: 'log-6', action: 'ROLE_CREATE', user: 'admin@trustzone.care', ipAddress: '103.113.152.63', details: 'Created custom role QUALITY_INSPECTOR with 5 permissions.', createdAt: new Date(Date.now() - 345600000).toISOString() },
+    { id: 'log-7', action: 'SESSION_TERMINATE', user: 'admin@trustzone.care', ipAddress: '103.113.152.63', details: 'Terminated all active sessions for user rafiq.ahmed.', createdAt: new Date(Date.now() - 432000000).toISOString() },
+    { id: 'log-8', action: 'DATA_EXPORT', user: 'branch.admin@trustzone.care', ipAddress: '103.113.152.64', details: 'Exported user directory to CSV (4 records).', createdAt: new Date(Date.now() - 518400000).toISOString() }
   ];
 }
 
