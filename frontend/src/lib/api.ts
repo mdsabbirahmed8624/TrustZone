@@ -4019,10 +4019,13 @@ export const api = {
       try {
         return await apiRequest<ApiResponse<any>>(`/branches/dashboard/stats${branchId ? `?branchId=${branchId}` : ''}`, { token });
       } catch {
+        const branches = getMockBranches();
+        const activeCount = branches.filter((b: any) => b.status === 'ACTIVE').length;
+        const maintCount = branches.filter((b: any) => b.status === 'MAINTENANCE').length;
         return {
           success: true,
           data: {
-            overview: { totalBranches: 3, activeBranches: 3, inactiveBranches: 0, maintenanceBranches: 0 },
+            overview: { totalBranches: branches.length || 3, activeBranches: activeCount || 3, inactiveBranches: 0, maintenanceBranches: maintCount || 0 },
             metrics: { dailyRevenue: 45800, monthlyRevenue: 850000, repairCount: 142, technicianCount: 12, inventoryValue: 640000, customerCount: 380 }
           }
         };
@@ -4040,60 +4043,180 @@ export const api = {
         }
         return await apiRequest<ApiResponse<any[]>>(`/branches${q}`, { token });
       } catch {
-        return { success: true, data: [] };
+        let list = getMockBranches();
+        if (query?.status) list = list.filter((b: any) => b.status === query.status);
+        if (query?.district) list = list.filter((b: any) => b.district === query.district);
+        if (query?.search) {
+          const s = query.search.toLowerCase();
+          list = list.filter((b: any) => b.name.toLowerCase().includes(s) || (b.code && b.code.toLowerCase().includes(s)) || b.address.toLowerCase().includes(s));
+        }
+        return { success: true, data: list };
       }
     },
     async fetchBranch(id: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/branches/${id}`, { token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/branches/${id}`, { token });
+      } catch {
+        const list = getMockBranches();
+        const found = list.find((b: any) => b.id === id || b.code === id);
+        return { success: true, data: found || list[0] || null };
+      }
     },
     async createBranch(data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>('/branches', { method: 'POST', body: JSON.stringify(data), token });
+      try {
+        return await apiRequest<ApiResponse<any>>('/branches', { method: 'POST', body: JSON.stringify(data), token });
+      } catch {
+        const list = getMockBranches();
+        const newBranch = {
+          id: `br-${Date.now()}`,
+          code: data.code || `BR-${data.name.slice(0, 4).toUpperCase()}`,
+          status: 'ACTIVE',
+          staffCount: 0,
+          inventoryCount: 0,
+          activeTickets: 0,
+          monthlyRevenue: 0,
+          createdAt: new Date().toISOString(),
+          ...data
+        };
+        list.unshift(newBranch);
+        saveMockBranches(list);
+        return { success: true, data: newBranch };
+      }
     },
     async updateBranch(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/branches/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/branches/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+      } catch {
+        const list = getMockBranches();
+        const idx = list.findIndex((b: any) => b.id === id);
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...data };
+          saveMockBranches(list);
+          return { success: true, data: list[idx] };
+        }
+        return { success: false, data: null };
+      }
     },
     async updateBranchStatus(id: string, status: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/branches/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/branches/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+      } catch {
+        const list = getMockBranches();
+        const idx = list.findIndex((b: any) => b.id === id);
+        if (idx !== -1) {
+          list[idx].status = status;
+          saveMockBranches(list);
+          return { success: true, data: list[idx] };
+        }
+        return { success: false, data: null };
+      }
     },
     async deleteBranch(id: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/branches/${id}`, { method: 'DELETE', token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/branches/${id}`, { method: 'DELETE', token });
+      } catch {
+        const list = getMockBranches();
+        const filtered = list.filter((b: any) => b.id !== id);
+        saveMockBranches(filtered);
+        return { success: true, data: null };
+      }
     },
     async fetchStaff(branchId: string, token?: string): Promise<ApiResponse<any[]>> {
       try {
         return await apiRequest<ApiResponse<any[]>>(`/branches/${branchId}/staff`, { token });
       } catch {
-        return { success: true, data: [] };
+        return {
+          success: true,
+          data: [
+            { id: 'st-1', firstName: 'Tanvir', lastName: 'Ahmed', role: 'MANAGER', email: 'tanvir.manager@trustzone.care', phone: '01711009988', branchId },
+            { id: 'st-2', firstName: 'Rafiq', lastName: 'Hasan', role: 'TECHNICIAN_MANAGER', email: 'rafiq.lead@trustzone.care', phone: '01819223311', branchId },
+            { id: 'st-3', firstName: 'Kamal', lastName: 'Hossain', role: 'TECHNICIAN', email: 'kamal.tech@trustzone.care', phone: '01912334455', branchId },
+            { id: 'st-4', firstName: 'Salma', lastName: 'Begum', role: 'SUPPORT', email: 'salma.desk@trustzone.care', phone: '01611778899', branchId }
+          ]
+        };
       }
     },
     async assignStaff(branchId: string, userId: string, role?: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/branches/${branchId}/staff/assign`, { method: 'POST', body: JSON.stringify({ userId, role }), token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/branches/${branchId}/staff/assign`, { method: 'POST', body: JSON.stringify({ userId, role }), token });
+      } catch {
+        return { success: true, data: { branchId, userId, role } };
+      }
     },
     async fetchInventory(branchId: string, token?: string): Promise<ApiResponse<any[]>> {
       try {
         return await apiRequest<ApiResponse<any[]>>(`/branches/${branchId}/inventory`, { token });
       } catch {
-        return { success: true, data: [] };
+        return {
+          success: true,
+          data: [
+            { id: 'binv-1', part: { name: 'iPhone 13 Pro OLED Display Assembly', model: 'A2638' }, binLocation: 'BIN-A12', quantity: 18, minLimit: 5 },
+            { id: 'binv-2', part: { name: 'Samsung Galaxy S22 Ultra Battery (5000mAh)', model: 'EB-BS908ABY' }, binLocation: 'BIN-B04', quantity: 24, minLimit: 8 },
+            { id: 'binv-3', part: { name: 'MacBook Pro M1 USB-C Port Charging Flex', model: 'A2338' }, binLocation: 'BIN-C02', quantity: 3, minLimit: 5 },
+            { id: 'binv-4', part: { name: 'iPad Pro 11 Camera Module Replacement', model: 'A2228' }, binLocation: 'BIN-D01', quantity: 7, minLimit: 4 }
+          ]
+        };
       }
     },
     async fetchRepairs(branchId: string, status?: string, token?: string): Promise<ApiResponse<any[]>> {
       try {
         return await apiRequest<ApiResponse<any[]>>(`/branches/${branchId}/repairs${status ? `?status=${status}` : ''}`, { token });
       } catch {
-        return { success: true, data: [] };
+        return {
+          success: true,
+          data: [
+            { id: 'tz-rep-901', customer: { firstName: 'Maksudur', lastName: 'Rahman' }, device: { brand: 'Apple', model: 'iPhone 13 Pro' }, faults: ['Broken OLED Display'], status: 'IN_PROGRESS', assignedTech: { firstName: 'Rafiq', lastName: 'Hasan' }, createdAt: new Date().toISOString() },
+            { id: 'tz-rep-902', customer: { firstName: 'Anowar', lastName: 'Hossain' }, device: { brand: 'Samsung', model: 'Galaxy S22' }, faults: ['Battery Drain & Overheating'], status: 'WAITING_PARTS', assignedTech: { firstName: 'Kamal', lastName: 'Hossain' }, createdAt: new Date().toISOString() },
+            { id: 'tz-rep-903', customer: { firstName: 'Zahid', lastName: 'Hasan' }, device: { brand: 'Apple', model: 'MacBook Air M1' }, faults: ['Keyboard Liquid Damage'], status: 'DIAGNOSING', assignedTech: { firstName: 'Rafiq', lastName: 'Hasan' }, createdAt: new Date().toISOString() }
+          ]
+        };
       }
     },
     async transferRepair(ticketId: string, targetBranchId: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/branches/repairs/${ticketId}/transfer`, { method: 'POST', body: JSON.stringify({ targetBranchId }), token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/branches/repairs/${ticketId}/transfer`, { method: 'POST', body: JSON.stringify({ targetBranchId }), token });
+      } catch {
+        return { success: true, data: null };
+      }
     },
     async fetchFinance(branchId: string, token?: string): Promise<ApiResponse<any>> {
       try {
         return await apiRequest<ApiResponse<any>>(`/branches/${branchId}/finance`, { token });
       } catch {
-        return { success: true, data: { totalIncome: 450000, totalExpense: 120000, netProfit: 330000, accounts: [] } };
+        const closings = getMockBranchClosings();
+        return {
+          success: true,
+          data: {
+            totalIncome: 450000,
+            totalExpense: 120000,
+            netProfit: 330000,
+            dailyClosings: closings
+          }
+        };
       }
     },
     async performDailyClosing(branchId: string, data: { expectedBalance: number; actualBalance: number; notes?: string }, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/branches/${branchId}/finance/daily-closing`, { method: 'POST', body: JSON.stringify(data), token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/branches/${branchId}/finance/daily-closing`, { method: 'POST', body: JSON.stringify(data), token });
+      } catch {
+        const closings = getMockBranchClosings();
+        const diff = data.actualBalance - data.expectedBalance;
+        const newClosing = {
+          id: `cls-${Date.now()}`,
+          branchId,
+          closedBy: 'admin@trustzone.care',
+          date: new Date().toISOString().slice(0, 10),
+          expectedBalance: data.expectedBalance,
+          actualBalance: data.actualBalance,
+          difference: diff,
+          notes: data.notes || 'Daily cash drawer balancing verified',
+          status: diff === 0 ? 'BALANCED' : diff > 0 ? 'SURPLUS' : 'SHORTAGE',
+          createdAt: new Date().toISOString()
+        };
+        closings.unshift(newClosing);
+        saveMockBranchClosings(closings);
+        return { success: true, data: newClosing };
+      }
     },
     async fetchTransfers(query?: { fromBranchId?: string; toBranchId?: string; status?: string }, token?: string): Promise<ApiResponse<any[]>> {
       try {
@@ -4107,14 +4230,46 @@ export const api = {
         }
         return await apiRequest<ApiResponse<any[]>>(`/branches/transfers/list${q}`, { token });
       } catch {
-        return { success: true, data: [] };
+        return { success: true, data: getMockBranchTransfers() };
       }
     },
     async createTransfer(data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>('/branches/transfers', { method: 'POST', body: JSON.stringify(data), token });
+      try {
+        return await apiRequest<ApiResponse<any>>('/branches/transfers', { method: 'POST', body: JSON.stringify(data), token });
+      } catch {
+        const list = getMockBranchTransfers();
+        const branches = getMockBranches();
+        const fromB = branches.find((b: any) => b.id === data.fromBranchId) || branches[0];
+        const toB = branches.find((b: any) => b.id === data.toBranchId) || branches[1];
+        const newTr = {
+          id: `tr-${Date.now()}`,
+          transferType: data.transferType || 'INVENTORY',
+          fromBranch: { name: fromB.name },
+          toBranch: { name: toB.name },
+          entityName: data.entityName || 'iPhone 13 OLED Screen',
+          quantity: data.quantity || 1,
+          status: 'PENDING',
+          notes: data.notes || '',
+          createdAt: new Date().toISOString()
+        };
+        list.unshift(newTr);
+        saveMockBranchTransfers(list);
+        return { success: true, data: newTr };
+      }
     },
     async processTransferStatus(id: string, status: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/branches/transfers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/branches/transfers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+      } catch {
+        const list = getMockBranchTransfers();
+        const idx = list.findIndex((t: any) => t.id === id);
+        if (idx !== -1) {
+          list[idx].status = status;
+          saveMockBranchTransfers(list);
+          return { success: true, data: list[idx] };
+        }
+        return { success: false, data: null };
+      }
     }
   },
 
@@ -4598,5 +4753,111 @@ function getMockCoupons(): any[] {
 
 function saveMockCoupons(data: any[]) {
   if (typeof window !== 'undefined') localStorage.setItem('tz_mock_coupons', JSON.stringify(data));
+}
+
+function getMockBranches(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_branches');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    {
+      id: 'br-1',
+      name: 'Dhanmondi Lab & Express Outlet',
+      code: 'BR-DHANMONDI',
+      address: 'House 42, Road 7/A, Dhanmondi, Dhaka-1209',
+      district: 'Dhaka',
+      thana: 'Dhanmondi',
+      mapUrl: 'https://maps.google.com/?q=Dhanmondi+Dhaka',
+      phone: '+880 1711-889900',
+      email: 'dhanmondi@trustzone.care',
+      openingHours: '9:00 AM - 9:30 PM (7 Days)',
+      status: 'ACTIVE',
+      managerName: 'Tanvir Ahmed (Branch Manager)',
+      description: 'Primary diagnostic center equipped with optical BGA rework station, cleanroom laminar flow bench, and express screen replacement counters.',
+      staffCount: 8,
+      inventoryCount: 142,
+      activeTickets: 14,
+      monthlyRevenue: 480000,
+      createdAt: new Date(Date.now() - 365 * 86400000).toISOString()
+    },
+    {
+      id: 'br-2',
+      name: 'Banani Premium Service Center',
+      code: 'BR-BANANI',
+      address: 'Block E, Road 11, Banani, Dhaka-1213',
+      district: 'Dhaka',
+      thana: 'Banani',
+      mapUrl: 'https://maps.google.com/?q=Banani+Dhaka',
+      phone: '+880 1819-223344',
+      email: 'banani@trustzone.care',
+      openingHours: '10:00 AM - 9:00 PM (Sat-Thu)',
+      status: 'ACTIVE',
+      managerName: 'Kazi Farhan (Senior Lead)',
+      description: 'VIP customer care lounge, Apple & Samsung specialized motherboard micro-soldering unit, and corporate fleet repair desk.',
+      staffCount: 6,
+      inventoryCount: 98,
+      activeTickets: 9,
+      monthlyRevenue: 390000,
+      createdAt: new Date(Date.now() - 200 * 86400000).toISOString()
+    },
+    {
+      id: 'br-3',
+      name: 'Uttara Sector 3 Repair Hub',
+      code: 'BR-UTTARA',
+      address: 'Plot 15, Sector 3, Uttara, Dhaka-1230',
+      district: 'Dhaka',
+      thana: 'Uttara',
+      mapUrl: 'https://maps.google.com/?q=Uttara+Dhaka',
+      phone: '+880 1912-556677',
+      email: 'uttara@trustzone.care',
+      openingHours: '9:30 AM - 9:00 PM (7 Days)',
+      status: 'ACTIVE',
+      managerName: 'Mahbubur Rahman (Operations Manager)',
+      description: 'Northern Dhaka hub serving individual customers and regional retail partners with fast-turnaround diagnostics.',
+      staffCount: 5,
+      inventoryCount: 76,
+      activeTickets: 6,
+      monthlyRevenue: 270000,
+      createdAt: new Date(Date.now() - 100 * 86400000).toISOString()
+    }
+  ];
+  localStorage.setItem('tz_mock_branches', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockBranches(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_branches', JSON.stringify(data));
+}
+
+function getMockBranchClosings(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_branch_closings');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    { id: 'cls-1', branchId: 'br-1', closedBy: 'admin@trustzone.care', date: new Date(Date.now() - 86400000).toISOString().slice(0, 10), expectedBalance: 45000, actualBalance: 45000, difference: 0, notes: 'Register balanced cleanly with zero discrepancy.', status: 'BALANCED', createdAt: new Date(Date.now() - 86400000).toISOString() },
+    { id: 'cls-2', branchId: 'br-1', closedBy: 'tanvir.manager@trustzone.care', date: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10), expectedBalance: 52000, actualBalance: 52200, difference: 200, notes: 'Overages from customer tip deposit.', status: 'SURPLUS', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() }
+  ];
+  localStorage.setItem('tz_mock_branch_closings', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockBranchClosings(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_branch_closings', JSON.stringify(data));
+}
+
+function getMockBranchTransfers(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_branch_transfers');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    { id: 'tr-1', transferType: 'INVENTORY', fromBranch: { name: 'Dhanmondi Lab & Express Outlet' }, toBranch: { name: 'Banani Premium Service Center' }, entityName: 'iPhone 13 OLED Display (3 Units)', quantity: 3, status: 'APPROVED', notes: 'Urgent stock transfer for VIP repair ticket #TZ-901', createdAt: new Date(Date.now() - 4 * 3600000).toISOString() },
+    { id: 'tr-2', transferType: 'TICKET', fromBranch: { name: 'Uttara Sector 3 Repair Hub' }, toBranch: { name: 'Dhanmondi Lab & Express Outlet' }, entityName: 'MacBook Air M1 Liquid Damage Diagnostic #TZ-903', quantity: 1, status: 'PENDING', notes: 'Transferred for Level-4 optical BGA rework station', createdAt: new Date(Date.now() - 12 * 3600000).toISOString() }
+  ];
+  localStorage.setItem('tz_mock_branch_transfers', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockBranchTransfers(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_branch_transfers', JSON.stringify(data));
 }
 
