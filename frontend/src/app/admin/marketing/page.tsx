@@ -39,6 +39,7 @@ import { Header } from '../components/header';
 import { api } from '@/lib/api';
 import { useFeatureFlags } from '@/context/feature-flag-context';
 import { useAdminAuth } from '@/context/admin-auth-context';
+import { EmptyState } from '@/components/empty-state';
 
 export default function MarketingConsolePage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -132,6 +133,9 @@ export default function MarketingConsolePage() {
   // Campaign Handlers
   const handleSaveCampaign = async () => {
     if (!campaignForm.name.trim()) return alert('Campaign name is required');
+    if (!campaignForm.subject.trim() && (campaignForm.channel === 'EMAIL' || campaignForm.channel === 'WHATSAPP')) {
+      return alert('Headline / Subject is required for Email & WhatsApp channels');
+    }
     try {
       if (editingCampaign) {
         await api.marketing.updateCampaign(editingCampaign.id, campaignForm, token);
@@ -141,7 +145,7 @@ export default function MarketingConsolePage() {
       setShowCampaignModal(false);
       setEditingCampaign(null);
       setCampaignForm({ name: '', channel: 'EMAIL', subject: '', bodyContent: '', targetSegment: 'VIP', budget: 5000, scheduledAt: '' });
-      loadMarketingData();
+      await loadMarketingData();
     } catch (err: any) {
       alert(err.message || 'Failed to save campaign');
     }
@@ -439,67 +443,92 @@ export default function MarketingConsolePage() {
                   </div>
 
                   {/* Campaigns Table */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider font-bold">
-                          <th className="py-3">Campaign Name & Subject</th>
-                          <th className="py-3">Channel</th>
-                          <th className="py-3">Target Segment</th>
-                          <th className="py-3">Status</th>
-                          <th className="py-3">Scheduled At</th>
-                          <th className="py-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredCampaigns.map(c => (
-                          <tr key={c.id} className="border-b border-slate-850 hover:bg-slate-950/20">
-                            <td className="py-3">
-                              <div className="font-bold text-slate-200">{c.name}</div>
-                              {c.subject && <div className="text-[11px] text-slate-400">{c.subject}</div>}
-                            </td>
-                            <td className="py-3 font-mono text-slate-300">{c.channel}</td>
-                            <td className="py-3 text-slate-400 font-medium">{c.targetSegment || 'VIP'}</td>
-                            <td className="py-3">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                c.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400' :
-                                c.status === 'SCHEDULED' ? 'bg-cyan-500/20 text-cyan-400' :
-                                'bg-slate-800 text-slate-400'
-                              }`}>
-                                {c.status}
-                              </span>
-                            </td>
-                            <td className="py-3 text-slate-400">
-                              {c.scheduledAt ? new Date(c.scheduledAt).toLocaleString() : 'Immediate'}
-                            </td>
-                            <td className="py-3 text-right space-x-1.5">
-                              <button
-                                onClick={() => handleSendNow(c.id)}
-                                title="Send / Dispatch Now"
-                                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-2 py-1 rounded text-xs font-bold transition-colors"
-                              >
-                                Send
-                              </button>
-                              <button
-                                onClick={() => handleDuplicate(c.id)}
-                                title="Duplicate Campaign"
-                                className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs font-medium transition-colors"
-                              >
-                                Duplicate
-                              </button>
-                              <button
-                                onClick={() => handleDeleteCampaign(c.id)}
-                                title="Delete"
-                                className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-2 py-1 rounded text-xs transition-colors"
-                              >
-                                Delete
-                              </button>
-                            </td>
+                  {filteredCampaigns.length === 0 ? (
+                    <EmptyState
+                      icon={Megaphone}
+                      title="No Marketing Campaigns Found"
+                      description="No multi-channel promotional campaigns match your filter criteria. Launch your first email, SMS, or WhatsApp campaign now."
+                      action={
+                        <button
+                          onClick={() => {
+                            setEditingCampaign(null);
+                            setCampaignForm({ name: '', channel: 'EMAIL', subject: '', bodyContent: '', targetSegment: 'VIP', budget: 5000, scheduledAt: '' });
+                            setShowCampaignModal(true);
+                          }}
+                          className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition-colors shadow-md flex items-center gap-1.5"
+                        >
+                          <Plus className="h-4 w-4" /> Create Campaign
+                        </button>
+                      }
+                    />
+                  ) : (
+                    <div className="overflow-x-auto border border-slate-800 rounded-lg">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider font-bold bg-slate-950/50">
+                            <th className="py-3 px-4">Campaign Name & Subject</th>
+                            <th className="py-3 px-4">Channel</th>
+                            <th className="py-3 px-4">Target Segment</th>
+                            <th className="py-3 px-4">Status</th>
+                            <th className="py-3 px-4">Scheduled At</th>
+                            <th className="py-3 px-4 text-right">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {filteredCampaigns.map(c => (
+                            <tr key={c.id} className="border-b border-slate-850 hover:bg-slate-950/40 transition-colors">
+                              <td className="py-3 px-4">
+                                <div className="font-bold text-slate-200">{c.name}</div>
+                                {c.subject && <div className="text-[11px] text-slate-400">{c.subject}</div>}
+                              </td>
+                              <td className="py-3 px-4 font-mono text-slate-300">
+                                <span className="bg-slate-950 px-2 py-0.5 rounded text-[10px] border border-slate-800">
+                                  {c.channel}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-slate-400 font-medium">{c.targetSegment || 'VIP'}</td>
+                              <td className="py-3 px-4">
+                                <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${
+                                  c.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' :
+                                  c.status === 'SCHEDULED' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/20' :
+                                  c.status === 'COMPLETED' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/20' :
+                                  'bg-slate-800 text-slate-400'
+                                }`}>
+                                  {c.status}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-slate-400 font-mono">
+                                {c.scheduledAt ? new Date(c.scheduledAt).toLocaleString() : 'Immediate'}
+                              </td>
+                              <td className="py-3 px-4 text-right space-x-1.5">
+                                <button
+                                  onClick={() => handleSendNow(c.id)}
+                                  title="Send / Dispatch Now"
+                                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-2.5 py-1 rounded text-xs font-bold transition-colors shadow-sm"
+                                >
+                                  Send
+                                </button>
+                                <button
+                                  onClick={() => handleDuplicate(c.id)}
+                                  title="Duplicate Campaign"
+                                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded text-xs font-medium transition-colors"
+                                >
+                                  Duplicate
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCampaign(c.id)}
+                                  title="Delete"
+                                  className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-2.5 py-1 rounded text-xs transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
 

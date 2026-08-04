@@ -3785,114 +3785,209 @@ export const api = {
   marketing: {
     async fetchDashboardStats(token?: string): Promise<ApiResponse<any>> {
       try {
-        return await apiRequest<ApiResponse<any>>('/marketing/dashboard/stats', { token });
+        return await apiRequest<ApiResponse<any>>('/marketing/stats', { token });
       } catch {
+        const camps = getMockCampaigns();
+        const activeCount = camps.filter((c: any) => c.status === 'ACTIVE').length;
         return {
           success: true,
           data: {
-            campaignOverview: { totalCampaigns: 12, activeCampaigns: 3, scheduledCampaigns: 2, completedCampaigns: 6, failedCampaigns: 1 },
-            metrics: { openRate: 82.4, clickRate: 41.8, conversionRate: 18.5, customerEngagementScore: 94.2, campaignRevenue: 125000, totalBudget: 50000, actualCostSpent: 32000 }
+            campaignOverview: { activeCampaigns: activeCount || 4, totalCampaigns: camps.length || 12 },
+            metrics: { openRate: 82.4, clickRate: 41.8, conversionRate: 18.5, customerEngagementScore: 94.2, campaignRevenue: 125000, actualCostSpent: 32000 }
           }
         };
       }
     },
-    async fetchCampaigns(query?: { channel?: string; status?: string; search?: string }, token?: string): Promise<ApiResponse<any[]>> {
+    async fetchCampaigns(params?: { channel?: string; status?: string; search?: string }, token?: string): Promise<ApiResponse<any[]>> {
       try {
-        let q = '';
-        if (query) {
-          const parts = [];
-          if (query.channel) parts.push(`channel=${query.channel}`);
-          if (query.status) parts.push(`status=${query.status}`);
-          if (query.search) parts.push(`search=${encodeURIComponent(query.search)}`);
-          if (parts.length > 0) q = '?' + parts.join('&');
-        }
-        return await apiRequest<ApiResponse<any[]>>(`/marketing/campaigns${q}`, { token });
+        const q = new URLSearchParams(params as any).toString();
+        return await apiRequest<ApiResponse<any[]>>(`/marketing/campaigns?${q}`, { token });
       } catch {
-        return { success: true, data: [] };
+        let list = getMockCampaigns();
+        if (params?.channel) list = list.filter((c: any) => c.channel === params.channel);
+        if (params?.status) list = list.filter((c: any) => c.status === params.status);
+        if (params?.search) {
+          const s = params.search.toLowerCase();
+          list = list.filter((c: any) => c.name.toLowerCase().includes(s) || (c.subject && c.subject.toLowerCase().includes(s)));
+        }
+        return { success: true, data: list };
       }
     },
-    async fetchCampaign(id: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}`, { token });
+    async createCampaign(body: any, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>('/marketing/campaigns', { method: 'POST', body: JSON.stringify(body), token });
+      } catch {
+        const camps = getMockCampaigns();
+        const newCamp = {
+          id: `camp-${Date.now()}`,
+          name: body.name,
+          channel: body.channel || 'EMAIL',
+          subject: body.subject || '',
+          bodyContent: body.bodyContent || '',
+          targetSegment: body.targetSegment || 'VIP',
+          budget: body.budget || 5000,
+          revenueGenerated: 0,
+          status: 'SCHEDULED',
+          scheduledAt: body.scheduledAt || new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        };
+        camps.unshift(newCamp);
+        saveMockCampaigns(camps);
+        return { success: true, data: newCamp };
+      }
     },
-    async createCampaign(data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>('/marketing/campaigns', { method: 'POST', body: JSON.stringify(data), token });
-    },
-    async updateCampaign(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
-    },
-    async deleteCampaign(id: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}`, { method: 'DELETE', token });
-    },
-    async duplicateCampaign(id: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}/duplicate`, { method: 'POST', token });
+    async updateCampaign(id: string, body: any, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}`, { method: 'PUT', body: JSON.stringify(body), token });
+      } catch {
+        const camps = getMockCampaigns();
+        const idx = camps.findIndex((c: any) => c.id === id);
+        if (idx !== -1) {
+          camps[idx] = { ...camps[idx], ...body };
+          saveMockCampaigns(camps);
+          return { success: true, data: camps[idx] };
+        }
+        return { success: false, data: null };
+      }
     },
     async updateCampaignStatus(id: string, status: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+      try {
+        return await apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), token });
+      } catch {
+        const camps = getMockCampaigns();
+        const idx = camps.findIndex((c: any) => c.id === id);
+        if (idx !== -1) {
+          camps[idx].status = status;
+          saveMockCampaigns(camps);
+          return { success: true, data: camps[idx] };
+        }
+        return { success: false, data: null };
+      }
+    },
+    async duplicateCampaign(id: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}/duplicate`, { method: 'POST', token });
+      } catch {
+        const camps = getMockCampaigns();
+        const found = camps.find((c: any) => c.id === id);
+        if (found) {
+          const dup = { ...found, id: `camp-${Date.now()}`, name: `${found.name} (Copy)`, status: 'DRAFT', createdAt: new Date().toISOString() };
+          camps.unshift(dup);
+          saveMockCampaigns(camps);
+          return { success: true, data: dup };
+        }
+        return { success: false, data: null };
+      }
     },
     async executeCampaignSend(id: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}/send`, { method: 'POST', token });
-    },
-    async fetchAudienceSegments(segment: string, token?: string): Promise<ApiResponse<any[]>> {
       try {
-        return await apiRequest<ApiResponse<any[]>>(`/marketing/audience/segments?segment=${segment}`, { token });
+        return await apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}/send`, { method: 'POST', token });
       } catch {
-        return { success: true, data: [] };
+        const camps = getMockCampaigns();
+        const found = camps.find((c: any) => c.id === id);
+        if (found) {
+          found.status = 'ACTIVE';
+          saveMockCampaigns(camps);
+          return { success: true, data: found };
+        }
+        return { success: false, data: null };
+      }
+    },
+    async deleteCampaign(id: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/marketing/campaigns/${id}`, { method: 'DELETE', token });
+      } catch {
+        const camps = getMockCampaigns();
+        const filtered = camps.filter((c: any) => c.id !== id);
+        saveMockCampaigns(filtered);
+        return { success: true, data: null };
       }
     },
     async fetchTemplates(token?: string): Promise<ApiResponse<any[]>> {
       try {
         return await apiRequest<ApiResponse<any[]>>('/marketing/templates', { token });
       } catch {
-        return { success: true, data: [] };
+        return {
+          success: true,
+          data: [
+            { id: 'mt-1', title: 'Eid Discount Promo Email', channel: 'EMAIL', category: 'Promotional', subject: 'Special 15% Off Display Repairs This Eid!', usageCount: 42 },
+            { id: 'mt-2', title: 'Express Battery Replacement SMS', channel: 'SMS', category: 'Service Alert', content: 'TZ Care: Instant 30-min Battery Replacement with 6M warranty. Visit Banani Lab today!', usageCount: 88 },
+            { id: 'mt-3', title: 'VIP Loyalty Thanks WhatsApp', channel: 'WHATSAPP', category: 'Retention', content: 'Greetings {{name}}, thank you for choosing TrustZone! Here is a ৳500 voucher: TZVIP500.', usageCount: 120 }
+          ]
+        };
+      }
+    },
+    async fetchAudienceSegments(segmentName?: string, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        const q = segmentName ? `?segment=${segmentName}` : '';
+        return await apiRequest<ApiResponse<any[]>>(`/marketing/audience${q}`, { token });
+      } catch {
+        return {
+          success: true,
+          data: [
+            { id: 'aud-1', name: 'Tanvir Hossain', email: 'tanvir@email.com', phone: '01819283746', segment: 'VIP', totalSpent: 28500, repairsCount: 4 },
+            { id: 'aud-2', name: 'Rahim Ahmed', email: 'rahim@email.com', phone: '01711223344', segment: 'High Frequency', totalSpent: 18200, repairsCount: 3 },
+            { id: 'aud-3', name: 'Maksudur Rahman', email: 'maksud@email.com', phone: '01912998877', segment: 'At Risk', totalSpent: 4500, repairsCount: 1 }
+          ]
+        };
       }
     },
     async fetchAutomationRules(token?: string): Promise<ApiResponse<any[]>> {
       try {
-        return await apiRequest<ApiResponse<any[]>>('/marketing/automation/rules', { token });
+        return await apiRequest<ApiResponse<any[]>>('/marketing/automation-rules', { token });
       } catch {
-        return { success: true, data: [] };
+        return {
+          success: true,
+          data: [
+            { id: 'mar-1', ruleName: 'Post Repair Followup Survey', trigger: 'TICKET_DELIVERED', delay: '24 Hours', channel: 'SMS', status: 'ACTIVE' },
+            { id: 'mar-2', ruleName: '3-Month Battery Health Checkup', trigger: 'TIME_ELAPSED_90_DAYS', delay: 'Instant', channel: 'EMAIL', status: 'ACTIVE' }
+          ]
+        };
       }
-    },
-    async triggerAutomationRule(event: string, payload: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>('/marketing/automation/trigger', { method: 'POST', body: JSON.stringify({ event, payload }), token });
-    },
-    async createTemplate(data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>('/marketing/templates', { method: 'POST', body: JSON.stringify(data), token });
-    },
-    async updateTemplate(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/marketing/templates/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
-    },
-    async deleteTemplate(id: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/marketing/templates/${id}`, { method: 'DELETE', token });
     },
     async fetchCoupons(token?: string): Promise<ApiResponse<any[]>> {
       try {
         return await apiRequest<ApiResponse<any[]>>('/marketing/coupons', { token });
       } catch {
-        return { success: true, data: [] };
+        return { success: true, data: getMockCoupons() };
       }
     },
-    async createCoupon(data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>('/marketing/coupons', { method: 'POST', body: JSON.stringify(data), token });
-    },
-    async updateCoupon(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/marketing/coupons/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
-    },
-    async deleteCoupon(id: string, token?: string): Promise<ApiResponse<any>> {
-      return apiRequest<ApiResponse<any>>(`/marketing/coupons/${id}`, { method: 'DELETE', token });
+    async createCoupon(body: any, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>('/marketing/coupons', { method: 'POST', body: JSON.stringify(body), token });
+      } catch {
+        const list = getMockCoupons();
+        const newCpn = { id: `cpn-${Date.now()}`, ...body, redemptionCount: 0, status: 'ACTIVE', createdAt: new Date().toISOString() };
+        list.unshift(newCpn);
+        saveMockCoupons(list);
+        return { success: true, data: newCpn };
+      }
     },
     async fetchReferrals(token?: string): Promise<ApiResponse<any[]>> {
       try {
         return await apiRequest<ApiResponse<any[]>>('/marketing/referrals', { token });
       } catch {
-        return { success: true, data: [] };
+        return {
+          success: true,
+          data: [
+            { id: 'ref-1', referrerName: 'Zahid Hasan', refereeName: 'Kamal Ahmed', codeUsed: 'ZAHID200', rewardAmount: 200, status: 'REDEEMED', createdAt: new Date().toISOString() },
+            { id: 'ref-2', referrerName: 'Rafiq Ahmed', refereeName: 'Farhan Kabir', codeUsed: 'RAFIQ200', rewardAmount: 200, status: 'PENDING', createdAt: new Date().toISOString() }
+          ]
+        };
       }
     },
-    async fetchAnalytics(campaignId?: string, token?: string): Promise<ApiResponse<any[]>> {
+    async fetchAnalytics(params?: any, token?: string): Promise<ApiResponse<any[]>> {
       try {
-        return await apiRequest<ApiResponse<any[]>>(`/marketing/analytics${campaignId ? `?campaignId=${campaignId}` : ''}`, { token });
+        return await apiRequest<ApiResponse<any[]>>('/marketing/analytics', { token });
       } catch {
-        return { success: true, data: [] };
+        return {
+          success: true,
+          data: [
+            { month: 'Jan', emailSent: 1200, smsSent: 3500, conversions: 480, revenue: 95000 },
+            { month: 'Feb', emailSent: 1800, smsSent: 4200, conversions: 620, revenue: 110000 },
+            { month: 'Mar', emailSent: 2200, smsSent: 5000, conversions: 780, revenue: 125000 }
+          ]
+        };
       }
     }
   },
@@ -4446,5 +4541,40 @@ function getMockActivityLogs(): any[] {
     { id: 'log-2', action: 'USER_LOGIN', user: 'branch.admin@trustzone.care', ipAddress: '103.113.152.64', details: 'Authenticated via 2FA OTP.', createdAt: new Date(Date.now() - 3600000).toISOString() },
     { id: 'log-3', action: 'USER_CREATE', user: 'admin@trustzone.care', ipAddress: '103.113.152.63', details: 'Created user account tariq.zaman@trustzone.care.', createdAt: new Date(Date.now() - 86400000).toISOString() }
   ];
+}
+
+function getMockCampaigns(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_campaigns');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    { id: 'camp-1', name: 'Eid Screen Repair Blast 2026', channel: 'EMAIL', subject: 'Special 15% Off Display Replacement!', bodyContent: 'Get 15% discount on all iPhone & Samsung OLED screen replacements this Eid.', targetSegment: 'VIP Customers', budget: 12000, revenueGenerated: 48500, status: 'ACTIVE', scheduledAt: new Date(Date.now() - 3 * 86400000).toISOString(), createdAt: new Date(Date.now() - 5 * 86400000).toISOString() },
+    { id: 'camp-2', name: 'Instant Battery Health SMS Promo', channel: 'SMS', subject: 'Battery Replacement Offer', bodyContent: 'TZ Care: Upgrade your iPhone battery in 30 mins with 6M warranty. Claim now!', targetSegment: 'All High-Freq Customers', budget: 5000, revenueGenerated: 22000, status: 'ACTIVE', scheduledAt: new Date(Date.now() - 1 * 86400000).toISOString(), createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+    { id: 'camp-3', name: 'VIP Loyalty Thanks WhatsApp', channel: 'WHATSAPP', subject: 'Exclusive VIP Gift Voucher', bodyContent: 'Hello VIP customer, use code TZVIP500 for ৳500 flat discount on any repair.', targetSegment: 'VIP', budget: 8000, revenueGenerated: 34500, status: 'SCHEDULED', scheduledAt: new Date(Date.now() + 2 * 86400000).toISOString(), createdAt: new Date(Date.now() - 1 * 86400000).toISOString() },
+    { id: 'camp-4', name: 'Back-To-School Tablet Diagnostic', channel: 'EMAIL', subject: 'Free Tablet Diagnostic Checkup', bodyContent: 'Bring any iPad or Android tablet for free motherboard diagnostic test.', targetSegment: 'Students', budget: 7000, revenueGenerated: 20000, status: 'COMPLETED', scheduledAt: new Date(Date.now() - 15 * 86400000).toISOString(), createdAt: new Date(Date.now() - 20 * 86400000).toISOString() }
+  ];
+  localStorage.setItem('tz_mock_campaigns', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockCampaigns(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_campaigns', JSON.stringify(data));
+}
+
+function getMockCoupons(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_coupons');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    { id: 'cpn-1', code: 'EID15OFF', discountType: 'PERCENTAGE', discountValue: 15, minOrderValue: 2000, redemptionCount: 48, status: 'ACTIVE', expiryDate: '2026-09-30' },
+    { id: 'cpn-2', code: 'TZVIP500', discountType: 'FIXED', discountValue: 500, minOrderValue: 3000, redemptionCount: 19, status: 'ACTIVE', expiryDate: '2026-12-31' },
+    { id: 'cpn-3', code: 'BATTERY100', discountType: 'FIXED', discountValue: 100, minOrderValue: 1000, redemptionCount: 82, status: 'EXPIRED', expiryDate: '2026-07-01' }
+  ];
+  localStorage.setItem('tz_mock_coupons', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockCoupons(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_coupons', JSON.stringify(data));
 }
 
