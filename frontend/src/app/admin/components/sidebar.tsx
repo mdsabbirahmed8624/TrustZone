@@ -127,6 +127,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
   const visibleItems = menuItems.filter(canSee);
 
+  // Single Source of Truth: pick the single best matching menu item with the longest matching href
+  const activeItem = visibleItems.reduce<MenuItem | null>((best, item) => {
+    const matches = pathname === item.href || pathname.startsWith(item.href + '/');
+    if (matches) {
+      if (!best || item.href.length > best.href.length) {
+        return item;
+      }
+    }
+    return best;
+  }, null);
+
+  const activeHref = activeItem?.href;
+
   // Role badge color
   const roleBadgeColor: Record<string, string> = {
     SUPER_ADMIN: 'bg-red-500/15 text-red-500 border-red-500/25',
@@ -193,7 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
           const isLocked = item.flagKey ? !flags[item.flagKey] : false;
           // Handle destination: if flagged out, send to system page
           const destHref = isLocked ? `/admin/system?flag=${item.flagKey}` : item.href;
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          const isActive = item.href === activeHref;
 
           return (
             <Link
