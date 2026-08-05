@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   CalendarRange,
   Calendar as CalendarIcon,
@@ -124,6 +125,9 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = [...LIFECYC
 }, {} as Record<string, { label: string; color: string }>);
 
 export default function EnterpriseBookingsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -244,6 +248,26 @@ export default function EnterpriseBookingsPage() {
     loadData();
   }, [statusFilter, priorityFilter, branchFilter, dateFilter]);
 
+  // Handle URL Query Params for direct navigation to ?id=... or ?edit=...
+  useEffect(() => {
+    if (bookings.length === 0) return;
+    const viewId = searchParams.get('id');
+    const editId = searchParams.get('edit');
+
+    if (viewId) {
+      const match = bookings.find(b => b.id === viewId);
+      if (match) {
+        setViewingBooking(match);
+        setModalTab('details');
+      }
+    } else if (editId) {
+      const match = bookings.find(b => b.id === editId);
+      if (match) {
+        handleEditClick(match);
+      }
+    }
+  }, [searchParams, bookings]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -266,6 +290,34 @@ export default function EnterpriseBookingsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Open Details Modal & update URL query param
+  const handleViewClick = (booking: BookingModel, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setViewingBooking(booking);
+    setModalTab('details');
+    window.history.pushState({}, '', `/admin/bookings?id=${booking.id}`);
+  };
+
+  // Open Edit Modal & update URL query param
+  const handleEditClick = (booking: BookingModel, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingBooking(booking);
+    setFormState(booking);
+    setShowCreateModal(true);
+    window.history.pushState({}, '', `/admin/bookings?edit=${booking.id}`);
+  };
+
+  // Close modals & clear URL params
+  const closeModals = () => {
+    setViewingBooking(null);
+    setShowCreateModal(false);
+    setEditingBooking(null);
+    setShowIntakeModal(null);
+    setShowQRModal(null);
+    setStatusModalBooking(null);
+    window.history.pushState({}, '', `/admin/bookings`);
   };
 
   // Auto Tech Recommendation
@@ -335,8 +387,7 @@ export default function EnterpriseBookingsPage() {
       } else {
         await api.bookings.create(data);
       }
-      setShowCreateModal(false);
-      setEditingBooking(null);
+      closeModals();
       setConflictDialogBooking(null);
       resetForm();
       loadData();
@@ -344,6 +395,45 @@ export default function EnterpriseBookingsPage() {
       console.error('Failed to save booking', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Internal Notes Handler
+  const handleAddInternalNote = async () => {
+    if (!viewingBooking || !newNoteContent.trim()) return;
+    const res = await api.bookings.addInternalNote(viewingBooking.id, newNoteContent, newNotePriority, newNotePinned, 'Staff Admin');
+    if (res.success && res.data) {
+      const updatedNotes = viewingBooking.internalNotesList || [];
+      updatedNotes.unshift(res.data);
+      setViewingBooking({ ...viewingBooking, internalNotesList: updatedNotes });
+      setNewNoteContent('');
+    }
+  };
+
+  // Attachment Upload Handler
+  const handleAddAttachment = async () => {
+    if (!viewingBooking || !attName.trim()) return;
+    const res = await api.bookings.addAttachment(viewingBooking.id, { name: attName, url: attUrl || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=400&q=80', type: attType });
+    if (res.success && res.data) {
+      const updatedAtts = viewingBooking.attachmentsList || [];
+      updatedAtts.unshift(res.data);
+      setViewingBooking({ ...viewingBooking, attachmentsList: updatedAtts });
+      setAttName('');
+      setAttUrl('');
+    }
+  };
+
+  // Communication Dispatch Handler
+  const handleSendCommunication = async () => {
+    if (!viewingBooking || !commMessage.trim()) return;
+    const recipient = commRecipient || viewingBooking.customerPhone || viewingBooking.customerEmail;
+    const res = await api.bookings.sendCustomerMessage(viewingBooking.id, commChannel, commMessage, recipient);
+    if (res.success && res.data) {
+      const updatedLogs = viewingBooking.communicationLogs || [];
+      updatedLogs.unshift(res.data);
+      setViewingBooking({ ...viewingBooking, communicationLogs: updatedLogs });
+      setCommMessage('');
+      alert(`Message dispatched via ${commChannel} to ${recipient}.`);
     }
   };
 
@@ -363,7 +453,6 @@ export default function EnterpriseBookingsPage() {
     try {
       await api.bookings.updateStatus(statusModalBooking.id, targetStatus, newStatusNote);
       
-      // Auto Dispatch WhatsApp Notification
       const msg = `TrustZone Update: Your booking #${statusModalBooking.id} (${statusModalBooking.deviceBrand} ${statusModalBooking.deviceModel}) status is now ${targetStatus}. Note: ${newStatusNote || 'Updated by Desk'}`;
       await api.bookings.sendCustomerMessage(statusModalBooking.id, 'WHATSAPP', msg, statusModalBooking.customerPhone);
       
@@ -424,24 +513,21 @@ export default function EnterpriseBookingsPage() {
     setTechRecommendation(null);
   };
 
-  const handleEditClick = (booking: BookingModel) => {
-    setEditingBooking(booking);
-    setFormState(booking);
-    setShowCreateModal(true);
-  };
-
-  const handleDeleteClick = async (id: string) => {
+  const handleDeleteClick = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (!confirm('Are you sure you want to move this booking to Trash?')) return;
     await api.bookings.delete(id);
     loadData();
   };
 
-  const handleRestoreClick = async (id: string) => {
+  const handleRestoreClick = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     await api.bookings.restore(id);
     loadData();
   };
 
-  const handleDuplicateClick = async (id: string) => {
+  const handleDuplicateClick = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     await api.bookings.duplicate(id);
     loadData();
   };
@@ -547,7 +633,7 @@ export default function EnterpriseBookingsPage() {
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-extrabold text-foreground tracking-tight">Enterprise Booking Desk</h1>
                   <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                    Phase 3 Enterprise Production
+                    Verified Action Handlers
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -746,8 +832,12 @@ export default function EnterpriseBookingsPage() {
                           const statusConfig = STATUS_MAP[b.status] || { label: b.status, color: 'bg-secondary text-foreground' };
                           const token = b.queueToken || `Q-DHQ-0${Math.floor(10 + Math.random() * 89)}`;
                           return (
-                            <tr key={b.id} className="hover:bg-secondary/20 transition-all">
-                              <td className="p-4 text-center">
+                            <tr
+                              key={b.id}
+                              onClick={(e) => handleViewClick(b, e)}
+                              className="hover:bg-secondary/20 transition-all cursor-pointer"
+                            >
+                              <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                                 <button onClick={() => toggleSelectId(b.id)} className="cursor-pointer">
                                   {selectedIds.includes(b.id) ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
                                 </button>
@@ -775,7 +865,7 @@ export default function EnterpriseBookingsPage() {
                                   {b.technicianName}
                                 </span>
                               </td>
-                              <td className="p-4">
+                              <td className="p-4" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   onClick={() => { setStatusModalBooking(b); setTargetStatus(b.status); }}
                                   className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer hover:opacity-80 ${statusConfig.color}`}
@@ -786,43 +876,43 @@ export default function EnterpriseBookingsPage() {
                               <td className="p-4 font-mono font-bold text-emerald-400">
                                 ৳{b.estimatedCost.toLocaleString()}
                               </td>
-                              <td className="p-4 text-right">
+                              <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
                                   <button
-                                    onClick={() => setShowQRModal(b)}
-                                    className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-all"
+                                    onClick={(e) => { e.stopPropagation(); setShowQRModal(b); }}
+                                    className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-all cursor-pointer"
                                     title="View QR Code"
                                   >
                                     <QrCode className="h-4 w-4" />
                                   </button>
 
                                   <button
-                                    onClick={() => setShowIntakeModal(b)}
-                                    className="p-1.5 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all"
+                                    onClick={(e) => { e.stopPropagation(); setShowIntakeModal(b); }}
+                                    className="p-1.5 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all cursor-pointer"
                                     title="Device Intake Wizard"
                                   >
                                     <FileCheck className="h-4 w-4" />
                                   </button>
 
                                   <button
-                                    onClick={() => { setViewingBooking(b); setModalTab('details'); }}
-                                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all"
-                                    title="Details"
+                                    onClick={(e) => handleViewClick(b, e)}
+                                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all cursor-pointer"
+                                    title="View Booking Specification"
                                   >
                                     <Eye className="h-4 w-4" />
                                   </button>
 
                                   <button
-                                    onClick={() => handleEditClick(b)}
-                                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all"
-                                    title="Edit"
+                                    onClick={(e) => handleEditClick(b, e)}
+                                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all cursor-pointer"
+                                    title="Edit Booking Record"
                                   >
                                     <Edit3 className="h-4 w-4" />
                                   </button>
 
                                   <button
-                                    onClick={() => handleDeleteClick(b.id)}
-                                    className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                                    onClick={(e) => handleDeleteClick(b.id, e)}
+                                    className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
                                     title="Trash"
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -937,7 +1027,7 @@ export default function EnterpriseBookingsPage() {
                       {isBooked && (
                         <div className="space-y-2 pt-1">
                           {slotBookings.map((b) => (
-                            <div key={b.id} className="p-2.5 bg-card border border-border/60 rounded-lg text-xs space-y-1">
+                            <div key={b.id} onClick={(e) => handleViewClick(b, e)} className="p-2.5 bg-card border border-border/60 rounded-lg text-xs space-y-1 cursor-pointer hover:border-primary">
                               <div className="flex items-center justify-between font-bold">
                                 <span>{b.customerName}</span>
                                 <span className="font-mono text-[10px] text-primary">{b.id}</span>
@@ -1071,7 +1161,7 @@ export default function EnterpriseBookingsPage() {
                           <td className="p-3">{b.deviceBrand} {b.deviceModel}</td>
                           <td className="p-3 text-right">
                             <button
-                              onClick={() => handleRestoreClick(b.id)}
+                              onClick={(e) => handleRestoreClick(b.id, e)}
                               className="px-3 py-1 bg-emerald-500/20 text-emerald-400 font-bold text-xs rounded-lg hover:bg-emerald-500/30 transition-all cursor-pointer"
                             >
                               Restore Record
@@ -1089,6 +1179,571 @@ export default function EnterpriseBookingsPage() {
         </main>
       </div>
 
+      {/* CREATE / EDIT BOOKING MODAL */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-4xl bg-card border border-border/80 rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto space-y-6">
+            <div className="flex items-center justify-between border-b border-border/60 pb-4">
+              <div>
+                <h2 className="text-lg font-extrabold text-foreground">
+                  {editingBooking ? `Edit Appointment Record #${editingBooking.id}` : 'Create Enterprise Booking'}
+                </h2>
+                <p className="text-xs text-muted-foreground">Smart scheduler with technician recommendation and conflict detection.</p>
+              </div>
+              <button onClick={closeModals} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {techRecommendation && (
+              <div className="p-3.5 bg-primary/10 border border-primary/30 text-foreground text-xs rounded-xl flex items-center justify-between animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-5 w-5 text-primary shrink-0" />
+                  <div>
+                    <span className="font-bold text-primary">Smart Recommendation ({techRecommendation.score}% Match):</span>
+                    <span className="ml-1 text-muted-foreground">{techRecommendation.reason}</span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 bg-primary text-primary-foreground font-bold text-[10px] rounded-lg">
+                  {techRecommendation.name}
+                </span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveBooking} className="space-y-6">
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-primary uppercase tracking-wider">1. Customer Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-1">Customer Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Rafiq Karim"
+                      value={formState.customerName}
+                      onChange={(e) => setFormState({ ...formState, customerName: e.target.value })}
+                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-1">Mobile Phone *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 01711122233"
+                      value={formState.customerPhone}
+                      onChange={(e) => setFormState({ ...formState, customerPhone: e.target.value })}
+                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      placeholder="e.g. rafiq@example.com"
+                      value={formState.customerEmail}
+                      onChange={(e) => setFormState({ ...formState, customerEmail: e.target.value })}
+                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-primary uppercase tracking-wider">2. Device & Diagnostics</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-1">Brand</label>
+                    <select
+                      value={formState.deviceBrand}
+                      onChange={(e) => setFormState({ ...formState, deviceBrand: e.target.value })}
+                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
+                    >
+                      <option value="Apple">Apple</option>
+                      <option value="Samsung">Samsung</option>
+                      <option value="Google">Google</option>
+                      <option value="Xiaomi">Xiaomi</option>
+                      <option value="OnePlus">OnePlus</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-1">Device Model *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. iPhone 14 Pro"
+                      value={formState.deviceModel}
+                      onChange={(e) => setFormState({ ...formState, deviceModel: e.target.value })}
+                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-1">IMEI Number</label>
+                    <input
+                      type="text"
+                      placeholder="15-digit IMEI"
+                      value={formState.imei}
+                      onChange={(e) => setFormState({ ...formState, imei: e.target.value })}
+                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-1">Problem Category</label>
+                    <select
+                      value={formState.problemCategory}
+                      onChange={(e) => {
+                        const cat = e.target.value;
+                        setFormState({ ...formState, problemCategory: cat });
+                        handleAutoRecommendTech(cat, formState.branchId || '');
+                      }}
+                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
+                    >
+                      <option value="SCREEN_DISPLAY">Screen & Display</option>
+                      <option value="BATTERY_POWER">Battery & Power</option>
+                      <option value="MOTHERBOARD_CHIP">Motherboard IC Repair</option>
+                      <option value="CAMERA_LENS">Camera Lens Module</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-primary uppercase tracking-wider">3. Schedule & Technician Assignment</h3>
+                  <button
+                    type="button"
+                    onClick={() => handleAutoRecommendTech(formState.problemCategory || 'SCREEN_DISPLAY', formState.branchId || '')}
+                    className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Auto-Assign Best Technician
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-1">Appointment Date</label>
+                    <input
+                      type="date"
+                      value={formState.appointmentDate}
+                      onChange={(e) => setFormState({ ...formState, appointmentDate: e.target.value })}
+                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-1">Time Slot</label>
+                    <select
+                      value={formState.appointmentTime}
+                      onChange={(e) => setFormState({ ...formState, appointmentTime: e.target.value })}
+                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
+                    >
+                      {TIME_SLOTS_30.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-1">Assigned Technician</label>
+                    <select
+                      value={formState.technicianId}
+                      onChange={(e) => {
+                        const tId = e.target.value;
+                        const tName = tId === 'tech-1' ? 'Tariq Zaman (Lead L4)' : tId === 'tech-2' ? 'Rafiq Ahmed' : 'Nazma Khatun';
+                        setFormState({ ...formState, technicianId: tId, technicianName: tName });
+                      }}
+                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-semibold"
+                    >
+                      <option value="tech-1">Tariq Zaman (Lead L4)</option>
+                      <option value="tech-2">Rafiq Ahmed</option>
+                      <option value="tech-3">Nazma Khatun</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-1">Priority</label>
+                    <select
+                      value={formState.priority}
+                      onChange={(e) => setFormState({ ...formState, priority: e.target.value as any })}
+                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
+                    >
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                      <option value="URGENT">Urgent (VIP Fast-Track)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 border-t border-border/60 pt-4">
+                <button
+                  type="button"
+                  onClick={closeModals}
+                  className="px-4 py-2 bg-secondary text-foreground text-xs font-semibold rounded-xl hover:bg-secondary/80 cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:opacity-90 cursor-pointer shadow-lg shadow-primary/20"
+                >
+                  {loading ? 'Saving Record...' : editingBooking ? 'Update Appointment' : 'Confirm & Schedule Booking'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW DETAILS MODAL */}
+      {viewingBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-3xl bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
+                  Booking Specification #{viewingBooking.id}
+                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${STATUS_MAP[viewingBooking.status]?.color}`}>
+                    {STATUS_MAP[viewingBooking.status]?.label}
+                  </span>
+                </h3>
+              </div>
+              <button onClick={closeModals} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 border-b border-border/60 pb-2 overflow-x-auto text-xs font-bold">
+              <button
+                onClick={() => setModalTab('details')}
+                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'details' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Details & Timeline
+              </button>
+
+              <button
+                onClick={() => setModalTab('internal_notes')}
+                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'internal_notes' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Staff Notes ({viewingBooking.internalNotesList?.length || 0})
+              </button>
+
+              <button
+                onClick={() => setModalTab('attachments')}
+                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'attachments' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Attachments ({viewingBooking.attachmentsList?.length || 0})
+              </button>
+
+              <button
+                onClick={() => setModalTab('communication')}
+                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'communication' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Customer Dispatch Hub
+              </button>
+            </div>
+
+            {modalTab === 'details' && (
+              <div className="space-y-5 text-xs">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-secondary/20 rounded-xl space-y-1 border border-border/60">
+                    <span className="font-bold text-primary block uppercase tracking-wider text-[10px]">Customer Specs</span>
+                    <div className="font-bold text-foreground">{viewingBooking.customerName}</div>
+                    <div className="text-muted-foreground">{viewingBooking.customerPhone}</div>
+                    <div className="text-muted-foreground">{viewingBooking.customerEmail}</div>
+                  </div>
+
+                  <div className="p-3 bg-secondary/20 rounded-xl space-y-1 border border-border/60">
+                    <span className="font-bold text-primary block uppercase tracking-wider text-[10px]">Device & Appointment</span>
+                    <div className="font-bold text-foreground">{viewingBooking.deviceBrand} {viewingBooking.deviceModel}</div>
+                    <div className="text-muted-foreground">IMEI: {viewingBooking.imei || 'N/A'}</div>
+                    <div className="text-muted-foreground">Slot: {viewingBooking.appointmentDate} ({viewingBooking.appointmentTime})</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Audit Log & Status History Timeline</span>
+                  <div className="space-y-2">
+                    {(viewingBooking.history || []).map((h, i) => (
+                      <div key={i} className="p-3 bg-secondary/20 rounded-xl border border-border/60 flex items-start gap-3">
+                        <div className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                        <div className="space-y-0.5">
+                          <div className="font-bold text-foreground flex items-center gap-2">
+                            <span>{h.status}</span>
+                            <span className="text-[10px] text-muted-foreground">({new Date(h.timestamp).toLocaleString()})</span>
+                          </div>
+                          <div className="text-muted-foreground">{h.note}</div>
+                          <div className="text-[10px] text-primary font-semibold">By: {h.updatedBy}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {modalTab === 'internal_notes' && (
+              <div className="space-y-4 text-xs">
+                <div className="p-3 bg-secondary/20 rounded-xl border border-border/60 space-y-2">
+                  <span className="font-bold text-foreground block">Add Staff Private Note</span>
+                  <textarea
+                    rows={2}
+                    placeholder="Type confidential repair note..."
+                    value={newNoteContent}
+                    onChange={(e) => setNewNoteContent(e.target.value)}
+                    className="w-full px-3 py-2 bg-card border border-border rounded-lg text-foreground"
+                  />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={newNotePriority}
+                        onChange={(e) => setNewNotePriority(e.target.value as any)}
+                        className="px-2 py-1 bg-card border border-border rounded-md"
+                      >
+                        <option value="NORMAL">Normal Priority</option>
+                        <option value="HIGH">High Priority</option>
+                        <option value="URGENT">Urgent Note</option>
+                      </select>
+
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newNotePinned}
+                          onChange={(e) => setNewNotePinned(e.target.checked)}
+                        />
+                        <span>Pin Note</span>
+                      </label>
+                    </div>
+
+                    <button
+                      onClick={handleAddInternalNote}
+                      className="px-3 py-1 bg-primary text-primary-foreground font-bold rounded-lg cursor-pointer"
+                    >
+                      Post Note
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {(viewingBooking.internalNotesList || []).map((n) => (
+                    <div key={n.id} className={`p-3 rounded-xl border space-y-1 ${n.isPinned ? 'bg-amber-500/10 border-amber-500/30' : 'bg-secondary/20 border-border/60'}`}>
+                      <div className="flex items-center justify-between font-bold">
+                        <span className="flex items-center gap-1">
+                          {n.isPinned && <Pin className="h-3.5 w-3.5 text-amber-500" />} {n.author}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(n.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="text-muted-foreground">{n.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {modalTab === 'attachments' && (
+              <div className="space-y-4 text-xs">
+                <div className="p-3 bg-secondary/20 rounded-xl border border-border/60 space-y-2">
+                  <span className="font-bold text-foreground block">Upload Device Media / Inspection Document</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Attachment Title..."
+                      value={attName}
+                      onChange={(e) => setAttName(e.target.value)}
+                      className="px-3 py-1.5 bg-card border border-border rounded-lg"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Image URL..."
+                      value={attUrl}
+                      onChange={(e) => setAttUrl(e.target.value)}
+                      className="px-3 py-1.5 bg-card border border-border rounded-lg"
+                    />
+                    <select
+                      value={attType}
+                      onChange={(e) => setAttType(e.target.value as any)}
+                      className="px-3 py-1.5 bg-card border border-border rounded-lg"
+                    >
+                      <option value="PHOTO_BEFORE">Before Repair Photo</option>
+                      <option value="PHOTO_AFTER">After Repair Photo</option>
+                      <option value="PDF">PDF Report</option>
+                      <option value="INVOICE">Invoice Receipt</option>
+                      <option value="WARRANTY_CARD">Warranty Card</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleAddAttachment}
+                    className="px-3 py-1.5 bg-primary text-primary-foreground font-bold rounded-lg cursor-pointer"
+                  >
+                    Attach File
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {(viewingBooking.attachmentsList || []).map((att) => (
+                    <div key={att.id} className="p-2.5 bg-secondary/20 border border-border/60 rounded-xl space-y-1">
+                      <img src={att.url} alt={att.name} className="h-24 w-full object-cover rounded-lg" />
+                      <div className="font-bold truncate">{att.name}</div>
+                      <div className="text-[10px] text-muted-foreground">{att.type}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {modalTab === 'communication' && (
+              <div className="space-y-4 text-xs">
+                <div className="p-3 bg-secondary/20 rounded-xl border border-border/60 space-y-2">
+                  <span className="font-bold text-foreground block">Multi-Channel Customer Dispatch</span>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={commChannel}
+                      onChange={(e) => setCommChannel(e.target.value as any)}
+                      className="px-3 py-1.5 bg-card border border-border rounded-lg font-bold"
+                    >
+                      <option value="SMS">SMS Message</option>
+                      <option value="WHATSAPP">WhatsApp API</option>
+                      <option value="EMAIL">Email Dispatch</option>
+                      <option value="PUSH">App Push Notification</option>
+                    </select>
+
+                    <input
+                      type="text"
+                      placeholder="Recipient (Phone/Email)..."
+                      value={commRecipient || viewingBooking.customerPhone}
+                      onChange={(e) => setCommRecipient(e.target.value)}
+                      className="flex-1 px-3 py-1.5 bg-card border border-border rounded-lg"
+                    />
+                  </div>
+
+                  <textarea
+                    rows={2}
+                    placeholder="Type customer message or click template..."
+                    value={commMessage}
+                    onChange={(e) => setCommMessage(e.target.value)}
+                    className="w-full px-3 py-2 bg-card border border-border rounded-lg"
+                  />
+
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCommMessage(`Dear ${viewingBooking.customerName}, your repair booking #${viewingBooking.id} is CONFIRMED for ${viewingBooking.appointmentDate} at ${viewingBooking.appointmentTime}. - TrustZone`)}
+                        className="px-2 py-0.5 bg-secondary text-[10px] rounded hover:bg-secondary/80"
+                      >
+                        + Confirm Template
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCommMessage(`Dear ${viewingBooking.customerName}, your device ${viewingBooking.deviceBrand} ${viewingBooking.deviceModel} is READY FOR PICKUP at Dhanmondi HQ. - TrustZone`)}
+                        className="px-2 py-0.5 bg-secondary text-[10px] rounded hover:bg-secondary/80"
+                      >
+                        + Ready Template
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={handleSendCommunication}
+                      className="px-4 py-1.5 bg-primary text-primary-foreground font-bold rounded-lg flex items-center gap-1 cursor-pointer"
+                    >
+                      <Send className="h-3.5 w-3.5" /> Dispatch
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="font-bold text-muted-foreground uppercase text-[10px]">Communication Logs</span>
+                  {(viewingBooking.communicationLogs || []).map((l) => (
+                    <div key={l.id} className="p-2.5 bg-secondary/20 border border-border/60 rounded-xl flex items-start justify-between">
+                      <div>
+                        <div className="font-bold flex items-center gap-2">
+                          <span className="px-1.5 py-0.2 bg-primary/20 text-primary text-[9px] rounded">{l.channel}</span>
+                          <span>{l.recipient}</span>
+                        </div>
+                        <p className="text-muted-foreground mt-0.5">{l.message}</p>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{new Date(l.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="border-t border-border/60 pt-4 flex justify-end">
+              <button
+                onClick={closeModals}
+                className="px-4 py-2 bg-secondary text-foreground text-xs font-semibold rounded-xl cursor-pointer"
+              >
+                Close Specification
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STATUS TRANSITION MODAL */}
+      {statusModalBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-4">
+            <h3 className="text-base font-extrabold text-foreground">
+              Update Workflow Status ({statusModalBooking.id})
+            </h3>
+            
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-muted-foreground mb-1">Target Status</label>
+                <select
+                  value={targetStatus}
+                  onChange={(e) => setTargetStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-semibold"
+                >
+                  <optgroup label="Lifecycle Steps">
+                    {LIFECYCLE_STEPS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                  </optgroup>
+                  <optgroup label="Alternative States">
+                    {ALTERNATIVE_STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                  </optgroup>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-muted-foreground mb-1">Audit Transition Note</label>
+                <textarea
+                  rows={3}
+                  placeholder="Provide rationale for status transition..."
+                  value={newStatusNote}
+                  onChange={(e) => setNewStatusNote(e.target.value)}
+                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setStatusModalBooking(null)}
+                className="px-3 py-1.5 bg-secondary text-foreground text-xs font-semibold rounded-lg cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleStatusChangeSubmit}
+                className="px-4 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-lg shadow-md cursor-pointer"
+              >
+                Commit Transition
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* DEVICE INTAKE WIZARD MODAL */}
       {showIntakeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
@@ -1097,7 +1752,7 @@ export default function EnterpriseBookingsPage() {
               <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
                 <FileCheck className="h-5 w-5 text-amber-500" /> Device Intake Summary Wizard (#{showIntakeModal.id})
               </h3>
-              <button onClick={() => setShowIntakeModal(null)} className="p-1.5 text-muted-foreground hover:text-foreground">
+              <button onClick={() => setShowIntakeModal(null)} className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -1135,10 +1790,10 @@ export default function EnterpriseBookingsPage() {
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
-              <button onClick={() => setShowIntakeModal(null)} className="px-4 py-2 bg-secondary text-xs rounded-xl font-semibold">
+              <button onClick={() => setShowIntakeModal(null)} className="px-4 py-2 bg-secondary text-xs rounded-xl font-semibold cursor-pointer">
                 Cancel
               </button>
-              <button onClick={handleSaveIntake} className="px-4 py-2 bg-primary text-primary-foreground text-xs rounded-xl font-bold">
+              <button onClick={handleSaveIntake} className="px-4 py-2 bg-primary text-primary-foreground text-xs rounded-xl font-bold cursor-pointer">
                 Save & Sign Intake
               </button>
             </div>
@@ -1157,7 +1812,7 @@ export default function EnterpriseBookingsPage() {
               className="h-44 w-44 mx-auto bg-white p-2 rounded-2xl border border-border"
             />
             <div className="font-mono text-xs font-bold text-primary">TZ-QR-{showQRModal.id}</div>
-            <button onClick={() => setShowQRModal(null)} className="w-full py-2 bg-secondary text-foreground text-xs font-bold rounded-xl">
+            <button onClick={() => setShowQRModal(null)} className="w-full py-2 bg-secondary text-foreground text-xs font-bold rounded-xl cursor-pointer">
               Close QR Viewer
             </button>
           </div>
