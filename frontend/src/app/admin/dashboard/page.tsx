@@ -61,13 +61,13 @@ const StatWidget: React.FC<StatWidgetProps> = ({
 }) => {
   if (loading) {
     return (
-      <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm animate-pulse space-y-3">
+      <div className="bg-card border border-border/60 p-4 rounded-xl shadow-sm animate-pulse space-y-3">
         <div className="flex justify-between items-center">
-          <div className="h-3 w-20 bg-slate-800 rounded" />
-          <div className="h-7 w-7 bg-slate-800 rounded-lg" />
+          <div className="h-3 w-20 bg-secondary rounded" />
+          <div className="h-7 w-7 bg-secondary rounded-lg" />
         </div>
-        <div className="h-7 w-16 bg-slate-800 rounded" />
-        <div className="h-3 w-28 bg-slate-800 rounded" />
+        <div className="h-7 w-16 bg-secondary rounded" />
+        <div className="h-3 w-28 bg-secondary rounded" />
       </div>
     );
   }
@@ -75,17 +75,17 @@ const StatWidget: React.FC<StatWidgetProps> = ({
   return (
     <div 
       onClick={onClick}
-      className={`bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm hover:border-slate-700 transition duration-200 flex flex-col justify-between relative overflow-hidden group ${onClick ? 'cursor-pointer' : ''}`}
+      className={`bg-card border border-border/60 p-4 rounded-xl shadow-sm hover:border-border transition duration-200 flex flex-col justify-between relative overflow-hidden group ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className="flex justify-between items-start mb-2">
-        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{title}</span>
+        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{title}</span>
         <div className={`h-8 w-8 rounded-lg border flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${colorClass}`}>
           <Icon className="h-4 w-4" />
         </div>
       </div>
       <div>
-        <h3 className="text-xl font-extrabold text-slate-100 tracking-tight mb-1">{value}</h3>
-        <div className="flex items-center gap-1.5 text-xs text-slate-400">
+        <h3 className="text-xl font-extrabold text-foreground tracking-tight mb-1">{value}</h3>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           {trend && (
             <span className={`font-bold flex items-center gap-0.5 text-xs ${trend.positive ? 'text-emerald-400' : 'text-rose-400'}`}>
               {trend.positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
@@ -294,7 +294,7 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-950 text-slate-100 font-sans">
+    <div className="min-h-screen flex bg-secondary/20 text-foreground font-sans">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
 
       <div 
@@ -319,22 +319,22 @@ export default function AdminDashboardPage() {
           )}
 
           {/* Dashboard Header Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-cyan-950/60 via-slate-900 to-indigo-950/60 p-5 rounded-2xl border border-slate-800 shadow-md">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-cyan-950/60 via-slate-900 to-indigo-950/60 p-5 rounded-2xl border border-border/60 shadow-md">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-100 tracking-tight">Executive Control Panel</h1>
+                <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Executive Control Panel</h1>
                 <span className="text-[10px] font-extrabold px-2.5 py-0.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-full uppercase">
                   Enterprise Production v1.2.0
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium mt-1">
+              <p className="text-xs text-muted-foreground font-medium mt-1">
                 Lab Diagnostic Operations & Multi-Branch Resource Ledger for: <span className="text-cyan-400 font-bold capitalize">{branchContext} Branch</span>
               </p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <button 
                 onClick={handleRefresh}
-                className="flex items-center gap-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-sm"
+                className="flex items-center gap-2 bg-card border border-border/60 hover:bg-secondary text-foreground text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-sm"
               >
                 <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin text-cyan-400' : ''}`} />
                 <span>Refresh Data</span>
@@ -441,7 +441,7 @@ export default function AdminDashboardPage() {
               value={stats.activeTechnicians}
               description="on-duty diagnostic lab engineers"
               icon={Users}
-              colorClass="text-slate-400 bg-slate-500/10 border-slate-500/20"
+              colorClass="text-muted-foreground bg-slate-500/10 border-slate-500/20"
               loading={loading}
               onClick={() => window.location.href = '/admin/technicians'}
             />
@@ -466,43 +466,43 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Interactive Quick Actions Console */}
-          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
-            <h2 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">Quick Actions Console</h2>
+          <div className="bg-card border border-border/60 p-5 rounded-2xl shadow-sm">
+            <h2 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-4">Quick Actions Console</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <button 
                 onClick={() => setShowRepairModal(true)}
-                className="flex flex-col items-center justify-center p-4 bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 rounded-xl transition text-center group cursor-pointer"
+                className="flex flex-col items-center justify-center p-4 bg-secondary/20 hover:bg-secondary/80 border border-border/60 rounded-xl transition text-center group cursor-pointer"
               >
                 <Wrench className="h-5 w-5 text-cyan-400 group-hover:scale-110 transition" />
-                <span className="text-xs font-bold text-slate-200 mt-2">Log Diagnostic Ticket</span>
-                <span className="text-[10px] text-slate-400 mt-0.5">Add device repair entry</span>
+                <span className="text-xs font-bold text-foreground mt-2">Log Diagnostic Ticket</span>
+                <span className="text-[10px] text-muted-foreground mt-0.5">Add device repair entry</span>
               </button>
 
               <button 
                 onClick={() => setShowCustomerModal(true)}
-                className="flex flex-col items-center justify-center p-4 bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 rounded-xl transition text-center group cursor-pointer"
+                className="flex flex-col items-center justify-center p-4 bg-secondary/20 hover:bg-secondary/80 border border-border/60 rounded-xl transition text-center group cursor-pointer"
               >
                 <UserPlus className="h-5 w-5 text-emerald-400 group-hover:scale-110 transition" />
-                <span className="text-xs font-bold text-slate-200 mt-2">Register Customer</span>
-                <span className="text-[10px] text-slate-400 mt-0.5">Add loyalty customer log</span>
+                <span className="text-xs font-bold text-foreground mt-2">Register Customer</span>
+                <span className="text-[10px] text-muted-foreground mt-0.5">Add loyalty customer log</span>
               </button>
 
               <button 
                 onClick={() => setShowTechnicianModal(true)}
-                className="flex flex-col items-center justify-center p-4 bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 rounded-xl transition text-center group cursor-pointer"
+                className="flex flex-col items-center justify-center p-4 bg-secondary/20 hover:bg-secondary/80 border border-border/60 rounded-xl transition text-center group cursor-pointer"
               >
                 <UserCheck className="h-5 w-5 text-purple-400 group-hover:scale-110 transition" />
-                <span className="text-xs font-bold text-slate-200 mt-2">Assign Lab Technician</span>
-                <span className="text-[10px] text-slate-400 mt-0.5">Dispatch repair load</span>
+                <span className="text-xs font-bold text-foreground mt-2">Assign Lab Technician</span>
+                <span className="text-[10px] text-muted-foreground mt-0.5">Dispatch repair load</span>
               </button>
 
               <button 
                 onClick={handleExecuteBackup}
-                className="flex flex-col items-center justify-center p-4 bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 rounded-xl transition text-center group cursor-pointer"
+                className="flex flex-col items-center justify-center p-4 bg-secondary/20 hover:bg-secondary/80 border border-border/60 rounded-xl transition text-center group cursor-pointer"
               >
                 <Database className="h-5 w-5 text-indigo-400 group-hover:scale-110 transition" />
-                <span className="text-xs font-bold text-slate-200 mt-2">Database Backup</span>
-                <span className="text-[10px] text-slate-400 mt-0.5">Execute immediate snapshot</span>
+                <span className="text-xs font-bold text-foreground mt-2">Database Backup</span>
+                <span className="text-[10px] text-muted-foreground mt-0.5">Execute immediate snapshot</span>
               </button>
             </div>
           </div>
@@ -510,12 +510,12 @@ export default function AdminDashboardPage() {
           {/* Interactive SVG Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Chart 1: Repair Trend & Monthly Revenue */}
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+            <div className="bg-card border border-border/60 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
               <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-1">Repair Load Trend (Weekly)</h3>
-                <p className="text-[10px] text-slate-400 font-medium">Weekly volume comparison of diagnostic and repair requests</p>
+                <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-1">Repair Load Trend (Weekly)</h3>
+                <p className="text-[10px] text-muted-foreground font-medium">Weekly volume comparison of diagnostic and repair requests</p>
               </div>
-              <div className="h-60 mt-4 flex items-end justify-between relative border-b border-l border-slate-800 pl-2 pb-2">
+              <div className="h-60 mt-4 flex items-end justify-between relative border-b border-l border-border/60 pl-2 pb-2">
                 <svg className="absolute inset-0 h-full w-full p-6 overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <line x1="0" y1="25" x2="100" y2="25" stroke="#334155" strokeWidth="0.5" strokeDasharray="2" />
                   <line x1="0" y1="50" x2="100" y2="50" stroke="#334155" strokeWidth="0.5" strokeDasharray="2" />
@@ -540,20 +540,20 @@ export default function AdminDashboardPage() {
                     </linearGradient>
                   </defs>
                 </svg>
-                <div className="absolute bottom-1 left-4 text-[9px] font-bold text-slate-400">Week 1 (24 Repairs)</div>
-                <div className="absolute bottom-1 left-1/4 text-[9px] font-bold text-slate-400">Week 2 (45 Repairs)</div>
-                <div className="absolute bottom-1 left-1/2 text-[9px] font-bold text-slate-400">Week 3 (62 Repairs)</div>
-                <div className="absolute bottom-1 left-3/4 text-[9px] font-bold text-slate-400">Week 4 (88 Repairs)</div>
+                <div className="absolute bottom-1 left-4 text-[9px] font-bold text-muted-foreground">Week 1 (24 Repairs)</div>
+                <div className="absolute bottom-1 left-1/4 text-[9px] font-bold text-muted-foreground">Week 2 (45 Repairs)</div>
+                <div className="absolute bottom-1 left-1/2 text-[9px] font-bold text-muted-foreground">Week 3 (62 Repairs)</div>
+                <div className="absolute bottom-1 left-3/4 text-[9px] font-bold text-muted-foreground">Week 4 (88 Repairs)</div>
               </div>
             </div>
 
             {/* Chart 2: Monthly Revenue */}
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+            <div className="bg-card border border-border/60 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
               <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-1">Monthly Revenue Performance</h3>
-                <p className="text-[10px] text-slate-400 font-medium">Net invoice billing target performance (BDT Millions)</p>
+                <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-1">Monthly Revenue Performance</h3>
+                <p className="text-[10px] text-muted-foreground font-medium">Net invoice billing target performance (BDT Millions)</p>
               </div>
-              <div className="h-60 mt-4 flex items-end justify-around border-b border-l border-slate-800 pl-2 pb-2">
+              <div className="h-60 mt-4 flex items-end justify-around border-b border-l border-border/60 pl-2 pb-2">
                 {[
                   { m: 'Jan', v: 40, c: 'bg-cyan-500', val: '৳600K' },
                   { m: 'Feb', v: 60, c: 'bg-cyan-500', val: '৳900K' },
@@ -568,17 +568,17 @@ export default function AdminDashboardPage() {
                       style={{ height: `${bar.v}%` }}
                       title={bar.val}
                     />
-                    <span className="text-[9px] font-bold text-slate-400 mt-2">{bar.m}</span>
+                    <span className="text-[9px] font-bold text-muted-foreground mt-2">{bar.m}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Chart 3: Top Brands Device Mix */}
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+            <div className="bg-card border border-border/60 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
               <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-1">Device Brand Mix</h3>
-                <p className="text-[10px] text-slate-400 font-medium">Distribution of repair requests by smartphone manufacturers</p>
+                <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-1">Device Brand Mix</h3>
+                <p className="text-[10px] text-muted-foreground font-medium">Distribution of repair requests by smartphone manufacturers</p>
               </div>
               <div className="h-56 mt-4 flex items-center justify-around">
                 <div className="relative h-32 w-32 shrink-0">
@@ -589,32 +589,32 @@ export default function AdminDashboardPage() {
                     <circle cx="18" cy="18" r="15.915" fill="none" stroke="#c084fc" strokeWidth="3.5" strokeDasharray="25 100" strokeDashoffset="0" />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-base font-extrabold text-slate-100">Apple</span>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase">45% Share</span>
+                    <span className="text-base font-extrabold text-foreground">Apple</span>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase">45% Share</span>
                   </div>
                 </div>
                 <div className="space-y-2.5 text-xs font-bold">
                   <div className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded bg-cyan-400" />
-                    <span className="text-slate-200">Apple (45%)</span>
+                    <span className="text-foreground">Apple (45%)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded bg-teal-400" />
-                    <span className="text-slate-200">Samsung (30%)</span>
+                    <span className="text-foreground">Samsung (30%)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded bg-purple-400" />
-                    <span className="text-slate-200">Xiaomi / Others (25%)</span>
+                    <span className="text-foreground">Xiaomi / Others (25%)</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Chart 4: Technician SLA Performance */}
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+            <div className="bg-card border border-border/60 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
               <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-1">Technician SLA Performance</h3>
-                <p className="text-[10px] text-slate-400 font-medium">Average repair turnaround and SLA compliance (Target: 95%)</p>
+                <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-1">Technician SLA Performance</h3>
+                <p className="text-[10px] text-muted-foreground font-medium">Average repair turnaround and SLA compliance (Target: 95%)</p>
               </div>
               <div className="h-56 mt-4 space-y-4 flex flex-col justify-center">
                 {[
@@ -625,10 +625,10 @@ export default function AdminDashboardPage() {
                 ].map((tech, idx) => (
                   <div key={idx} className="space-y-1.5">
                     <div className="flex justify-between text-xs font-bold">
-                      <span className="text-slate-200">{tech.name}</span>
+                      <span className="text-foreground">{tech.name}</span>
                       <span className={tech.status}>{tech.val}% SLA</span>
                     </div>
-                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
                       <div 
                         className="h-full rounded-full transition-all duration-1000 bg-cyan-400"
                         style={{ width: `${tech.val}%` }}
@@ -642,11 +642,11 @@ export default function AdminDashboardPage() {
 
           {/* Activity Feed and System Diagnostics row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
-              <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-800">
+            <div className="lg:col-span-2 bg-card border border-border/60 p-5 rounded-2xl shadow-sm">
+              <div className="flex justify-between items-center mb-5 pb-3 border-b border-border/60">
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">ERP Real-Time Activity Logs</h3>
-                  <p className="text-[10px] text-slate-400 font-medium">Database-driven audit trace of administrative & repair events</p>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">ERP Real-Time Activity Logs</h3>
+                  <p className="text-[10px] text-muted-foreground font-medium">Database-driven audit trace of administrative & repair events</p>
                 </div>
                 <span className="text-[9px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded-full">
                   Central Audit System
@@ -655,9 +655,9 @@ export default function AdminDashboardPage() {
               <ActivityFeed activities={activities.length > 0 ? activities : undefined} maxItems={5} />
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+            <div className="bg-card border border-border/60 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
               <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">Diagnostic Systems Health</h3>
+                <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-4">Diagnostic Systems Health</h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
                     <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
@@ -685,8 +685,8 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
               
-              <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-[10px] text-slate-400 font-mono leading-relaxed mt-4">
-                <span className="font-extrabold text-slate-200 block mb-0.5">ERP Security Policy:</span>
+              <div className="p-3.5 bg-secondary/20 border border-border/60 rounded-xl text-[10px] text-muted-foreground font-mono leading-relaxed mt-4">
+                <span className="font-extrabold text-foreground block mb-0.5">ERP Security Policy:</span>
                 Session auto-lock activates after 15 minutes of inactivity. Keep administrative workstation secured.
               </div>
             </div>
@@ -696,57 +696,57 @@ export default function AdminDashboardPage() {
 
       {/* QUICK ACTION MODAL 1: Create Repair Ticket */}
       {showRepairModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-extrabold text-slate-100 flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-secondary/20 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border/60 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-3">
+              <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
                 <Wrench className="h-5 w-5 text-cyan-400" /> Log New Diagnostic Ticket
               </h3>
-              <button onClick={() => setShowRepairModal(false)} className="text-slate-400 hover:text-slate-200">
+              <button onClick={() => setShowRepairModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleCreateRepair} className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase">Customer Name *</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Customer Name *</label>
                 <input 
                   type="text" 
                   value={repairForm.customerName}
                   onChange={e => setRepairForm({ ...repairForm, customerName: e.target.value })}
                   placeholder="e.g. Tanvir Hossain" 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-cyan-500 outline-none"
+                  className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-cyan-500 outline-none"
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">Phone Number *</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Phone Number *</label>
                   <input 
                     type="text" 
                     value={repairForm.customerPhone}
                     onChange={e => setRepairForm({ ...repairForm, customerPhone: e.target.value })}
                     placeholder="01819283746" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-cyan-500 outline-none"
+                    className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-cyan-500 outline-none"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">Estimated Cost (BDT)</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Estimated Cost (BDT)</label>
                   <input 
                     type="number" 
                     value={repairForm.estimatedCost}
                     onChange={e => setRepairForm({ ...repairForm, estimatedCost: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-cyan-500 outline-none"
+                    className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-cyan-500 outline-none"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">Device Brand</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Device Brand</label>
                   <select 
                     value={repairForm.deviceBrand}
                     onChange={e => setRepairForm({ ...repairForm, deviceBrand: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-cyan-500 outline-none"
+                    className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-cyan-500 outline-none"
                   >
                     <option value="Apple">Apple</option>
                     <option value="Samsung">Samsung</option>
@@ -756,27 +756,27 @@ export default function AdminDashboardPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">Device Model</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Device Model</label>
                   <input 
                     type="text" 
                     value={repairForm.deviceModel}
                     onChange={e => setRepairForm({ ...repairForm, deviceModel: e.target.value })}
                     placeholder="e.g. iPhone 13 Pro" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-cyan-500 outline-none"
+                    className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-cyan-500 outline-none"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase">Issue Description</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Issue Description</label>
                 <textarea 
                   value={repairForm.issueDescription}
                   onChange={e => setRepairForm({ ...repairForm, issueDescription: e.target.value })}
                   rows={2}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-cyan-500 outline-none"
+                  className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-cyan-500 outline-none"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-                <button type="button" onClick={() => setShowRepairModal(false)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold">Cancel</button>
+              <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+                <button type="button" onClick={() => setShowRepairModal(false)} className="px-4 py-2 bg-secondary hover:bg-slate-700 text-foreground rounded-lg text-xs font-bold">Cancel</button>
                 <button type="submit" className="px-5 py-2 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-extrabold rounded-lg text-xs">Create Ticket</button>
               </div>
             </form>
@@ -786,74 +786,74 @@ export default function AdminDashboardPage() {
 
       {/* QUICK ACTION MODAL 2: Register Customer */}
       {showCustomerModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-extrabold text-slate-100 flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-secondary/20 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border/60 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-3">
+              <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-emerald-400" /> Register Loyalty Customer
               </h3>
-              <button onClick={() => setShowCustomerModal(false)} className="text-slate-400 hover:text-slate-200">
+              <button onClick={() => setShowCustomerModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleRegisterCustomer} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">First Name *</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase">First Name *</label>
                   <input 
                     type="text" 
                     value={customerForm.firstName}
                     onChange={e => setCustomerForm({ ...customerForm, firstName: e.target.value })}
                     placeholder="First Name" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-emerald-500 outline-none"
+                    className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-emerald-500 outline-none"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">Last Name</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Last Name</label>
                   <input 
                     type="text" 
                     value={customerForm.lastName}
                     onChange={e => setCustomerForm({ ...customerForm, lastName: e.target.value })}
                     placeholder="Last Name" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-emerald-500 outline-none"
+                    className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-emerald-500 outline-none"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">Phone *</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Phone *</label>
                   <input 
                     type="text" 
                     value={customerForm.phone}
                     onChange={e => setCustomerForm({ ...customerForm, phone: e.target.value })}
                     placeholder="01711000000" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-emerald-500 outline-none"
+                    className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-emerald-500 outline-none"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">Email Address</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Email Address</label>
                   <input 
                     type="email" 
                     value={customerForm.email}
                     onChange={e => setCustomerForm({ ...customerForm, email: e.target.value })}
                     placeholder="customer@email.com" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-emerald-500 outline-none"
+                    className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-emerald-500 outline-none"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase">Address Location</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Address Location</label>
                 <input 
                   type="text" 
                   value={customerForm.address}
                   onChange={e => setCustomerForm({ ...customerForm, address: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-emerald-500 outline-none"
+                  className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-emerald-500 outline-none"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-                <button type="button" onClick={() => setShowCustomerModal(false)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold">Cancel</button>
+              <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+                <button type="button" onClick={() => setShowCustomerModal(false)} className="px-4 py-2 bg-secondary hover:bg-slate-700 text-foreground rounded-lg text-xs font-bold">Cancel</button>
                 <button type="submit" className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold rounded-lg text-xs">Save Customer</button>
               </div>
             </form>
@@ -863,34 +863,34 @@ export default function AdminDashboardPage() {
 
       {/* QUICK ACTION MODAL 3: Assign Technician */}
       {showTechnicianModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-extrabold text-slate-100 flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-secondary/20 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border/60 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-3">
+              <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
                 <UserCheck className="h-5 w-5 text-purple-400" /> Dispatch Lab Technician
               </h3>
-              <button onClick={() => setShowTechnicianModal(false)} className="text-slate-400 hover:text-slate-200">
+              <button onClick={() => setShowTechnicianModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleAssignTech} className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase">Target Repair Ticket ID *</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Target Repair Ticket ID *</label>
                 <input 
                   type="text" 
                   value={techForm.ticketId}
                   onChange={e => setTechForm({ ...techForm, ticketId: e.target.value })}
                   placeholder="REP-9021" 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-purple-500 outline-none"
+                  className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-purple-500 outline-none"
                   required
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase">Select Diagnostic Specialist *</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Select Diagnostic Specialist *</label>
                 <select 
                   value={techForm.technicianName}
                   onChange={e => setTechForm({ ...techForm, technicianName: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-purple-500 outline-none"
+                  className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-purple-500 outline-none"
                 >
                   <option value="Tariq Zaman (L4 Specialist)">Tariq Zaman (L4 Specialist)</option>
                   <option value="Kamrul Hasan (Lead Specialist)">Kamrul Hasan (Lead Specialist)</option>
@@ -899,19 +899,19 @@ export default function AdminDashboardPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase">Repair Queue Priority</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Repair Queue Priority</label>
                 <select 
                   value={techForm.priority}
                   onChange={e => setTechForm({ ...techForm, priority: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 mt-1 focus:border-purple-500 outline-none"
+                  className="w-full bg-secondary/20 border border-border/60 rounded-lg p-2.5 text-xs text-foreground mt-1 focus:border-purple-500 outline-none"
                 >
                   <option value="HIGH">HIGH (Urgent SLA 24 Hours)</option>
                   <option value="NORMAL">NORMAL (Standard SLA 48 Hours)</option>
                   <option value="LOW">LOW (Standard Maintenance)</option>
                 </select>
               </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-                <button type="button" onClick={() => setShowTechnicianModal(false)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold">Cancel</button>
+              <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+                <button type="button" onClick={() => setShowTechnicianModal(false)} className="px-4 py-2 bg-secondary hover:bg-slate-700 text-foreground rounded-lg text-xs font-bold">Cancel</button>
                 <button type="submit" className="px-5 py-2 bg-purple-500 hover:bg-purple-600 text-slate-950 font-extrabold rounded-lg text-xs">Dispatch Job</button>
               </div>
             </form>

@@ -254,7 +254,7 @@ export default function InventoryPage() {
   const lowStockCount = parts.filter(p => p.isLowStock).length;
 
   return (
-    <div className="min-h-screen flex bg-background text-slate-100">
+    <div className="min-h-screen flex bg-background text-foreground">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       
       <div className={`flex-grow flex flex-col transition-all duration-300 min-w-0 ${sidebarOpen ? 'md:pl-64' : 'md:pl-20'}`}>
@@ -272,7 +272,7 @@ export default function InventoryPage() {
                 <Archive className="h-8 w-8 text-indigo-500" />
                 Inventory & Stock Management
               </h1>
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="text-muted-foreground text-sm mt-1">
                 Monitor buffer stock limits, process transfers, record valuation audit trails, and generate barcodes.
               </p>
             </div>
@@ -280,49 +280,49 @@ export default function InventoryPage() {
 
           {/* Stats Bar */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-              <span className="text-xs font-semibold text-slate-400">Total Products</span>
+            <div className="bg-card border border-border/60 rounded-xl p-4">
+              <span className="text-xs font-semibold text-muted-foreground">Total Products</span>
               <h3 className="text-2xl font-bold text-white mt-1">{stats.totalProducts || parts.length}</h3>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-              <span className="text-xs font-semibold text-slate-400">Total Stock Units</span>
+            <div className="bg-card border border-border/60 rounded-xl p-4">
+              <span className="text-xs font-semibold text-muted-foreground">Total Stock Units</span>
               <h3 className="text-2xl font-bold text-blue-400 mt-1">{stats.totalPartsQuantity || 0}</h3>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-              <span className="text-xs font-semibold text-slate-400">In Stock</span>
+            <div className="bg-card border border-border/60 rounded-xl p-4">
+              <span className="text-xs font-semibold text-muted-foreground">In Stock</span>
               <h3 className="text-2xl font-bold text-emerald-400 mt-1">{stats.inStockCount || 0}</h3>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-              <span className="text-xs font-semibold text-slate-400">Low Stock</span>
+            <div className="bg-card border border-border/60 rounded-xl p-4">
+              <span className="text-xs font-semibold text-muted-foreground">Low Stock</span>
               <h3 className="text-2xl font-bold text-amber-400 mt-1">{stats.lowStockCount || lowStockCount}</h3>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-              <span className="text-xs font-semibold text-slate-400">Out of Stock</span>
+            <div className="bg-card border border-border/60 rounded-xl p-4">
+              <span className="text-xs font-semibold text-muted-foreground">Out of Stock</span>
               <h3 className="text-2xl font-bold text-red-400 mt-1">{stats.outOfStockCount || 0}</h3>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-              <span className="text-xs font-semibold text-slate-400">Total Valuation</span>
+            <div className="bg-card border border-border/60 rounded-xl p-4">
+              <span className="text-xs font-semibold text-muted-foreground">Total Valuation</span>
               <h3 className="text-xl font-bold text-indigo-400 mt-1">BDT {(stats.totalValuation || totalValuation).toLocaleString()}</h3>
             </div>
           </div>
 
           {/* Navigation Tabs */}
-          <div className="border-b border-slate-800 flex gap-4 text-sm">
+          <div className="border-b border-border/60 flex gap-4 text-sm">
             <button 
               onClick={() => setViewTab('catalog')}
-              className={`pb-3 font-semibold transition ${viewTab === 'catalog' ? 'border-b-2 border-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+              className={`pb-3 font-semibold transition ${viewTab === 'catalog' ? 'border-b-2 border-indigo-500 text-white' : 'text-muted-foreground hover:text-white'}`}
             >
               Inventory Catalog
             </button>
             <button 
               onClick={() => setViewTab('transfers')}
-              className={`pb-3 font-semibold transition ${viewTab === 'transfers' ? 'border-b-2 border-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+              className={`pb-3 font-semibold transition ${viewTab === 'transfers' ? 'border-b-2 border-indigo-500 text-white' : 'text-muted-foreground hover:text-white'}`}
             >
               Inter-Branch Transfers
             </button>
             <button 
               onClick={() => setViewTab('movements')}
-              className={`pb-3 font-semibold transition ${viewTab === 'movements' ? 'border-b-2 border-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+              className={`pb-3 font-semibold transition ${viewTab === 'movements' ? 'border-b-2 border-indigo-500 text-white' : 'text-muted-foreground hover:text-white'}`}
             >
               Stock Audit Trail
             </button>
@@ -332,15 +332,15 @@ export default function InventoryPage() {
           {viewTab === 'catalog' && (
             <div className="space-y-6">
               {/* Filter bar */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row gap-4">
+              <div className="bg-card border border-border/60 rounded-xl p-4 flex flex-col md:flex-row gap-4">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-slate-500" />
+                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
                   <input 
                     type="text"
                     placeholder="Search catalog SKU, name, brand compatibility..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full pl-10 pr-4 py-2 bg-secondary/20 border border-border/60 rounded-lg text-foreground placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
@@ -348,7 +348,7 @@ export default function InventoryPage() {
                   <select
                     value={branchFilter}
                     onChange={(e) => setBranchFilter(e.target.value)}
-                    className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none"
+                    className="px-3 py-2 bg-secondary/20 border border-border/60 rounded-lg text-foreground focus:outline-none"
                   >
                     {branches.map(b => (
                       <option key={b.id} value={b.id}>{b.name} Stock</option>
@@ -360,21 +360,21 @@ export default function InventoryPage() {
               {/* Grid content split */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                  <div className="bg-card border border-border/60 rounded-xl overflow-hidden">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-slate-800 text-slate-400 text-xs font-semibold uppercase bg-slate-950/50">
+                        <tr className="border-b border-border/60 text-muted-foreground text-xs font-semibold uppercase bg-secondary/20">
                           <th className="p-4">SKU / Item Name</th>
                           <th className="p-4">Compatibility</th>
                           <th className="p-4">Branch Stock</th>
                           <th className="p-4">Reserved</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800 text-slate-300">
+                      <tbody className="divide-y divide-slate-800 text-foreground">
                         {parts.map((p) => (
                           <tr 
                             key={p.id}
-                            className={`hover:bg-slate-800/40 cursor-pointer transition ${selectedPart?.id === p.id ? 'bg-indigo-950/20' : ''}`}
+                            className={`hover:bg-secondary/40 cursor-pointer transition ${selectedPart?.id === p.id ? 'bg-indigo-950/20' : ''}`}
                             onClick={() => fetchPartDetails(p.id)}
                           >
                             <td className="p-4">
@@ -382,13 +382,13 @@ export default function InventoryPage() {
                               <h3 className="font-semibold text-white mt-0.5">{p.name}</h3>
                             </td>
                             <td className="p-4">
-                              <span className="text-xs bg-slate-950 border border-slate-850 px-2 py-1 rounded text-slate-400">
+                              <span className="text-xs bg-secondary/20 border border-border/60 px-2 py-1 rounded text-muted-foreground">
                                 {p.brandCompatibility}
                               </span>
                             </td>
                             <td className="p-4">
                               <div className="flex items-center gap-2">
-                                <span className={`font-bold ${p.isLowStock ? 'text-red-400' : 'text-slate-200'}`}>
+                                <span className={`font-bold ${p.isLowStock ? 'text-red-400' : 'text-foreground'}`}>
                                   {p.branchStock} units
                                 </span>
                                 {p.isLowStock && (
@@ -399,7 +399,7 @@ export default function InventoryPage() {
                               </div>
                             </td>
                             <td className="p-4">
-                              <span className="text-xs text-slate-400">{p.reservedStock} reserved</span>
+                              <span className="text-xs text-muted-foreground">{p.reservedStock} reserved</span>
                             </td>
                           </tr>
                         ))}
@@ -411,22 +411,22 @@ export default function InventoryPage() {
                 {/* Part details drawer panel */}
                 <div>
                   {selectedPart ? (
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6 sticky top-6">
+                    <div className="bg-card border border-border/60 rounded-xl p-6 space-y-6 sticky top-6">
                       <div className="flex justify-between items-start">
                         <div>
                           <span className="text-xs text-indigo-400 font-mono font-bold">{selectedPart.sku}</span>
                           <h2 className="text-xl font-bold text-white mt-1">{selectedPart.name}</h2>
-                          <p className="text-xs text-slate-400 mt-1">Category: {selectedPart.category} ({selectedPart.brand})</p>
+                          <p className="text-xs text-muted-foreground mt-1">Category: {selectedPart.category} ({selectedPart.brand})</p>
                         </div>
-                        <button onClick={() => setSelectedPart(null)} className="text-slate-400 hover:text-white">
+                        <button onClick={() => setSelectedPart(null)} className="text-muted-foreground hover:text-white">
                           <X className="h-5 w-5" />
                         </button>
                       </div>
 
                       {/* Mock QR/Barcode */}
-                      <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center gap-2">
-                        <QrCode className="h-28 w-28 text-slate-400" />
-                        <span className="text-[10px] text-slate-500 font-mono tracking-widest">{selectedPart.id.toUpperCase().substring(0, 16)}</span>
+                      <div className="bg-secondary/20 border border-border/60 rounded-xl p-4 flex flex-col items-center justify-center gap-2">
+                        <QrCode className="h-28 w-28 text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground font-mono tracking-widest">{selectedPart.id.toUpperCase().substring(0, 16)}</span>
                       </div>
 
                       {/* Stock Actions */}
@@ -442,18 +442,18 @@ export default function InventoryPage() {
                             setFromBranchId(branchFilter);
                             setIsTransferModalOpen(true);
                           }}
-                          className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-xs px-3 py-2 rounded-lg flex items-center justify-center gap-1"
+                          className="flex-1 bg-secondary hover:bg-slate-700 text-foreground border border-border font-medium text-xs px-3 py-2 rounded-lg flex items-center justify-center gap-1"
                         >
                           <ArrowLeftRight className="h-3.5 w-3.5" /> Transfer
                         </button>
                       </div>
 
                       {/* Branch Stock Allocation */}
-                      <div className="space-y-3 border-t border-slate-850 pt-4">
-                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Branch Stock Allocations</h3>
+                      <div className="space-y-3 border-t border-border/60 pt-4">
+                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Branch Stock Allocations</h3>
                         <div className="space-y-2">
                           {selectedPart.branchInventory?.map((bi: any) => (
-                            <div key={bi.id} className="bg-slate-950 p-3 rounded-lg border border-slate-850 flex justify-between items-center text-xs">
+                            <div key={bi.id} className="bg-secondary/20 p-3 rounded-lg border border-border/60 flex justify-between items-center text-xs">
                               <span className="font-semibold text-slate-350">{bi.branch.name.split(' ')[0]}</span>
                               <span className="font-bold text-white">{bi.quantity} units</span>
                             </div>
@@ -462,8 +462,8 @@ export default function InventoryPage() {
                       </div>
 
                       {/* Reservances */}
-                      <div className="space-y-3 border-t border-slate-850 pt-4">
-                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                      <div className="space-y-3 border-t border-border/60 pt-4">
+                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
                           <span>Active Ticket Reserves</span>
                           <span className="text-[10px] bg-indigo-600/20 text-indigo-400 px-2 py-0.5 rounded font-bold">
                             {selectedPart.reservedCount} locked
@@ -471,19 +471,19 @@ export default function InventoryPage() {
                         </h3>
                         <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                           {selectedPart.reservedTickets?.map((t: any) => (
-                            <div key={t.ticketId} className="bg-slate-950 p-2 rounded border border-slate-850 text-[11px] leading-relaxed">
+                            <div key={t.ticketId} className="bg-secondary/20 p-2 rounded border border-border/60 text-[11px] leading-relaxed">
                               <div className="flex justify-between items-center font-semibold text-white">
                                 <span>{t.deviceModel}</span>
                                 <span className="text-amber-400">{t.status}</span>
                               </div>
-                              <p className="text-[10px] text-slate-500 mt-0.5">Assigned to: {t.customerName}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">Assigned to: {t.customerName}</p>
                             </div>
                           ))}
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-500 flex flex-col items-center justify-center gap-2 sticky top-6">
+                    <div className="bg-card border border-border/60 rounded-xl p-12 text-center text-muted-foreground flex flex-col items-center justify-center gap-2 sticky top-6">
                       <QrCode className="h-10 w-10 text-slate-650" />
                       <p className="text-sm">Select a part SKU on the left list to review detailed metrics, QR labels, and allocations.</p>
                     </div>
@@ -495,10 +495,10 @@ export default function InventoryPage() {
 
           {/* Transfers tab */}
           {viewTab === 'transfers' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="bg-card border border-border/60 rounded-xl overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-xs font-semibold uppercase bg-slate-950/50">
+                  <tr className="border-b border-border/60 text-muted-foreground text-xs font-semibold uppercase bg-secondary/20">
                     <th className="p-4">Part Details</th>
                     <th className="p-4">Transit Route</th>
                     <th className="p-4">Quantity</th>
@@ -508,26 +508,26 @@ export default function InventoryPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-800 text-slate-350 text-xs">
                   {transfers.map((t) => (
-                    <tr key={t.id} className="hover:bg-slate-800/40 transition">
+                    <tr key={t.id} className="hover:bg-secondary/40 transition">
                       <td className="p-4">
                         <span className="font-bold text-white block">{t.part.name}</span>
                         <span className="text-[10px] text-indigo-400 font-mono mt-0.5">{t.part.sku}</span>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-1">
-                          <span className="text-slate-300">{t.fromBranch.name.split(' ')[0]}</span>
-                          <span className="text-slate-500">&rarr;</span>
+                          <span className="text-foreground">{t.fromBranch.name.split(' ')[0]}</span>
+                          <span className="text-muted-foreground">&rarr;</span>
                           <span className="text-slate-350">{t.toBranch.name.split(' ')[0]}</span>
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className="font-semibold text-slate-200">{t.quantity} units</span>
+                        <span className="font-semibold text-foreground">{t.quantity} units</span>
                       </td>
                       <td className="p-4">
                         <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
                           t.status === 'TRANSFERRED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
                           t.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse' :
-                          'bg-slate-850 text-slate-400 border border-slate-750'
+                          'bg-secondary/40 text-muted-foreground border border-slate-750'
                         }`}>
                           {t.status}
                         </span>
@@ -543,13 +543,13 @@ export default function InventoryPage() {
                             </button>
                             <button
                               onClick={() => handleProcessTransfer(t.id, 'CANCELLED')}
-                              className="bg-slate-800 text-slate-300 px-2 py-1 rounded font-bold border border-slate-700 text-[10px]"
+                              className="bg-secondary text-foreground px-2 py-1 rounded font-bold border border-border text-[10px]"
                             >
                               Cancel
                             </button>
                           </div>
                         ) : (
-                          <span className="text-[10px] text-slate-500 flex items-center justify-end gap-1">
+                          <span className="text-[10px] text-muted-foreground flex items-center justify-end gap-1">
                             <CheckCircle className="h-3.5 w-3.5 text-slate-600" /> Settled
                           </span>
                         )}
@@ -563,10 +563,10 @@ export default function InventoryPage() {
 
           {/* Movements tab */}
           {viewTab === 'movements' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="bg-card border border-border/60 rounded-xl overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-xs font-semibold uppercase bg-slate-950/50">
+                  <tr className="border-b border-border/60 text-muted-foreground text-xs font-semibold uppercase bg-secondary/20">
                     <th className="p-4">Date</th>
                     <th className="p-4">SKU / Item</th>
                     <th className="p-4">Branch</th>
@@ -576,7 +576,7 @@ export default function InventoryPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-800 text-slate-350 text-xs">
                   {movements.map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-800/40 transition">
+                    <tr key={m.id} className="hover:bg-secondary/40 transition">
                       <td className="p-4 text-slate-450">
                         {new Date(m.createdAt).toLocaleString()}
                       </td>
@@ -593,7 +593,7 @@ export default function InventoryPage() {
                         </span>
                       </td>
                       <td className="p-4">
-                        <span className="bg-slate-850 px-2 py-0.5 rounded border border-slate-750 uppercase font-mono font-medium text-[9px] text-slate-350">
+                        <span className="bg-secondary/40 px-2 py-0.5 rounded border border-slate-750 uppercase font-mono font-medium text-[9px] text-slate-350">
                           {m.type}
                         </span>
                       </td>
@@ -608,35 +608,35 @@ export default function InventoryPage() {
 
       {/* Adjust stock modal */}
       {isAdjustModalOpen && selectedPart && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-secondary/20 backdrop-blur-sm animate-fade-in">
+          <div className="bg-card border border-border/60 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-border/60 flex justify-between items-center bg-secondary/20">
               <h2 className="text-lg font-bold text-white">Adjust Catalog stock levels</h2>
-              <button onClick={() => setIsAdjustModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsAdjustModalOpen(false)} className="text-muted-foreground hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
             
             <form onSubmit={handleAdjustStock} className="p-6 space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Adjustment Quantity (Delta)</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Adjustment Quantity (Delta)</label>
                 <input
                   type="number"
                   required
                   value={adjustQty}
                   onChange={(e) => setAdjustQty(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none focus:border-indigo-500"
                   placeholder="e.g. 5 or -2"
                 />
-                <p className="text-[10px] text-slate-500">Provide positive values to add stock, or negative values to deduct.</p>
+                <p className="text-[10px] text-muted-foreground">Provide positive values to add stock, or negative values to deduct.</p>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Correction Reason Type</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Correction Reason Type</label>
                 <select
                   value={adjustType}
                   onChange={(e) => setAdjustType(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none focus:border-indigo-500"
                 >
                   <option value="manual_correction">Manual Stock Correction</option>
                   <option value="purchase_receipt">Direct Purchase Check-In</option>
@@ -645,13 +645,13 @@ export default function InventoryPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Audit logs explanation</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Audit logs explanation</label>
                 <textarea
                   rows={2}
                   value={adjustNotes}
                   onChange={(e) => setAdjustNotes(e.target.value)}
                   placeholder="Record note details for the stock movement ledger..."
-                  className="w-full bg-slate-950 border border-slate-855 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none placeholder-slate-600 resize-none"
+                  className="w-full bg-secondary/20 border border-slate-855 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none placeholder-slate-600 resize-none"
                 />
               </div>
 
@@ -659,7 +659,7 @@ export default function InventoryPage() {
                 <button
                   type="button"
                   onClick={() => setIsAdjustModalOpen(false)}
-                  className="px-4 py-2 text-sm text-slate-400 hover:text-white"
+                  className="px-4 py-2 text-sm text-muted-foreground hover:text-white"
                 >
                   Cancel
                 </button>
@@ -679,14 +679,14 @@ export default function InventoryPage() {
 
       {/* Transfer stock modal */}
       {isTransferModalOpen && selectedPart && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-secondary/20 backdrop-blur-sm animate-fade-in">
+          <div className="bg-card border border-border/60 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-border/60 flex justify-between items-center bg-secondary/20">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <ArrowLeftRight className="h-5 w-5 text-indigo-500" />
                 Inter-Branch Stock Transfer
               </h2>
-              <button onClick={() => setIsTransferModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsTransferModalOpen(false)} className="text-muted-foreground hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -699,11 +699,11 @@ export default function InventoryPage() {
               )}
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">From Source Branch</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From Source Branch</label>
                 <select
                   value={fromBranchId}
                   onChange={(e) => setFromBranchId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none"
+                  className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none"
                 >
                   {branches.map(b => (
                     <option key={b.id} value={b.id}>{b.name}</option>
@@ -712,11 +712,11 @@ export default function InventoryPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">To Destination Branch</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">To Destination Branch</label>
                 <select
                   value={toBranchId}
                   onChange={(e) => setToBranchId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none"
+                  className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none"
                 >
                   {branches.map(b => (
                     <option key={b.id} value={b.id}>{b.name}</option>
@@ -725,14 +725,14 @@ export default function InventoryPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quantity to Transit</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quantity to Transit</label>
                 <input
                   type="number"
                   required
                   min={1}
                   value={transferQty}
                   onChange={(e) => setTransferQty(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none"
+                  className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none"
                 />
               </div>
 
@@ -740,7 +740,7 @@ export default function InventoryPage() {
                 <button
                   type="button"
                   onClick={() => setIsTransferModalOpen(false)}
-                  className="px-4 py-2 text-sm text-slate-400 hover:text-white"
+                  className="px-4 py-2 text-sm text-muted-foreground hover:text-white"
                 >
                   Cancel
                 </button>

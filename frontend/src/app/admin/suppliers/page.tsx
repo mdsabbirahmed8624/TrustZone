@@ -288,7 +288,7 @@ export default function SuppliersPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background text-slate-100">
+    <div className="min-h-screen flex bg-background text-foreground">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       
       <div className={`flex-grow flex flex-col transition-all duration-300 min-w-0 ${sidebarOpen ? 'md:pl-64' : 'md:pl-20'}`}>
@@ -306,7 +306,7 @@ export default function SuppliersPage() {
                 <Truck className="h-8 w-8 text-indigo-500" />
                 Suppliers & Supply Chain
               </h1>
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="text-muted-foreground text-sm mt-1">
                 Monitor vendor balances, execute payment ledgers, and manage partial receiving of purchase orders.
               </p>
             </div>
@@ -323,16 +323,16 @@ export default function SuppliersPage() {
           </div>
 
           {/* Navigation tabs */}
-          <div className="border-b border-slate-800 flex gap-4 text-sm">
+          <div className="border-b border-border/60 flex gap-4 text-sm">
             <button 
               onClick={() => setViewTab('suppliers')}
-              className={`pb-3 font-semibold transition ${viewTab === 'suppliers' ? 'border-b-2 border-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+              className={`pb-3 font-semibold transition ${viewTab === 'suppliers' ? 'border-b-2 border-indigo-500 text-white' : 'text-muted-foreground hover:text-white'}`}
             >
               Vendor Ledger Balances
             </button>
             <button 
               onClick={() => setViewTab('pos')}
-              className={`pb-3 font-semibold transition ${viewTab === 'pos' ? 'border-b-2 border-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+              className={`pb-3 font-semibold transition ${viewTab === 'pos' ? 'border-b-2 border-indigo-500 text-white' : 'text-muted-foreground hover:text-white'}`}
             >
               Purchase Orders Lifecycle
             </button>
@@ -343,19 +343,19 @@ export default function SuppliersPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-4">
                 {loading ? (
-                  <div className="flex flex-col items-center justify-center p-12 bg-slate-900 border border-slate-800 rounded-xl">
+                  <div className="flex flex-col items-center justify-center p-12 bg-card border border-border/60 rounded-xl">
                     <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />
-                    <span className="text-slate-400 mt-2 text-sm">Loading vendor ledger data...</span>
+                    <span className="text-muted-foreground mt-2 text-sm">Loading vendor ledger data...</span>
                   </div>
                 ) : error ? (
                   <div className="p-4 bg-red-950/30 border border-red-800/50 rounded-xl text-red-400 text-sm">
                     {error}
                   </div>
                 ) : (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                  <div className="bg-card border border-border/60 rounded-xl overflow-hidden">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-slate-800 text-slate-400 text-xs font-semibold uppercase bg-slate-950/50">
+                        <tr className="border-b border-border/60 text-muted-foreground text-xs font-semibold uppercase bg-secondary/20">
                           <th className="p-4">Vendor Details</th>
                           <th className="p-4">Rating</th>
                           <th className="p-4">Outstanding Balance</th>
@@ -366,12 +366,12 @@ export default function SuppliersPage() {
                         {suppliers.map((s) => (
                           <tr 
                             key={s.id}
-                            className={`hover:bg-slate-800/40 cursor-pointer transition ${selectedSupplier?.id === s.id ? 'bg-indigo-950/20' : ''}`}
+                            className={`hover:bg-secondary/40 cursor-pointer transition ${selectedSupplier?.id === s.id ? 'bg-indigo-950/20' : ''}`}
                             onClick={() => fetchSupplierDetails(s.id)}
                           >
                             <td className="p-4">
                               <h3 className="font-semibold text-white text-sm">{s.name}</h3>
-                              <p className="text-slate-400 text-[10px] mt-0.5">{s.contactPerson} • {s.phone}</p>
+                              <p className="text-muted-foreground text-[10px] mt-0.5">{s.contactPerson} • {s.phone}</p>
                             </td>
                             <td className="p-4">
                               <span className="text-amber-400 font-bold font-mono">{s.rating.toFixed(2)}</span>
@@ -397,21 +397,21 @@ export default function SuppliersPage() {
               {/* Vendor Ledger Right Column Detail */}
               <div>
                 {selectedSupplier ? (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6 sticky top-6">
+                  <div className="bg-card border border-border/60 rounded-xl p-6 space-y-6 sticky top-6">
                     <div className="flex justify-between items-start">
                       <div>
                         <h2 className="text-lg font-bold text-white">{selectedSupplier.name}</h2>
                         <p className="text-xs text-indigo-400 mt-0.5">Contact: {selectedSupplier.contactPerson}</p>
                       </div>
-                      <button onClick={() => setSelectedSupplier(null)} className="text-slate-400 hover:text-white">
+                      <button onClick={() => setSelectedSupplier(null)} className="text-muted-foreground hover:text-white">
                         <X className="h-5 w-5" />
                       </button>
                     </div>
 
                     {/* Ledger Balance Widget */}
-                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 flex items-center justify-between">
+                    <div className="bg-secondary/20 p-4 rounded-xl border border-border/60 flex items-center justify-between">
                       <div>
-                        <span className="text-[10px] text-slate-500 uppercase font-semibold">Outstanding Due</span>
+                        <span className="text-[10px] text-muted-foreground uppercase font-semibold">Outstanding Due</span>
                         <h4 className="text-xl font-bold text-red-450 mt-0.5">BDT {selectedSupplier.outstandingBalance.toLocaleString()}</h4>
                       </div>
                       <button
@@ -424,13 +424,13 @@ export default function SuppliersPage() {
 
                     {/* Ledger log records list */}
                     <div className="space-y-3 border-t border-slate-805 pt-4">
-                      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Recent Transactions Log</h3>
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recent Transactions Log</h3>
                       <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                         {selectedSupplier.ledger?.map((log: any) => (
-                          <div key={log.id} className="bg-slate-950 border border-slate-850 p-2.5 rounded-lg flex justify-between items-center text-xs">
+                          <div key={log.id} className="bg-secondary/20 border border-border/60 p-2.5 rounded-lg flex justify-between items-center text-xs">
                             <div>
                               <span className="font-semibold text-white block">{log.reference || 'Stock shipment'}</span>
-                              <span className="text-[10px] text-slate-500 mt-0.5">{new Date(log.createdAt).toLocaleDateString()}</span>
+                              <span className="text-[10px] text-muted-foreground mt-0.5">{new Date(log.createdAt).toLocaleDateString()}</span>
                             </div>
                             <span className={`font-bold ${log.type === 'CREDIT' ? 'text-red-400' : 'text-emerald-400'}`}>
                               {log.type === 'CREDIT' ? `+ BDT ${log.amount}` : `- BDT ${log.amount}`}
@@ -441,7 +441,7 @@ export default function SuppliersPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-500 flex flex-col items-center justify-center gap-2 sticky top-6">
+                  <div className="bg-card border border-border/60 rounded-xl p-12 text-center text-muted-foreground flex flex-col items-center justify-center gap-2 sticky top-6">
                     <Truck className="h-10 w-10 text-slate-650" />
                     <p className="text-sm">Select a vendor from the list to view ledgers, transaction records, and post payments.</p>
                   </div>
@@ -454,10 +454,10 @@ export default function SuppliersPage() {
           {viewTab === 'pos' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
-                <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                <div className="bg-card border border-border/60 rounded-xl overflow-hidden">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-800 text-slate-400 text-xs font-semibold uppercase bg-slate-950/50">
+                      <tr className="border-b border-border/60 text-muted-foreground text-xs font-semibold uppercase bg-secondary/20">
                         <th className="p-4">Order ID / Date</th>
                         <th className="p-4">Vendor</th>
                         <th className="p-4">Total Amount</th>
@@ -469,7 +469,7 @@ export default function SuppliersPage() {
                       {purchaseOrders.map((po) => (
                         <tr 
                           key={po.id}
-                          className={`hover:bg-slate-800/40 cursor-pointer transition ${selectedPO?.id === po.id ? 'bg-indigo-950/20' : ''}`}
+                          className={`hover:bg-secondary/40 cursor-pointer transition ${selectedPO?.id === po.id ? 'bg-indigo-950/20' : ''}`}
                           onClick={() => fetchPODetails(po.id)}
                         >
                           <td className="p-4">
@@ -480,7 +480,7 @@ export default function SuppliersPage() {
                             {po.supplier.name}
                           </td>
                           <td className="p-4">
-                            <span className="font-semibold text-slate-200">BDT {Number(po.totalAmount).toLocaleString()}</span>
+                            <span className="font-semibold text-foreground">BDT {Number(po.totalAmount).toLocaleString()}</span>
                           </td>
                           <td className="p-4">
                             <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
@@ -488,13 +488,13 @@ export default function SuppliersPage() {
                               po.status === 'ORDERED' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/25' :
                               po.status === 'APPROVED' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/25' :
                               po.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/25' :
-                              'bg-slate-800 text-slate-400 border border-slate-700'
+                              'bg-secondary text-muted-foreground border border-border'
                             }`}>
                               {po.status}
                             </span>
                           </td>
                           <td className="p-4 text-right">
-                            <ChevronRight className="h-5 w-5 text-slate-500 ml-auto" />
+                            <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto" />
                           </td>
                         </tr>
                       ))}
@@ -506,40 +506,40 @@ export default function SuppliersPage() {
               {/* PO Lifecycle Details Panel */}
               <div>
                 {selectedPO ? (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6 sticky top-6">
+                  <div className="bg-card border border-border/60 rounded-xl p-6 space-y-6 sticky top-6">
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="text-xs text-indigo-400 font-mono font-bold">PURCHASE ORDER #{selectedPO.id.substring(0, 8).toUpperCase()}</span>
                         <h2 className="text-lg font-bold text-white mt-1">{selectedPO.supplier.name}</h2>
-                        <p className="text-[11px] text-slate-400 mt-1">Destination Branch ID: {selectedPO.branchId.substring(0, 8)}...</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">Destination Branch ID: {selectedPO.branchId.substring(0, 8)}...</p>
                       </div>
-                      <button onClick={() => setSelectedPO(null)} className="text-slate-400 hover:text-white">
+                      <button onClick={() => setSelectedPO(null)} className="text-muted-foreground hover:text-white">
                         <X className="h-5 w-5" />
                       </button>
                     </div>
 
                     {/* PO Status Banner */}
-                    <div className="grid grid-cols-2 gap-3 bg-slate-950 p-4 rounded-xl border border-slate-850 text-xs">
+                    <div className="grid grid-cols-2 gap-3 bg-secondary/20 p-4 rounded-xl border border-border/60 text-xs">
                       <div>
-                        <span className="text-[10px] text-slate-500 uppercase font-semibold">Order State</span>
+                        <span className="text-[10px] text-muted-foreground uppercase font-semibold">Order State</span>
                         <span className="block font-bold mt-1 text-white uppercase">{selectedPO.status}</span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-500 uppercase font-semibold">Payment State</span>
+                        <span className="text-[10px] text-muted-foreground uppercase font-semibold">Payment State</span>
                         <span className="block font-bold mt-1 text-white uppercase">{selectedPO.paymentStatus}</span>
                       </div>
                     </div>
 
                     {/* Items List */}
                     <div className="space-y-3">
-                      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ordered Parts List</h3>
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ordered Parts List</h3>
                       <div className="space-y-2 max-h-48 overflow-y-auto">
                         {selectedPO.items?.map((item: any) => (
-                          <div key={item.id} className="bg-slate-950 p-3 rounded-lg border border-slate-850 flex justify-between items-center text-xs">
+                          <div key={item.id} className="bg-secondary/20 p-3 rounded-lg border border-border/60 flex justify-between items-center text-xs">
                             <div>
                               <span className="font-semibold text-white block">{item.part.name}</span>
                               <span className="text-[10px] text-indigo-400 font-mono mt-0.5">{item.part.sku}</span>
-                              <span className="text-[10px] text-slate-500 block mt-1">Cost: BDT {item.unitCost}</span>
+                              <span className="text-[10px] text-muted-foreground block mt-1">Cost: BDT {item.unitCost}</span>
                             </div>
                             <div className="text-right">
                               <span className="font-bold text-white">{item.quantityReceived} / {item.quantity} Received</span>
@@ -550,8 +550,8 @@ export default function SuppliersPage() {
                     </div>
 
                     {/* Status Workflow Action Triggers */}
-                    <div className="border-t border-slate-850 pt-4 space-y-3">
-                      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Workflow state actions</h3>
+                    <div className="border-t border-border/60 pt-4 space-y-3">
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Workflow state actions</h3>
                       
                       {selectedPO.status === 'DRAFT' && (
                         <div className="flex gap-2">
@@ -563,7 +563,7 @@ export default function SuppliersPage() {
                           </button>
                           <button
                             onClick={() => handleUpdatePOStatus(selectedPO.id, 'CANCELLED')}
-                            className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-350 font-medium text-xs py-2 rounded-lg border border-slate-700"
+                            className="flex-1 bg-secondary hover:bg-slate-700 text-slate-350 font-medium text-xs py-2 rounded-lg border border-border"
                           >
                             Cancel PO
                           </button>
@@ -589,7 +589,7 @@ export default function SuppliersPage() {
                           </button>
                           <button
                             onClick={() => handleUpdatePOStatus(selectedPO.id, 'CANCELLED')}
-                            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2 rounded-lg border border-slate-700 font-medium"
+                            className="w-full bg-secondary hover:bg-slate-700 text-foreground text-xs py-2 rounded-lg border border-border font-medium"
                           >
                             Cancel PO
                           </button>
@@ -606,14 +606,14 @@ export default function SuppliersPage() {
                       )}
 
                       {(selectedPO.status === 'CANCELLED' || (selectedPO.status === 'RECEIVED' && selectedPO.paymentStatus === 'paid')) && (
-                        <span className="text-slate-500 text-xs italic flex items-center justify-center gap-1.5 p-2 bg-slate-950 border border-slate-850 rounded-lg">
+                        <span className="text-muted-foreground text-xs italic flex items-center justify-center gap-1.5 p-2 bg-secondary/20 border border-border/60 rounded-lg">
                           <CheckCircle className="h-4 w-4 text-slate-600" /> This purchase order is finalized.
                         </span>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-500 flex flex-col items-center justify-center gap-2 sticky top-6">
+                  <div className="bg-card border border-border/60 rounded-xl p-12 text-center text-muted-foreground flex flex-col items-center justify-center gap-2 sticky top-6">
                     <Clipboard className="h-10 w-10 text-slate-650" />
                     <p className="text-sm">Select a Purchase Order to manage workflows, authorize ordered items, and receive stocks.</p>
                   </div>
@@ -626,38 +626,38 @@ export default function SuppliersPage() {
 
       {/* Record Payment Modal */}
       {isPaymentModalOpen && selectedSupplier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-secondary/20 backdrop-blur-sm animate-fade-in">
+          <div className="bg-card border border-border/60 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-border/60 flex justify-between items-center bg-secondary/20">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <DollarSign className="h-5 w-5 text-indigo-500" />
                 Record Vendor Payment
               </h2>
-              <button onClick={() => setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsPaymentModalOpen(false)} className="text-muted-foreground hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
             
             <form onSubmit={handleRecordPayment} className="p-6 space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Payment Amount (BDT)</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Payment Amount (BDT)</label>
                 <input
                   type="number"
                   required
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none"
+                  className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none"
                   placeholder="e.g. 5000"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Payment Reference / Note</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Payment Reference / Note</label>
                 <input
                   type="text"
                   value={paymentRef}
                   onChange={(e) => setPaymentRef(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none"
+                  className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none"
                   placeholder="e.g. Bank wire ref #9928"
                 />
               </div>
@@ -666,7 +666,7 @@ export default function SuppliersPage() {
                 <button
                   type="button"
                   onClick={() => setIsPaymentModalOpen(false)}
-                  className="px-4 py-2 text-sm text-slate-400 hover:text-white"
+                  className="px-4 py-2 text-sm text-muted-foreground hover:text-white"
                 >
                   Cancel
                 </button>
@@ -686,14 +686,14 @@ export default function SuppliersPage() {
 
       {/* PO Draft Creator Modal */}
       {isPOModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-secondary/20 backdrop-blur-sm animate-fade-in">
+          <div className="bg-card border border-border/60 rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-border/60 flex justify-between items-center bg-secondary/20">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <ShoppingBag className="h-5 w-5 text-indigo-500" />
                 Draft New Purchase Order
               </h2>
-              <button onClick={() => setIsPOModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsPOModalOpen(false)} className="text-muted-foreground hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -701,11 +701,11 @@ export default function SuppliersPage() {
             <form onSubmit={handleCreatePO} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Select Vendor</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Select Vendor</label>
                   <select
                     value={poSupplierId}
                     onChange={(e) => setPOSupplierId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none"
+                    className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none"
                   >
                     {suppliers.map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
@@ -714,11 +714,11 @@ export default function SuppliersPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Destination Branch</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Destination Branch</label>
                   <select
                     value={poBranchId}
                     onChange={(e) => setPOBranchId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none"
+                    className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none"
                   >
                     {branches.map(b => (
                       <option key={b.id} value={b.id}>{b.name}</option>
@@ -728,15 +728,15 @@ export default function SuppliersPage() {
               </div>
 
               {/* Add Part to list */}
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-3">
+              <div className="bg-secondary/20 p-4 rounded-xl border border-border/60 space-y-3">
                 <h4 className="text-xs font-semibold text-indigo-400 uppercase">Add Item specifications</h4>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="col-span-3 space-y-1">
-                    <label className="text-[10px] text-slate-500 uppercase font-semibold">Select Catalog SKU</label>
+                    <label className="text-[10px] text-muted-foreground uppercase font-semibold">Select Catalog SKU</label>
                     <select
                       value={selectedPartId}
                       onChange={(e) => setSelectedPartId(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 px-3 py-1.5 rounded text-xs text-slate-200"
+                      className="w-full bg-card border border-border/60 px-3 py-1.5 rounded text-xs text-foreground"
                     >
                       {parts.map(p => (
                         <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>
@@ -744,28 +744,28 @@ export default function SuppliersPage() {
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] text-slate-500 uppercase font-semibold">Quantity</label>
+                    <label className="text-[10px] text-muted-foreground uppercase font-semibold">Quantity</label>
                     <input
                       type="number"
                       value={selectedQty}
                       onChange={(e) => setSelectedQty(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 px-3 py-1.5 rounded text-xs text-slate-250"
+                      className="w-full bg-card border border-border/60 px-3 py-1.5 rounded text-xs text-slate-250"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] text-slate-500 uppercase font-semibold">Unit Cost (BDT)</label>
+                    <label className="text-[10px] text-muted-foreground uppercase font-semibold">Unit Cost (BDT)</label>
                     <input
                       type="number"
                       value={selectedUnitCost}
                       onChange={(e) => setSelectedUnitCost(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 px-3 py-1.5 rounded text-xs text-slate-250"
+                      className="w-full bg-card border border-border/60 px-3 py-1.5 rounded text-xs text-slate-250"
                     />
                   </div>
                   <div className="flex items-end">
                     <button
                       type="button"
                       onClick={addPOItem}
-                      className="w-full bg-slate-800 hover:bg-slate-700 text-indigo-400 font-bold text-xs py-1.5 rounded border border-slate-700 flex items-center justify-center gap-0.5"
+                      className="w-full bg-secondary hover:bg-slate-700 text-indigo-400 font-bold text-xs py-1.5 rounded border border-border flex items-center justify-center gap-0.5"
                     >
                       <Plus className="h-3.5 w-3.5" /> Append
                     </button>
@@ -775,15 +775,15 @@ export default function SuppliersPage() {
 
               {/* Items List in PO builder */}
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase">Drafted Items</h4>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase">Drafted Items</h4>
                 <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                   {poItems.map(item => {
                     const pDetails = parts.find(p => p.id === item.partId);
                     return (
-                      <div key={item.partId} className="bg-slate-950 p-2.5 rounded border border-slate-850 flex justify-between items-center text-xs">
+                      <div key={item.partId} className="bg-secondary/20 p-2.5 rounded border border-border/60 flex justify-between items-center text-xs">
                         <div>
                           <span className="font-bold text-white">{pDetails?.sku || 'Part SKU'}</span>
-                          <span className="text-[10px] text-slate-500 block">Cost BDT {item.unitCost} x {item.quantity} units</span>
+                          <span className="text-[10px] text-muted-foreground block">Cost BDT {item.unitCost} x {item.quantity} units</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="font-semibold text-indigo-400">BDT {item.unitCost * item.quantity}</span>
@@ -801,11 +801,11 @@ export default function SuppliersPage() {
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+              <div className="pt-4 flex justify-end gap-3 border-t border-border/60">
                 <button
                   type="button"
                   onClick={() => setIsPOModalOpen(false)}
-                  className="px-4 py-2 text-sm text-slate-400 hover:text-white"
+                  className="px-4 py-2 text-sm text-muted-foreground hover:text-white"
                 >
                   Cancel
                 </button>
@@ -825,14 +825,14 @@ export default function SuppliersPage() {
 
       {/* Partial Receive Modal */}
       {isReceiveModalOpen && selectedPO && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-secondary/20 backdrop-blur-sm animate-fade-in">
+          <div className="bg-card border border-border/60 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-border/60 flex justify-between items-center bg-secondary/20">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-emerald-500" />
                 Receive Purchase Order Items
               </h2>
-              <button onClick={() => setIsReceiveModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsReceiveModalOpen(false)} className="text-muted-foreground hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -846,20 +846,20 @@ export default function SuppliersPage() {
                 {selectedPO.items?.map((item: any) => {
                   const maxReceive = item.quantity - item.quantityReceived;
                   return (
-                    <div key={item.id} className="bg-slate-950 p-3 rounded-lg border border-slate-850 grid grid-cols-3 gap-2 items-center text-xs">
+                    <div key={item.id} className="bg-secondary/20 p-3 rounded-lg border border-border/60 grid grid-cols-3 gap-2 items-center text-xs">
                       <div className="col-span-2">
                         <span className="font-semibold text-white block">{item.part.name}</span>
-                        <span className="text-[10px] text-slate-500">Ordered: {item.quantity} | Already Received: {item.quantityReceived}</span>
+                        <span className="text-[10px] text-muted-foreground">Ordered: {item.quantity} | Already Received: {item.quantityReceived}</span>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] text-slate-500 uppercase font-semibold block">Now Receiving</label>
+                        <label className="text-[10px] text-muted-foreground uppercase font-semibold block">Now Receiving</label>
                         <input
                           type="number"
                           min={0}
                           max={maxReceive}
                           value={receivedQuantities[item.id] || 0}
                           onChange={(e) => handlePartialQtyChange(item.id, parseInt(e.target.value) || 0, maxReceive)}
-                          className="w-full bg-slate-900 border border-slate-800 px-3 py-1.5 rounded text-xs text-slate-200 text-right focus:outline-none"
+                          className="w-full bg-card border border-border/60 px-3 py-1.5 rounded text-xs text-foreground text-right focus:outline-none"
                         />
                       </div>
                     </div>
@@ -867,11 +867,11 @@ export default function SuppliersPage() {
                 })}
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+              <div className="pt-4 flex justify-end gap-3 border-t border-border/60">
                 <button
                   type="button"
                   onClick={() => setIsReceiveModalOpen(false)}
-                  className="px-4 py-2 text-sm text-slate-400 hover:text-white"
+                  className="px-4 py-2 text-sm text-muted-foreground hover:text-white"
                 >
                   Cancel
                 </button>

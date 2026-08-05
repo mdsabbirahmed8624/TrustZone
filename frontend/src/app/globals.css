@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f8fafc;
   --foreground: #0f172a;
   
   --card: #ffffff;
   --card-foreground: #0f172a;
   
-  --primary: #1877f2; /* Official FB Blue */
+  --primary: #2563eb;
   --primary-foreground: #ffffff;
   
   --secondary: #f1f5f9;
@@ -16,38 +16,38 @@
   --muted: #f8fafc;
   --muted-foreground: #64748b;
   
-  --accent: #16a34a; /* Trust Green */
+  --accent: #16a34a;
   --accent-foreground: #ffffff;
   
   --border: #e2e8f0;
   --input: #e2e8f0;
   
-  --ring: #1877f2;
+  --ring: #2563eb;
   
   --radius: 0.75rem;
 }
 
 .dark {
-  --background: #0f172a;
+  --background: #0b132b;
   --foreground: #f8fafc;
   
-  --card: #1e293b;
+  --card: #1c2541;
   --card-foreground: #f8fafc;
   
-  --primary: #3b82f6; /* Modern Blue */
-  --primary-foreground: #0f172a;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
   
-  --secondary: #1e293b;
+  --secondary: #161e38;
   --secondary-foreground: #f8fafc;
   
-  --muted: #1e293b;
+  --muted: #161e38;
   --muted-foreground: #94a3b8;
   
-  --accent: #22c55e; /* Vibrant Green */
+  --accent: #22c55e;
   --accent-foreground: #0f172a;
   
-  --border: #334155;
-  --input: #334155;
+  --border: #2e3a59;
+  --input: #2e3a59;
   
   --ring: #3b82f6;
 }
@@ -74,27 +74,27 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
 /* Glassmorphism Styles */
 .glass {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
 .dark .glass {
-  background: rgba(30, 41, 59, 0.7);
+  background: rgba(28, 37, 65, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(46, 58, 89, 0.8);
 }
 
 /* Glowing animations */
 .glow-primary {
-  box-shadow: 0 0 20px rgba(24, 119, 242, 0.2);
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.2);
 }
 
 .dark .glow-primary {

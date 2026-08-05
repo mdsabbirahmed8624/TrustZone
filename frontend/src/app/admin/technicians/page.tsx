@@ -192,7 +192,7 @@ export default function TechniciansPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background text-slate-100">
+    <div className="min-h-screen flex bg-background text-foreground">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       
       <div className={`flex-grow flex flex-col transition-all duration-300 min-w-0 ${sidebarOpen ? 'md:pl-64' : 'md:pl-20'}`}>
@@ -210,19 +210,19 @@ export default function TechniciansPage() {
                 <UserCheck className="h-8 w-8 text-indigo-500" />
                 Technician Diagnostics Workspace
               </h1>
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="text-muted-foreground text-sm mt-1">
                 Monitor certifications, track active workloads, clock attendance, and manage staff leave schedules.
               </p>
             </div>
           </div>
 
           {/* Filters */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            <span className="text-sm font-semibold text-slate-400">Filter Staff Workloads:</span>
+          <div className="bg-card border border-border/60 rounded-xl p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <span className="text-sm font-semibold text-muted-foreground">Filter Staff Workloads:</span>
             <select
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full md:w-64 px-3 py-2 bg-slate-950 border border-slate-850 rounded-lg text-slate-300 focus:outline-none"
+              className="w-full md:w-64 px-3 py-2 bg-secondary/20 border border-border/60 rounded-lg text-foreground focus:outline-none"
             >
               <option value="">All Laboratories</option>
               {branches.map(b => (
@@ -235,9 +235,9 @@ export default function TechniciansPage() {
             {/* Tech grid list */}
             <div className="lg:col-span-2 space-y-4">
               {loading ? (
-                <div className="flex flex-col items-center justify-center p-12 bg-slate-900 border border-slate-800 rounded-xl">
+                <div className="flex flex-col items-center justify-center p-12 bg-card border border-border/60 rounded-xl">
                   <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />
-                  <span className="text-slate-400 mt-2 text-sm font-medium">Fetching technician rosters...</span>
+                  <span className="text-muted-foreground mt-2 text-sm font-medium">Fetching technician rosters...</span>
                 </div>
               ) : error ? (
                 <div className="p-4 bg-red-950/30 border border-red-800/50 rounded-xl text-red-400 text-sm">
@@ -249,26 +249,26 @@ export default function TechniciansPage() {
                     <div 
                       key={t.id}
                       onClick={() => fetchTechDetails(t.id)}
-                      className={`bg-slate-900 border p-5 rounded-xl flex flex-col justify-between hover:border-indigo-500/60 cursor-pointer transition ${selectedTech?.id === t.id ? 'border-indigo-600 bg-indigo-950/10' : 'border-slate-800'}`}
+                      className={`bg-card border p-5 rounded-xl flex flex-col justify-between hover:border-indigo-500/60 cursor-pointer transition ${selectedTech?.id === t.id ? 'border-indigo-600 bg-indigo-950/10' : 'border-border/60'}`}
                     >
                       <div>
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="text-lg font-bold text-white">{t.firstName} {t.lastName}</h3>
-                            <p className="text-xs text-slate-400 mt-0.5">{t.email}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{t.email}</p>
                             <p className="text-[11px] text-indigo-400 font-semibold mt-1 flex items-center gap-1">
                               <MapPin className="h-3 w-3" /> {t.branch?.name || 'Central Pool'}
                             </p>
                           </div>
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                            t.isOnline ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'
+                            t.isOnline ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-secondary text-muted-foreground'
                           }`}>
                             {t.isOnline ? 'Online' : 'Offline'}
                           </span>
                         </div>
 
                         {/* Certification & rating */}
-                        <div className="flex items-center gap-3 mt-4 text-xs text-slate-300">
+                        <div className="flex items-center gap-3 mt-4 text-xs text-foreground">
                           <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-bold uppercase flex items-center gap-1">
                             <Award className="h-3.5 w-3.5" /> Tier {t.certificationLevel}
                           </span>
@@ -280,7 +280,7 @@ export default function TechniciansPage() {
                         {/* Skills pills */}
                         <div className="flex flex-wrap gap-1 mt-3">
                           {t.skills?.slice(0, 3).map((skill: string) => (
-                            <span key={skill} className="text-[10px] bg-slate-950 border border-slate-800/80 px-2 py-0.5 rounded text-slate-400">
+                            <span key={skill} className="text-[10px] bg-secondary/20 border border-border/60 px-2 py-0.5 rounded text-muted-foreground">
                               {skill}
                             </span>
                           ))}
@@ -288,7 +288,7 @@ export default function TechniciansPage() {
                       </div>
 
                       {/* Workloads and average duration */}
-                      <div className="border-t border-slate-850/60 mt-4 pt-3 flex justify-between text-xs text-slate-400">
+                      <div className="border-t border-border/60/60 mt-4 pt-3 flex justify-between text-xs text-muted-foreground">
                         <div>
                           Active Jobs: <span className="text-white font-bold">{t.workload}</span>
                         </div>
@@ -305,7 +305,7 @@ export default function TechniciansPage() {
             {/* Detailed right column profile */}
             <div>
               {selectedTech ? (
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6 sticky top-6">
+                <div className="bg-card border border-border/60 rounded-xl p-6 space-y-6 sticky top-6">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
                       <div className="h-12 w-12 bg-indigo-600 rounded-full flex items-center justify-center text-white text-lg font-bold">
@@ -318,19 +318,19 @@ export default function TechniciansPage() {
                     </div>
                     <button 
                       onClick={() => setSelectedTech(null)}
-                      className="text-slate-400 hover:text-white"
+                      className="text-muted-foreground hover:text-white"
                     >
                       <X className="h-5 w-5" />
                     </button>
                   </div>
 
                   {/* Online/Offline & Availability toggles */}
-                  <div className="grid grid-cols-2 gap-3 bg-slate-950 p-4 rounded-lg border border-slate-800">
+                  <div className="grid grid-cols-2 gap-3 bg-secondary/20 p-4 rounded-lg border border-border/60">
                     <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] font-semibold text-slate-500 uppercase">Live Workspace:</span>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase">Live Workspace:</span>
                       <button 
                         onClick={() => handleToggleOnline(selectedTech)}
-                        className={`flex items-center gap-2 text-xs font-bold ${selectedTech.isOnline ? 'text-emerald-400' : 'text-slate-400'}`}
+                        className={`flex items-center gap-2 text-xs font-bold ${selectedTech.isOnline ? 'text-emerald-400' : 'text-muted-foreground'}`}
                       >
                         {selectedTech.isOnline ? <ToggleRight className="h-6 w-6 text-emerald-500" /> : <ToggleLeft className="h-6 w-6 text-slate-600" />}
                         {selectedTech.isOnline ? 'Active Workspace' : 'Disconnected'}
@@ -338,10 +338,10 @@ export default function TechniciansPage() {
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] font-semibold text-slate-500 uppercase">Job Availability:</span>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase">Job Availability:</span>
                       <button 
                         onClick={() => handleToggleAvailability(selectedTech)}
-                        className={`flex items-center gap-2 text-xs font-bold ${selectedTech.availability ? 'text-indigo-400' : 'text-slate-400'}`}
+                        className={`flex items-center gap-2 text-xs font-bold ${selectedTech.availability ? 'text-indigo-400' : 'text-muted-foreground'}`}
                       >
                         {selectedTech.availability ? <ToggleRight className="h-6 w-6 text-indigo-500" /> : <ToggleLeft className="h-6 w-6 text-slate-600" />}
                         {selectedTech.availability ? 'Accepting Jobs' : 'Unavailable'}
@@ -350,8 +350,8 @@ export default function TechniciansPage() {
                   </div>
 
                   {/* Clock In / Out action buttons */}
-                  <div className="space-y-2 border-t border-slate-800 pt-4">
-                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <div className="space-y-2 border-t border-border/60 pt-4">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                       <Clock className="h-4 w-4" /> Attendance Clock Action
                     </h3>
                     <div className="flex flex-wrap gap-2">
@@ -369,7 +369,7 @@ export default function TechniciansPage() {
                       </button>
                       <button
                         onClick={handleClockOut}
-                        className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-xs px-3.5 py-2 rounded-lg flex items-center gap-1"
+                        className="bg-secondary hover:bg-slate-700 text-foreground border border-border font-medium text-xs px-3.5 py-2 rounded-lg flex items-center gap-1"
                       >
                         Clock Out
                       </button>
@@ -377,13 +377,13 @@ export default function TechniciansPage() {
                   </div>
 
                   {/* Skills list */}
-                  <div className="space-y-2 border-t border-slate-800 pt-4">
-                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <div className="space-y-2 border-t border-border/60 pt-4">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                       <BookOpen className="h-4 w-4" /> Hardware Skills Certifications
                     </h3>
                     <div className="flex flex-wrap gap-1">
                       {selectedTech.skills?.map((skill: string) => (
-                        <span key={skill} className="text-xs bg-slate-950 border border-slate-800 px-2.5 py-1 rounded text-slate-300">
+                        <span key={skill} className="text-xs bg-secondary/20 border border-border/60 px-2.5 py-1 rounded text-foreground">
                           {skill}
                         </span>
                       ))}
@@ -391,16 +391,16 @@ export default function TechniciansPage() {
                   </div>
 
                   {/* Active Jobs */}
-                  <div className="space-y-3 border-t border-slate-800 pt-4">
-                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <div className="space-y-3 border-t border-border/60 pt-4">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Assigned Active Jobs ({selectedTech.activeJobs?.length || 0})
                     </h3>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {selectedTech.activeJobs?.map((job: any) => (
-                        <div key={job.id} className="bg-slate-950 border border-slate-850 p-2.5 rounded-lg flex justify-between items-center text-xs">
+                        <div key={job.id} className="bg-secondary/20 border border-border/60 p-2.5 rounded-lg flex justify-between items-center text-xs">
                           <div>
                             <span className="font-semibold text-white">{job.device.brand} {job.device.model}</span>
-                            <p className="text-[10px] text-slate-500 mt-0.5">SLA: {new Date(job.slaDeadline).toLocaleDateString()}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">SLA: {new Date(job.slaDeadline).toLocaleDateString()}</p>
                           </div>
                           <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded uppercase font-bold text-[9px]">
                             {job.status}
@@ -411,14 +411,14 @@ export default function TechniciansPage() {
                   </div>
 
                   {/* Leave Requests & approvals */}
-                  <div className="space-y-3 border-t border-slate-800 pt-4">
+                  <div className="space-y-3 border-t border-border/60 pt-4">
                     <div className="flex justify-between items-center">
-                      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                         <Calendar className="h-4 w-4" /> Leave Ledger logs
                       </h3>
                       <button
                         onClick={() => setIsLeaveModalOpen(true)}
-                        className="text-[10px] bg-slate-800 hover:bg-slate-700 text-indigo-400 font-semibold px-2 py-1 rounded border border-slate-750"
+                        className="text-[10px] bg-secondary hover:bg-slate-700 text-indigo-400 font-semibold px-2 py-1 rounded border border-slate-750"
                       >
                         Apply Leave
                       </button>
@@ -426,14 +426,14 @@ export default function TechniciansPage() {
 
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {selectedTech.leaveRequests?.map((leave: any) => (
-                        <div key={leave.id} className="bg-slate-950 border border-slate-850 p-3 rounded-lg text-xs space-y-2">
+                        <div key={leave.id} className="bg-secondary/20 border border-border/60 p-3 rounded-lg text-xs space-y-2">
                           <div className="flex justify-between items-center">
-                            <span className="font-semibold text-slate-300">
+                            <span className="font-semibold text-foreground">
                               {new Date(leave.startDate).toLocaleDateString()} to {new Date(leave.endDate).toLocaleDateString()}
                             </span>
                             <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
                               leave.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400' :
-                              leave.status === 'pending' ? 'bg-amber-500/10 text-amber-400' : 'bg-slate-800 text-slate-400'
+                              leave.status === 'pending' ? 'bg-amber-500/10 text-amber-400' : 'bg-secondary text-muted-foreground'
                             }`}>
                               {leave.status}
                             </span>
@@ -451,7 +451,7 @@ export default function TechniciansPage() {
                               </button>
                               <button
                                 onClick={() => handleApproveLeave(leave.id, 'rejected')}
-                                className="bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 px-2 py-1 rounded font-bold border border-slate-700"
+                                className="bg-secondary hover:bg-slate-700 text-[10px] text-foreground px-2 py-1 rounded font-bold border border-border"
                               >
                                 Reject
                               </button>
@@ -463,7 +463,7 @@ export default function TechniciansPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-500 flex flex-col items-center justify-center gap-2 sticky top-6">
+                <div className="bg-card border border-border/60 rounded-xl p-12 text-center text-muted-foreground flex flex-col items-center justify-center gap-2 sticky top-6">
                   <UserCheck className="h-10 w-10 text-slate-600" />
                   <p className="text-sm">Select a technician from the grid to view performance dashboards, clock status, and approve leaves.</p>
                 </div>
@@ -475,16 +475,16 @@ export default function TechniciansPage() {
 
       {/* Leave Application Modal */}
       {isLeaveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-secondary/20 backdrop-blur-sm">
+          <div className="bg-card border border-border/60 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-border/60 flex justify-between items-center bg-secondary/20">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-indigo-500" />
                 Submit Leave Application
               </h2>
               <button 
                 onClick={() => setIsLeaveModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-muted-foreground hover:text-white"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -493,36 +493,36 @@ export default function TechniciansPage() {
             <form onSubmit={handleLeaveSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Start Date</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Start Date</label>
                   <input
                     type="date"
                     required
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none focus:border-indigo-500"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">End Date</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">End Date</label>
                   <input
                     type="date"
                     required
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none focus:border-indigo-500"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Reason</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Reason</label>
                 <textarea
                   required
                   rows={3}
                   value={leaveReason}
                   onChange={(e) => setLeaveReason(e.target.value)}
                   placeholder="State the reason for leave..."
-                  className="w-full bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-indigo-500 placeholder-slate-650 resize-none"
+                  className="w-full bg-secondary/20 border border-border/60 px-3 py-2 rounded-lg text-foreground text-sm focus:outline-none focus:border-indigo-500 placeholder-slate-650 resize-none"
                 />
               </div>
 
@@ -530,7 +530,7 @@ export default function TechniciansPage() {
                 <button
                   type="button"
                   onClick={() => setIsLeaveModalOpen(false)}
-                  className="px-4 py-2 text-sm text-slate-400 hover:text-white"
+                  className="px-4 py-2 text-sm text-muted-foreground hover:text-white"
                 >
                   Cancel
                 </button>

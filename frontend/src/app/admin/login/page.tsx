@@ -120,20 +120,20 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="flex-grow min-h-screen flex items-center justify-center bg-[#0f172a] px-4 py-12 relative overflow-hidden">
+    <div className="flex-grow min-h-screen flex items-center justify-center bg-background px-4 py-12 relative overflow-hidden">
       {/* Background glowing decorations */}
       <div className="absolute top-0 -left-4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
       <div className="absolute bottom-0 -right-4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
 
       {/* Main card panel */}
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 relative z-10 glass">
+      <div className="w-full max-w-md bg-card border border-border/60 rounded-2xl shadow-2xl p-6 sm:p-8 relative z-10 glass">
         {/* Branding header */}
         <div className="flex flex-col items-center text-center mb-8">
           <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-primary/25 mb-4 border border-primary/20">
             TZ
           </div>
           <h1 className="text-xl font-extrabold text-white tracking-tight">TrustZone Mobile Care</h1>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Enterprise Admin Control Panel</p>
+          <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-1">Enterprise Admin Control Panel</p>
         </div>
 
         {/* Global Warnings/Status logs */}
@@ -165,13 +165,13 @@ export default function AdminLoginPage() {
               <Lock className="h-6 w-6 animate-pulse" />
             </div>
             <h2 className="text-base font-bold text-white">System Console Lockout</h2>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
               Multiple invalid authentication requests were flagged. Security protocol has suspended further login attempts.
             </p>
-            <div className="text-xl font-black text-primary tracking-widest font-mono py-2 bg-slate-950 rounded-lg border border-slate-800">
+            <div className="text-xl font-black text-primary tracking-widest font-mono py-2 bg-secondary/20 rounded-lg border border-border/60">
               {Math.floor(lockTimeLeft / 60)}:{(lockTimeLeft % 60).toString().padStart(2, '0')}
             </div>
-            <span className="text-[10px] text-slate-500 block">Seconds Remaining</span>
+            <span className="text-[10px] text-muted-foreground block">Seconds Remaining</span>
           </div>
         )}
 
@@ -186,7 +186,7 @@ export default function AdminLoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={loading}
-              className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-600 focus:ring-primary/20 focus:border-primary"
+              className="bg-secondary/20 border-border/60 text-white placeholder:text-slate-600 focus:ring-primary/20 focus:border-primary"
             />
 
             <div className="space-y-1">
@@ -198,7 +198,7 @@ export default function AdminLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
-                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-600 focus:ring-primary/20 focus:border-primary"
+                className="bg-secondary/20 border-border/60 text-white placeholder:text-slate-600 focus:ring-primary/20 focus:border-primary"
               />
               <div className="flex items-center justify-between pt-1">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -206,9 +206,9 @@ export default function AdminLoginPage() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-slate-800 bg-slate-950 text-primary focus:ring-primary/20 h-4 w-4 cursor-pointer"
+                    className="rounded border-border/60 bg-secondary/20 text-primary focus:ring-primary/20 h-4 w-4 cursor-pointer"
                   />
-                  <span className="text-xs text-slate-400 font-semibold">Remember Me</span>
+                  <span className="text-xs text-muted-foreground font-semibold">Remember Me</span>
                 </label>
                 <button
                   type="button"
@@ -239,8 +239,8 @@ export default function AdminLoginPage() {
             </button>
 
             {/* Diagnostics tip */}
-            <div className="mt-6 p-3 bg-slate-950 border border-slate-800 rounded-lg text-[10px] text-slate-500 font-mono space-y-1">
-              <div className="font-bold text-slate-400">Diagnostic Auth Keys:</div>
+            <div className="mt-6 p-3 bg-secondary/20 border border-border/60 rounded-lg text-[10px] text-muted-foreground font-mono space-y-1">
+              <div className="font-bold text-muted-foreground">Diagnostic Auth Keys:</div>
               <div>User: admin@trustzone.care</div>
               <div>Pass: Password123!</div>
             </div>
@@ -255,7 +255,7 @@ export default function AdminLoginPage() {
                 <KeyRound className="h-5 w-5" />
               </div>
               <h2 className="text-sm font-bold text-white">Verification OTP Code</h2>
-              <p className="text-[11px] text-slate-400 max-w-xs mx-auto leading-relaxed">
+              <p className="text-[11px] text-muted-foreground max-w-xs mx-auto leading-relaxed">
                 Provide the 6-digit temporary key sent to your administrator workstation to complete dynamic MFA authorization.
               </p>
             </div>
@@ -269,7 +269,7 @@ export default function AdminLoginPage() {
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
               required
               disabled={loading}
-              className="text-center font-mono text-lg tracking-widest bg-slate-950 border-slate-800 text-white placeholder:text-slate-700 focus:ring-primary/20 focus:border-primary"
+              className="text-center font-mono text-lg tracking-widest bg-secondary/20 border-border/60 text-white placeholder:text-slate-700 focus:ring-primary/20 focus:border-primary"
             />
 
             <button
@@ -294,7 +294,7 @@ export default function AdminLoginPage() {
               <button
                 type="button"
                 onClick={() => setPhase('login')}
-                className="text-slate-400 hover:text-white"
+                className="text-muted-foreground hover:text-white"
               >
                 Back to Sign In
               </button>
@@ -314,7 +314,7 @@ export default function AdminLoginPage() {
           <form onSubmit={handleForgotPassword} className="space-y-5">
             <div className="text-center py-2 space-y-1">
               <h2 className="text-sm font-bold text-white">Reset Credentials Request</h2>
-              <p className="text-[11px] text-slate-400 max-w-xs mx-auto leading-relaxed">
+              <p className="text-[11px] text-muted-foreground max-w-xs mx-auto leading-relaxed">
                 Provide your admin email. An access log report will notify the owner to initiate recovery.
               </p>
             </div>
@@ -325,7 +325,7 @@ export default function AdminLoginPage() {
               placeholder="e.g. admin@trustzone.care"
               required
               disabled={loading}
-              className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-600 focus:ring-primary/20 focus:border-primary"
+              className="bg-secondary/20 border-border/60 text-white placeholder:text-slate-600 focus:ring-primary/20 focus:border-primary"
             />
 
             <button
@@ -343,7 +343,7 @@ export default function AdminLoginPage() {
                 setError(null);
                 setSuccess(null);
               }}
-              className="w-full text-center text-xs font-semibold text-slate-400 hover:text-white pt-1"
+              className="w-full text-center text-xs font-semibold text-muted-foreground hover:text-white pt-1"
             >
               Cancel and Return
             </button>

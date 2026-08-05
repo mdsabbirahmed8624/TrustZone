@@ -75,17 +75,23 @@ export const Header: React.FC<HeaderProps> = ({
     setMounted(true);
   }, []);
 
-  // Initialize theme on mount
+  // Initialize theme on mount and listen to changes
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const dark = document.documentElement.classList.contains('dark') || 
-                   localStorage.getItem('tz_theme') === 'dark';
-      if (dark) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
+    const updateThemeState = () => {
+      if (typeof window !== 'undefined') {
+        const dark = document.documentElement.classList.contains('dark') || 
+                     localStorage.getItem('tz_theme') === 'dark';
+        setIsDark(dark);
+        if (dark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
       }
-    }
+    };
+    updateThemeState();
+    window.addEventListener('tz_theme_changed', updateThemeState);
+    return () => window.removeEventListener('tz_theme_changed', updateThemeState);
   }, []);
 
   // Fetch notifications
@@ -133,6 +139,7 @@ export const Header: React.FC<HeaderProps> = ({
       document.documentElement.classList.remove('dark');
       localStorage.setItem('tz_theme', 'light');
     }
+    window.dispatchEvent(new Event('tz_theme_changed'));
   };
 
   const handleSearchChange = async (val: string) => {
