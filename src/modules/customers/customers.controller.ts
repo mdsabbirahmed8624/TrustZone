@@ -46,7 +46,13 @@ export class CustomersController {
   ) {
     return {
       success: true,
-      data: await this.customersService.findAll({ search, tag, branchId, page, limit }),
+      data: await this.customersService.findAll({
+        search,
+        tag,
+        branchId,
+        page,
+        limit,
+      }),
     };
   }
 
@@ -98,7 +104,8 @@ export class CustomersController {
   @HttpCode(HttpStatus.CREATED)
   async addDevice(
     @Param('id') id: string,
-    @Body() dto: { brand: string; model: string; serialNumber?: string; imei?: string },
+    @Body()
+    dto: { brand: string; model: string; serialNumber?: string; imei?: string },
   ) {
     return {
       success: true,
@@ -141,7 +148,12 @@ export class CustomersController {
   ) {
     return {
       success: true,
-      data: await this.customersService.sendCommunication(id, type, channel, message),
+      data: await this.customersService.sendCommunication(
+        id,
+        type,
+        channel,
+        message,
+      ),
     };
   }
 
@@ -168,10 +180,7 @@ export class CustomersController {
   @Delete(':id/documents/:docId')
   @Permissions('write:customers')
   @HttpCode(HttpStatus.OK)
-  async deleteDoc(
-    @Param('id') id: string,
-    @Param('docId') docId: string,
-  ) {
+  async deleteDoc(@Param('id') id: string, @Param('docId') docId: string) {
     return await this.customersService.deleteDocument(id, docId);
   }
 
@@ -184,7 +193,10 @@ export class CustomersController {
   ) {
     return {
       success: true,
-      data: await this.customersService.mergeDuplicates(primaryId, duplicateIds),
+      data: await this.customersService.mergeDuplicates(
+        primaryId,
+        duplicateIds,
+      ),
     };
   }
 }

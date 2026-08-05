@@ -101,7 +101,10 @@ export class SystemAdminController {
 
   @Post('backups/create')
   @Permissions('write:settings')
-  async createBackup(@Body() body: { type: 'FULL_DATABASE' | 'MEDIA_FILES' | 'SYSTEM_CONFIG' }, @CurrentUser() user: any) {
+  async createBackup(
+    @Body() body: { type: 'FULL_DATABASE' | 'MEDIA_FILES' | 'SYSTEM_CONFIG' },
+    @CurrentUser() user: any,
+  ) {
     const data = await this.systemService.createBackup(body);
     await this.systemService.createAuditLog({
       userId: user?.id,
@@ -146,7 +149,11 @@ export class SystemAdminController {
 
   @Put('maintenance')
   @Permissions('write:settings')
-  async toggleMaintenanceMode(@Body() body: { enabled: boolean; message?: string; estimatedEndAt?: string }, @CurrentUser() user: any) {
+  async toggleMaintenanceMode(
+    @Body()
+    body: { enabled: boolean; message?: string; estimatedEndAt?: string },
+    @CurrentUser() user: any,
+  ) {
     const data = await this.systemService.toggleMaintenanceMode(body);
     await this.systemService.createAuditLog({
       userId: user?.id,

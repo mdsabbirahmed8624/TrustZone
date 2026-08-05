@@ -85,6 +85,66 @@ export interface TicketHistoryModel {
   } | null;
 }
 
+
+export interface BookingModel {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  customerAddress: string;
+  customerType: 'INDIVIDUAL' | 'CORPORATE' | 'VIP';
+  deviceBrand: string;
+  deviceModel: string;
+  imei: string;
+  serialNumber: string;
+  color: string;
+  problemCategory: string;
+  problemDescription: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  warrantyStatus: 'UNDER_WARRANTY' | 'OUT_OF_WARRANTY' | 'EXTENDED_CARE';
+  waterDamage: boolean;
+  physicalDamage: boolean;
+  estimatedCost: number;
+  advanceAmount: number;
+  paymentMethod: string;
+  discount: number;
+  couponCode: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  technicianId: string;
+  technicianName: string;
+  branchId: string;
+  branchName: string;
+  serviceType: 'WALK_IN' | 'PICKUP_DELIVERY';
+  pickupAddress: string;
+  deliveryAddress: string;
+  status:
+    | 'PENDING'
+    | 'CONFIRMED'
+    | 'CUSTOMER_ARRIVED'
+    | 'CHECKED_IN'
+    | 'DIAGNOSIS_STARTED'
+    | 'WAITING_PARTS'
+    | 'REPAIR_STARTED'
+    | 'QUALITY_CHECK'
+    | 'READY_FOR_PICKUP'
+    | 'DELIVERED'
+    | 'COMPLETED'
+    | 'CANCELLED'
+    | 'REJECTED'
+    | 'RESCHEDULED'
+    | 'NO_SHOW';
+  notes: string;
+  attachments: string[];
+  ticketId?: string;
+  invoiceId?: string;
+  isDeleted?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  history?: { timestamp: string; status: string; note: string; updatedBy: string }[];
+}
+
 export interface TicketModel {
   id: string;
   branchId: string;
@@ -470,6 +530,316 @@ function saveMockTickets(tickets: TicketModel[]) {
 // Centralized API Services Wrapper (With Local fallbacks)
 // ----------------------------------------------------
 export const api = {
+  
+  bookings: {
+    async list(params?: { search?: string; status?: string; priority?: string; branchId?: string; technicianId?: string; date?: string }, token?: string): Promise<ApiResponse<BookingModel[]>> {
+      try {
+        const q = new URLSearchParams();
+        if (params?.search) q.set('search', params.search);
+        if (params?.status) q.set('status', params.status);
+        if (params?.priority) q.set('priority', params.priority);
+        if (params?.branchId) q.set('branchId', params.branchId);
+        if (params?.technicianId) q.set('technicianId', params.technicianId);
+        if (params?.date) q.set('date', params.date);
+        return await apiRequest<ApiResponse<BookingModel[]>>(`/bookings?${q.toString()}`, { token });
+      } catch {
+        return { success: true, data: getMockBookings(params) };
+      }
+    },
+
+    async getById(id: string, token?: string): Promise<ApiResponse<BookingModel | null>> {
+      try {
+        return await apiRequest<ApiResponse<BookingModel>>(`/bookings/${id}`, { token });
+      } catch {
+        const bookings = getMockBookings();
+        const found = bookings.find((b: BookingModel) => b.id === id);
+        return { success: true, data: found || null };
+      }
+    },
+
+    async create(data: Partial<BookingModel>, token?: string): Promise<ApiResponse<BookingModel>> {
+      try {
+        return await apiRequest<ApiResponse<BookingModel>>('/bookings', { method: 'POST', body: JSON.stringify(data), token });
+      } catch {
+        const bookings = getMockBookings();
+        const nextNum = 1000 + bookings.length + 1;
+        const newBooking: BookingModel = {
+          id: `TZ-BKG-${nextNum}`,
+          customerId: data.customerId || `cust-${Date.now()}`,
+          customerName: data.customerName || 'Walk-in Customer',
+          customerPhone: data.customerPhone || '01700000000',
+          customerEmail: data.customerEmail || 'customer@example.com',
+          customerAddress: data.customerAddress || 'Dhaka, Bangladesh',
+          customerType: data.customerType || 'INDIVIDUAL',
+          deviceBrand: data.deviceBrand || 'Apple',
+          deviceModel: data.deviceModel || 'iPhone 14',
+          imei: data.imei || '350000000000000',
+          serialNumber: data.serialNumber || `SN-${Date.now()}`,
+          color: data.color || 'Black',
+          problemCategory: data.problemCategory || 'SCREEN_DISPLAY',
+          problemDescription: data.problemDescription || 'Diagnostic booking registered.',
+          priority: data.priority || 'MEDIUM',
+          warrantyStatus: data.warrantyStatus || 'OUT_OF_WARRANTY',
+          waterDamage: data.waterDamage || false,
+          physicalDamage: data.physicalDamage || false,
+          estimatedCost: Number(data.estimatedCost) || 0,
+          advanceAmount: Number(data.advanceAmount) || 0,
+          paymentMethod: data.paymentMethod || 'CASH',
+          discount: Number(data.discount) || 0,
+          couponCode: data.couponCode || '',
+          appointmentDate: data.appointmentDate || new Date().toISOString().split('T')[0],
+          appointmentTime: data.appointmentTime || '10:00 AM',
+          technicianId: data.technicianId || 'tech-1',
+          technicianName: data.technicianName || 'Tariq Zaman (Lead L4)',
+          branchId: data.branchId || 'd1111111-1111-1111-1111-111111111111',
+          branchName: data.branchName || 'Dhanmondi HQ',
+          serviceType: data.serviceType || 'WALK_IN',
+          pickupAddress: data.pickupAddress || '',
+          deliveryAddress: data.deliveryAddress || '',
+          status: 'PENDING',
+          notes: data.notes || '',
+          attachments: data.attachments || [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          history: [
+            { timestamp: new Date().toISOString(), status: 'PENDING', note: 'Booking record created in system.', updatedBy: 'Admin Control Desk' }
+          ]
+        };
+        bookings.unshift(newBooking);
+        saveMockBookings(bookings);
+        addMockAuditLog('booking_created', { bookingId: newBooking.id, customerName: newBooking.customerName });
+        return { success: true, data: newBooking };
+      }
+    },
+
+    async update(id: string, data: Partial<BookingModel>, token?: string): Promise<ApiResponse<BookingModel | null>> {
+      try {
+        return await apiRequest<ApiResponse<BookingModel>>(`/bookings/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+      } catch {
+        const bookings = getMockBookings();
+        const idx = bookings.findIndex((b: BookingModel) => b.id === id);
+        if (idx !== -1) {
+          const updated = { ...bookings[idx], ...data, updatedAt: new Date().toISOString() };
+          bookings[idx] = updated;
+          saveMockBookings(bookings);
+          addMockAuditLog('booking_updated', { bookingId: id });
+          return { success: true, data: updated };
+        }
+        return { success: false, data: null };
+      }
+    },
+
+    async updateStatus(id: string, status: string, note?: string, token?: string): Promise<ApiResponse<BookingModel | null>> {
+      try {
+        return await apiRequest<ApiResponse<BookingModel>>(`/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, note }), token });
+      } catch {
+        const bookings = getMockBookings();
+        const idx = bookings.findIndex((b: BookingModel) => b.id === id);
+        if (idx !== -1) {
+          const current = bookings[idx];
+          const newHistory = current.history || [];
+          newHistory.unshift({
+            timestamp: new Date().toISOString(),
+            status,
+            note: note || `Status transitioned from ${current.status} to ${status}`,
+            updatedBy: 'ERP System Workflow'
+          });
+          const updated = {
+            ...current,
+            status: status as any,
+            updatedAt: new Date().toISOString(),
+            history: newHistory
+          };
+          
+          if (status === 'CHECKED_IN' || status === 'DIAGNOSIS_STARTED') {
+            if (!updated.ticketId) {
+              updated.ticketId = `ticket-${Date.now()}`;
+            }
+          }
+
+          bookings[idx] = updated;
+          saveMockBookings(bookings);
+          addMockAuditLog('booking_status_changed', { bookingId: id, oldStatus: current.status, newStatus: status, note });
+          return { success: true, data: updated };
+        }
+        return { success: false, data: null };
+      }
+    },
+
+    async delete(id: string, token?: string): Promise<ApiResponse<boolean>> {
+      try {
+        return await apiRequest<ApiResponse<boolean>>(`/bookings/${id}`, { method: 'DELETE', token });
+      } catch {
+        const bookings = getMockBookings();
+        const idx = bookings.findIndex((b: BookingModel) => b.id === id);
+        if (idx !== -1) {
+          bookings[idx].isDeleted = true;
+          saveMockBookings(bookings);
+          addMockAuditLog('booking_deleted', { bookingId: id });
+          return { success: true, data: true };
+        }
+        return { success: false, data: false };
+      }
+    },
+
+    async restore(id: string, token?: string): Promise<ApiResponse<boolean>> {
+      try {
+        return await apiRequest<ApiResponse<boolean>>(`/bookings/${id}/restore`, { method: 'POST', token });
+      } catch {
+        const bookings = getMockBookings();
+        const idx = bookings.findIndex((b: BookingModel) => b.id === id);
+        if (idx !== -1) {
+          bookings[idx].isDeleted = false;
+          saveMockBookings(bookings);
+          addMockAuditLog('booking_restored', { bookingId: id });
+          return { success: true, data: true };
+        }
+        return { success: false, data: false };
+      }
+    },
+
+    async duplicate(id: string, token?: string): Promise<ApiResponse<BookingModel | null>> {
+      try {
+        return await apiRequest<ApiResponse<BookingModel>>(`/bookings/${id}/duplicate`, { method: 'POST', token });
+      } catch {
+        const bookings = getMockBookings();
+        const found = bookings.find((b: BookingModel) => b.id === id);
+        if (found) {
+          const nextNum = 1000 + bookings.length + 1;
+          const dup: BookingModel = {
+            ...found,
+            id: `TZ-BKG-${nextNum}`,
+            status: 'PENDING',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            history: [{ timestamp: new Date().toISOString(), status: 'PENDING', note: `Duplicated from ${id}`, updatedBy: 'System Desk' }]
+          };
+          bookings.unshift(dup);
+          saveMockBookings(bookings);
+          addMockAuditLog('booking_duplicated', { originalId: id, newId: dup.id });
+          return { success: true, data: dup };
+        }
+        return { success: false, data: null };
+      }
+    },
+
+    async checkAvailability(date: string, time: string, branchId: string, technicianId?: string): Promise<ApiResponse<{ available: boolean; conflictReason?: string }>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/bookings/check-availability?date=${date}&time=${time}&branchId=${branchId}&technicianId=${technicianId || ''}`);
+      } catch {
+        const bookings = getMockBookings();
+        const existing = bookings.find((b: BookingModel) => 
+          !b.isDeleted &&
+          b.appointmentDate === date && 
+          b.appointmentTime === time && 
+          b.branchId === branchId &&
+          (b.status === 'CONFIRMED' || b.status === 'CHECKED_IN' || b.status === 'DIAGNOSIS_STARTED')
+        );
+        if (existing) {
+          return { success: true, data: { available: false, conflictReason: `Slot ${time} on ${date} is already booked by ${existing.customerName} (${existing.id})` } };
+        }
+        return { success: true, data: { available: true } };
+      }
+    },
+
+    async bulkUpdateStatus(ids: string[], status: string, token?: string): Promise<ApiResponse<number>> {
+      try {
+        return await apiRequest<ApiResponse<number>>('/bookings/bulk-status', { method: 'POST', body: JSON.stringify({ ids, status }), token });
+      } catch {
+        const bookings = getMockBookings();
+        let count = 0;
+        bookings.forEach((b: BookingModel) => {
+          if (ids.includes(b.id)) {
+            b.status = status as any;
+            b.updatedAt = new Date().toISOString();
+            count++;
+          }
+        });
+        saveMockBookings(bookings);
+        addMockAuditLog('bookings_bulk_status_update', { ids, status });
+        return { success: true, data: count };
+      }
+    },
+
+    async bulkAssignTechnician(ids: string[], technicianId: string, technicianName: string, token?: string): Promise<ApiResponse<number>> {
+      try {
+        return await apiRequest<ApiResponse<number>>('/bookings/bulk-assign', { method: 'POST', body: JSON.stringify({ ids, technicianId, technicianName }), token });
+      } catch {
+        const bookings = getMockBookings();
+        let count = 0;
+        bookings.forEach((b: BookingModel) => {
+          if (ids.includes(b.id)) {
+            b.technicianId = technicianId;
+            b.technicianName = technicianName;
+            b.updatedAt = new Date().toISOString();
+            count++;
+          }
+        });
+        saveMockBookings(bookings);
+        addMockAuditLog('bookings_bulk_assign_tech', { ids, technicianId, technicianName });
+        return { success: true, data: count };
+      }
+    },
+
+    async bulkDelete(ids: string[], token?: string): Promise<ApiResponse<number>> {
+      try {
+        return await apiRequest<ApiResponse<number>>('/bookings/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }), token });
+      } catch {
+        const bookings = getMockBookings();
+        let count = 0;
+        bookings.forEach((b: BookingModel) => {
+          if (ids.includes(b.id)) {
+            b.isDeleted = true;
+            count++;
+          }
+        });
+        saveMockBookings(bookings);
+        addMockAuditLog('bookings_bulk_deleted', { ids });
+        return { success: true, data: count };
+      }
+    },
+
+    async getDashboardStats(token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>('/bookings/dashboard-stats', { token });
+      } catch {
+        const bookings = getMockBookings().filter((b: BookingModel) => !b.isDeleted);
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        const todayBookings = bookings.filter(b => b.appointmentDate === todayStr);
+        const upcomingBookings = bookings.filter(b => b.appointmentDate > todayStr);
+        const waitingConfirmation = bookings.filter(b => b.status === 'PENDING');
+        const checkedInDevices = bookings.filter(b => b.status === 'CHECKED_IN' || b.status === 'DIAGNOSIS_STARTED' || b.status === 'REPAIR_STARTED');
+        const completedToday = bookings.filter(b => b.status === 'COMPLETED' || b.status === 'DELIVERED');
+        const cancelled = bookings.filter(b => b.status === 'CANCELLED' || b.status === 'REJECTED');
+        const noShow = bookings.filter(b => b.status === 'NO_SHOW');
+        const assignedTechs = new Set(bookings.map(b => b.technicianId).filter(Boolean)).size;
+
+        const totalRevProj = bookings.reduce((sum, b) => sum + (b.estimatedCost || 0), 0);
+        const totalCompletedCount = completedToday.length;
+        const totalCount = bookings.length;
+        const conversionRate = totalCount > 0 ? Math.round((totalCompletedCount / totalCount) * 100) : 85;
+
+        return {
+          success: true,
+          data: {
+            todayBookingsCount: todayBookings.length,
+            upcomingBookingsCount: upcomingBookings.length,
+            waitingConfirmationCount: waitingConfirmation.length,
+            checkedInDevicesCount: checkedInDevices.length,
+            assignedTechniciansCount: assignedTechs || 4,
+            completedTodayCount: completedToday.length,
+            cancelledCount: cancelled.length,
+            noShowCount: noShow.length,
+            revenueProjection: totalRevProj || 82500,
+            avgWaitingTimeMinutes: 18,
+            bookingConversionRate: conversionRate || 88
+          }
+        };
+      }
+    }
+  },
+
   auth: {
     async login(fields: Record<string, unknown>): Promise<ApiResponse<{ accessToken: string; refreshToken: string }>> {
       try {
@@ -5114,6 +5484,314 @@ function getMockWebhookLogs(): any[] {
     { id: 'wh-2', rule: { name: 'SSLCommerz Gateway Callback' }, url: 'https://api.sslcommerz.com/gwprocess/v4/verify', method: 'POST', responseStatus: 200, status: 'SUCCESS', createdAt: new Date(Date.now() - 3600000).toISOString() },
     { id: 'wh-3', rule: { name: 'SMS Gateway Dispatch' }, url: 'https://api.sms-bangladesh.com/send', method: 'POST', responseStatus: 201, status: 'SUCCESS', createdAt: new Date(Date.now() - 7200000).toISOString() }
   ];
+}
+
+
+const MOCK_BOOKINGS_KEY = 'tz_mock_bookings';
+
+const DEFAULT_MOCK_BOOKINGS: BookingModel[] = [
+  {
+    id: 'TZ-BKG-1001',
+    customerId: 'cust-1',
+    customerName: 'Rafiq Karim',
+    customerPhone: '01711122233',
+    customerEmail: 'rafiq.k@gmail.com',
+    customerAddress: 'House 42, Road 7, Dhanmondi, Dhaka',
+    customerType: 'VIP',
+    deviceBrand: 'Apple',
+    deviceModel: 'iPhone 14 Pro',
+    imei: '358992110294812',
+    serialNumber: 'SN-IPH14P-9982',
+    color: 'Deep Purple',
+    problemCategory: 'SCREEN_DISPLAY',
+    problemDescription: 'Cracked OLED glass with flickering display touch response after drop.',
+    priority: 'HIGH',
+    warrantyStatus: 'OUT_OF_WARRANTY',
+    waterDamage: false,
+    physicalDamage: true,
+    estimatedCost: 18500,
+    advanceAmount: 2000,
+    paymentMethod: 'BKASH',
+    discount: 500,
+    couponCode: 'WELCOME500',
+    appointmentDate: new Date().toISOString().split('T')[0],
+    appointmentTime: '10:00 AM',
+    technicianId: 'tech-1',
+    technicianName: 'Tariq Zaman (Lead L4)',
+    branchId: 'd1111111-1111-1111-1111-111111111111',
+    branchName: 'Dhanmondi HQ',
+    serviceType: 'WALK_IN',
+    pickupAddress: '',
+    deliveryAddress: '',
+    status: 'CONFIRMED',
+    notes: 'Customer requested original Apple OEM screen replacement.',
+    attachments: [],
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    history: [
+      { timestamp: new Date(Date.now() - 3600000).toISOString(), status: 'PENDING', note: 'Booking created via online desk.', updatedBy: 'Customer Portal' },
+      { timestamp: new Date(Date.now() - 1800000).toISOString(), status: 'CONFIRMED', note: 'Appointment confirmed and slot locked.', updatedBy: 'System Desk' }
+    ]
+  },
+  {
+    id: 'TZ-BKG-1002',
+    customerId: 'cust-2',
+    customerName: 'Anisur Rahman',
+    customerPhone: '01822334455',
+    customerEmail: 'anisur.r@yahoo.com',
+    customerAddress: 'Flat 4B, Building 12, Banani, Dhaka',
+    customerType: 'INDIVIDUAL',
+    deviceBrand: 'Samsung',
+    deviceModel: 'Galaxy S23 Ultra',
+    imei: '359102847291048',
+    serialNumber: 'SN-SGS23U-4029',
+    color: 'Phantom Black',
+    problemCategory: 'BATTERY_POWER',
+    problemDescription: 'Rapid battery drain and overheating while charging on fast charger.',
+    priority: 'MEDIUM',
+    warrantyStatus: 'UNDER_WARRANTY',
+    waterDamage: false,
+    physicalDamage: false,
+    estimatedCost: 6500,
+    advanceAmount: 1000,
+    paymentMethod: 'CASH',
+    discount: 0,
+    couponCode: '',
+    appointmentDate: new Date().toISOString().split('T')[0],
+    appointmentTime: '11:30 AM',
+    technicianId: 'tech-2',
+    technicianName: 'Rafiq Ahmed',
+    branchId: 'b2222222-2222-2222-2222-222222222222',
+    branchName: 'Banani Lab',
+    serviceType: 'PICKUP_DELIVERY',
+    pickupAddress: 'Banani DOHS Road 4',
+    deliveryAddress: 'Banani DOHS Road 4',
+    status: 'CUSTOMER_ARRIVED',
+    notes: 'Courier driver collected device. Waiting technician check-in.',
+    attachments: [],
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    history: [
+      { timestamp: new Date(Date.now() - 7200000).toISOString(), status: 'PENDING', note: 'Pickup requested.', updatedBy: 'Customer' },
+      { timestamp: new Date(Date.now() - 3600000).toISOString(), status: 'CUSTOMER_ARRIVED', note: 'Device delivered to reception.', updatedBy: 'Logistics' }
+    ]
+  },
+  {
+    id: 'TZ-BKG-1003',
+    customerId: 'cust-3',
+    customerName: 'Sabina Yasmin',
+    customerPhone: '01933445566',
+    customerEmail: 'sabina.y@outlook.com',
+    customerAddress: 'Sector 4, Road 12, Uttara, Dhaka',
+    customerType: 'CORPORATE',
+    deviceBrand: 'Google',
+    deviceModel: 'Pixel 7 Pro',
+    imei: '357283910294821',
+    serialNumber: 'SN-PIX7P-1102',
+    color: 'Hazel',
+    problemCategory: 'MOTHERBOARD_CHIP',
+    problemDescription: 'No power after software update. System stuck in Qualcomm EDL mode.',
+    priority: 'URGENT',
+    warrantyStatus: 'OUT_OF_WARRANTY',
+    waterDamage: false,
+    physicalDamage: false,
+    estimatedCost: 14000,
+    advanceAmount: 3000,
+    paymentMethod: 'NAGAD',
+    discount: 1000,
+    couponCode: 'CORP10',
+    appointmentDate: new Date().toISOString().split('T')[0],
+    appointmentTime: '02:00 PM',
+    technicianId: 'tech-1',
+    technicianName: 'Tariq Zaman (Lead L4)',
+    branchId: 'd1111111-1111-1111-1111-111111111111',
+    branchName: 'Dhanmondi HQ',
+    serviceType: 'WALK_IN',
+    pickupAddress: '',
+    deliveryAddress: '',
+    status: 'CHECKED_IN',
+    notes: 'Corporate SLA 24-hour fast track requirement.',
+    attachments: [],
+    ticketId: 'ticket-1',
+    createdAt: new Date(Date.now() - 14400000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    history: [
+      { timestamp: new Date(Date.now() - 14400000).toISOString(), status: 'PENDING', note: 'Created.', updatedBy: 'Desk' },
+      { timestamp: new Date(Date.now() - 7200000).toISOString(), status: 'CHECKED_IN', note: 'Job Card generated #TZ-TKT-901.', updatedBy: 'Reception' }
+    ]
+  },
+  {
+    id: 'TZ-BKG-1004',
+    customerId: 'cust-4',
+    customerName: 'Tanvir Hasan',
+    customerPhone: '01644556677',
+    customerEmail: 'tanvir.h@gmail.com',
+    customerAddress: 'Mirpur 10 Circle, Dhaka',
+    customerType: 'INDIVIDUAL',
+    deviceBrand: 'Xiaomi',
+    deviceModel: '13 Pro',
+    imei: '356291048291029',
+    serialNumber: 'SN-MI13P-8831',
+    color: 'Ceramic Black',
+    problemCategory: 'CAMERA_LENS',
+    problemDescription: 'Leica main camera module lens glass cracked and autofocus motor vibrating.',
+    priority: 'MEDIUM',
+    warrantyStatus: 'OUT_OF_WARRANTY',
+    waterDamage: false,
+    physicalDamage: true,
+    estimatedCost: 8500,
+    advanceAmount: 0,
+    paymentMethod: 'CASH',
+    discount: 0,
+    couponCode: '',
+    appointmentDate: new Date().toISOString().split('T')[0],
+    appointmentTime: '04:30 PM',
+    technicianId: 'tech-3',
+    technicianName: 'Nazma Khatun',
+    branchId: 'c3333333-3333-3333-3333-333333333333',
+    branchName: 'Mirpur Lab',
+    serviceType: 'WALK_IN',
+    pickupAddress: '',
+    deliveryAddress: '',
+    status: 'DIAGNOSIS_STARTED',
+    notes: 'Technician inspecting lens sensor alignment.',
+    attachments: [],
+    createdAt: new Date(Date.now() - 18000000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    history: [
+      { timestamp: new Date(Date.now() - 18000000).toISOString(), status: 'CHECKED_IN', note: 'Checked in at Mirpur.', updatedBy: 'Staff' },
+      { timestamp: new Date(Date.now() - 3600000).toISOString(), status: 'DIAGNOSIS_STARTED', note: 'Bench diagnostic under microscope.', updatedBy: 'Tech' }
+    ]
+  },
+  {
+    id: 'TZ-BKG-1005',
+    customerId: 'cust-5',
+    customerName: 'Nusrat Jahan',
+    customerPhone: '01555667788',
+    customerEmail: 'nusrat.j@gmail.com',
+    customerAddress: 'Dhanmondi Road 27, Dhaka',
+    customerType: 'VIP',
+    deviceBrand: 'Apple',
+    deviceModel: 'iPad Air 5',
+    imei: '352910482019482',
+    serialNumber: 'SN-IPADA5-9012',
+    color: 'Space Gray',
+    problemCategory: 'CHARGING_PORT',
+    problemDescription: 'USB-C port loose connection, charges only when cable held at angle.',
+    priority: 'LOW',
+    warrantyStatus: 'EXTENDED_CARE',
+    waterDamage: false,
+    physicalDamage: false,
+    estimatedCost: 4500,
+    advanceAmount: 1000,
+    paymentMethod: 'CARD',
+    discount: 500,
+    couponCode: 'VIPCARE',
+    appointmentDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    appointmentTime: '10:00 AM',
+    technicianId: 'tech-1',
+    technicianName: 'Tariq Zaman (Lead L4)',
+    branchId: 'd1111111-1111-1111-1111-111111111111',
+    branchName: 'Dhanmondi HQ',
+    serviceType: 'WALK_IN',
+    pickupAddress: '',
+    deliveryAddress: '',
+    status: 'PENDING',
+    notes: 'Awaiting customer arrival tomorrow morning.',
+    attachments: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    history: [
+      { timestamp: new Date().toISOString(), status: 'PENDING', note: 'Online appointment booked.', updatedBy: 'Customer' }
+    ]
+  },
+  {
+    id: 'TZ-BKG-1010',
+    customerId: 'cust-10',
+    customerName: 'Dr. Shahadat Ali',
+    customerPhone: '01700998877',
+    customerEmail: 'dr.shahadat@hospital.org',
+    customerAddress: 'Gulshan 2, Dhaka',
+    customerType: 'VIP',
+    deviceBrand: 'Apple',
+    deviceModel: 'iPhone 15 Pro Max',
+    imei: '350192847291029',
+    serialNumber: 'SN-IPH15PM-7721',
+    color: 'Natural Titanium',
+    problemCategory: 'SCREEN_DISPLAY',
+    problemDescription: 'Titanium chassis edge realignment & back glass replacement.',
+    priority: 'URGENT',
+    warrantyStatus: 'UNDER_WARRANTY',
+    waterDamage: false,
+    physicalDamage: true,
+    estimatedCost: 22000,
+    advanceAmount: 5000,
+    paymentMethod: 'BANK_TRANSFER',
+    discount: 2000,
+    couponCode: 'EXECUTIVE',
+    appointmentDate: new Date().toISOString().split('T')[0],
+    appointmentTime: '09:30 AM',
+    technicianId: 'tech-1',
+    technicianName: 'Tariq Zaman (Lead L4)',
+    branchId: 'd1111111-1111-1111-1111-111111111111',
+    branchName: 'Dhanmondi HQ',
+    serviceType: 'PICKUP_DELIVERY',
+    pickupAddress: 'Gulshan 2 Executive Residence',
+    deliveryAddress: 'Gulshan 2 Executive Residence',
+    status: 'READY_FOR_PICKUP',
+    notes: 'QC passed 100%. Device sealed and sanitized.',
+    attachments: [],
+    createdAt: new Date(Date.now() - 259200000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    history: [
+      { timestamp: new Date(Date.now() - 259200000).toISOString(), status: 'CHECKED_IN', note: 'Fast-tracked.', updatedBy: 'VIP Desk' },
+      { timestamp: new Date(Date.now() - 3600000).toISOString(), status: 'READY_FOR_PICKUP', note: 'Passed all QC tests.', updatedBy: 'QC Lead' }
+    ]
+  }
+];
+
+function getMockBookings(params?: any): BookingModel[] {
+  if (typeof window === 'undefined') return DEFAULT_MOCK_BOOKINGS;
+  const stored = localStorage.getItem(MOCK_BOOKINGS_KEY);
+  let list: BookingModel[] = stored ? JSON.parse(stored) : null;
+  if (!list) {
+    list = DEFAULT_MOCK_BOOKINGS;
+    localStorage.setItem(MOCK_BOOKINGS_KEY, JSON.stringify(list));
+  }
+  if (params?.search) {
+    const q = params.search.toLowerCase();
+    list = list.filter((b: BookingModel) => 
+      b.id.toLowerCase().includes(q) ||
+      b.customerName.toLowerCase().includes(q) ||
+      b.customerPhone.includes(q) ||
+      b.customerEmail.toLowerCase().includes(q) ||
+      b.deviceModel.toLowerCase().includes(q) ||
+      b.imei?.includes(q) ||
+      b.serialNumber?.toLowerCase().includes(q)
+    );
+  }
+  if (params?.status) {
+    list = list.filter((b: BookingModel) => b.status === params.status);
+  }
+  if (params?.priority) {
+    list = list.filter((b: BookingModel) => b.priority === params.priority);
+  }
+  if (params?.branchId) {
+    list = list.filter((b: BookingModel) => b.branchId === params.branchId);
+  }
+  if (params?.technicianId) {
+    list = list.filter((b: BookingModel) => b.technicianId === params.technicianId);
+  }
+  if (params?.date) {
+    list = list.filter((b: BookingModel) => b.appointmentDate === params.date);
+  }
+  return list;
+}
+
+function saveMockBookings(data: BookingModel[]) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(MOCK_BOOKINGS_KEY, JSON.stringify(data));
+  }
 }
 
 function getMockCalendarEvents(): any[] {

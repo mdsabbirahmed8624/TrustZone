@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { CreateTemplateDto } from './dto/create-template.dto';
@@ -13,22 +17,43 @@ export class MarketingService {
   // ==========================================
   async getDashboardStats() {
     const totalCampaigns = await this.prisma.campaign.count();
-    const activeCampaigns = await this.prisma.campaign.count({ where: { status: 'ACTIVE' } });
-    const scheduledCampaigns = await this.prisma.campaign.count({ where: { status: 'SCHEDULED' } });
-    const completedCampaigns = await this.prisma.campaign.count({ where: { status: 'COMPLETED' } });
-    const failedCampaigns = await this.prisma.campaign.count({ where: { status: 'CANCELLED' } });
+    const activeCampaigns = await this.prisma.campaign.count({
+      where: { status: 'ACTIVE' },
+    });
+    const scheduledCampaigns = await this.prisma.campaign.count({
+      where: { status: 'SCHEDULED' },
+    });
+    const completedCampaigns = await this.prisma.campaign.count({
+      where: { status: 'COMPLETED' },
+    });
+    const failedCampaigns = await this.prisma.campaign.count({
+      where: { status: 'CANCELLED' },
+    });
 
     // Aggregate member delivery stats
     const totalMembers = await this.prisma.campaignMember.count();
-    const openedMembers = await this.prisma.campaignMember.count({ where: { status: 'OPENED' } });
-    const clickedMembers = await this.prisma.campaignMember.count({ where: { status: 'CLICKED' } });
+    const openedMembers = await this.prisma.campaignMember.count({
+      where: { status: 'OPENED' },
+    });
+    const clickedMembers = await this.prisma.campaignMember.count({
+      where: { status: 'CLICKED' },
+    });
     const deliveredMembers = await this.prisma.campaignMember.count({
       where: { status: { in: ['DELIVERED', 'OPENED', 'CLICKED'] } },
     });
 
-    const openRate = totalMembers > 0 ? Number(((openedMembers / totalMembers) * 100).toFixed(1)) : 82.4;
-    const clickRate = totalMembers > 0 ? Number(((clickedMembers / totalMembers) * 100).toFixed(1)) : 41.8;
-    const conversionRate = deliveredMembers > 0 ? Number(((clickedMembers / deliveredMembers) * 100).toFixed(1)) : 18.5;
+    const openRate =
+      totalMembers > 0
+        ? Number(((openedMembers / totalMembers) * 100).toFixed(1))
+        : 82.4;
+    const clickRate =
+      totalMembers > 0
+        ? Number(((clickedMembers / totalMembers) * 100).toFixed(1))
+        : 41.8;
+    const conversionRate =
+      deliveredMembers > 0
+        ? Number(((clickedMembers / deliveredMembers) * 100).toFixed(1))
+        : 18.5;
 
     // Aggregate total revenue generated from campaigns
     const revenueAggregate = await this.prisma.campaign.aggregate({
@@ -60,7 +85,11 @@ export class MarketingService {
   // ==========================================
   // STEP 3 & 4: CAMPAIGN MANAGEMENT (CRUD & LIFECYCLE)
   // ==========================================
-  async getCampaigns(query?: { channel?: string; status?: string; search?: string }) {
+  async getCampaigns(query?: {
+    channel?: string;
+    status?: string;
+    search?: string;
+  }) {
     const where: any = {};
     if (query?.channel) where.channel = query.channel;
     if (query?.status) where.status = query.status;
@@ -98,7 +127,9 @@ export class MarketingService {
       where: { name: { equals: dto.name, mode: 'insensitive' } },
     });
     if (existing) {
-      throw new BadRequestException(`A campaign named "${dto.name}" already exists.`);
+      throw new BadRequestException(
+        `A campaign named "${dto.name}" already exists.`,
+      );
     }
 
     const campaign = await this.prisma.campaign.create({
@@ -174,7 +205,10 @@ export class MarketingService {
     });
   }
 
-  async updateCampaignStatus(id: string, status: 'SCHEDULED' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED') {
+  async updateCampaignStatus(
+    id: string,
+    status: 'SCHEDULED' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED',
+  ) {
     const campaign = await this.getCampaign(id);
     const updateData: any = { status };
     if (status === 'ACTIVE') {
@@ -188,7 +222,7 @@ export class MarketingService {
 
   async executeCampaignSend(id: string) {
     const campaign = await this.getCampaign(id);
-    
+
     // Simulate multi-channel messaging dispatch (SMS, WhatsApp, Email, Push)
     const members = await this.prisma.campaignMember.findMany({
       where: { campaignId: id },
@@ -262,7 +296,12 @@ export class MarketingService {
         channel: dto.channel,
         subject: dto.subject,
         content: dto.content,
-        variables: dto.variables || ['customerName', 'invoiceNumber', 'repairStatus', 'branchName'],
+        variables: dto.variables || [
+          'customerName',
+          'invoiceNumber',
+          'repairStatus',
+          'branchName',
+        ],
         isSystem: dto.isSystem || false,
       },
     });
@@ -279,7 +318,10 @@ export class MarketingService {
     return this.prisma.marketingTemplate.delete({ where: { id } });
   }
 
-  interpolateTemplate(content: string, variables: Record<string, string>): string {
+  interpolateTemplate(
+    content: string,
+    variables: Record<string, string>,
+  ): string {
     let result = content;
     for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
@@ -327,8 +369,13 @@ export class MarketingService {
   }
 
   async createCoupon(dto: CreateCouponDto) {
-    const existing = await this.prisma.coupon.findUnique({ where: { code: dto.code } });
-    if (existing) throw new BadRequestException(`Coupon code "${dto.code}" already exists.`);
+    const existing = await this.prisma.coupon.findUnique({
+      where: { code: dto.code },
+    });
+    if (existing)
+      throw new BadRequestException(
+        `Coupon code "${dto.code}" already exists.`,
+      );
 
     return this.prisma.coupon.create({
       data: {
@@ -396,8 +443,16 @@ export class MarketingService {
 
     return campaigns.map((c) => {
       const total = c.members.length;
-      const sent = c.members.filter((m) => m.status === 'SENT' || m.status === 'DELIVERED' || m.status === 'OPENED' || m.status === 'CLICKED').length;
-      const opened = c.members.filter((m) => m.status === 'OPENED' || m.status === 'CLICKED').length;
+      const sent = c.members.filter(
+        (m) =>
+          m.status === 'SENT' ||
+          m.status === 'DELIVERED' ||
+          m.status === 'OPENED' ||
+          m.status === 'CLICKED',
+      ).length;
+      const opened = c.members.filter(
+        (m) => m.status === 'OPENED' || m.status === 'CLICKED',
+      ).length;
       const clicked = c.members.filter((m) => m.status === 'CLICKED').length;
       const failed = c.members.filter((m) => m.status === 'FAILED').length;
 
@@ -414,7 +469,15 @@ export class MarketingService {
           failedCount: failed,
           revenueGenerated: Number(c.revenueGenerated || 0),
           budget: Number(c.budget || 0),
-          roi: Number(c.budget) > 0 ? Number(((Number(c.revenueGenerated) / Number(c.budget)) * 100).toFixed(1)) : 0,
+          roi:
+            Number(c.budget) > 0
+              ? Number(
+                  (
+                    (Number(c.revenueGenerated) / Number(c.budget)) *
+                    100
+                  ).toFixed(1),
+                )
+              : 0,
         },
       };
     });

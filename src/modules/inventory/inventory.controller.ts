@@ -107,10 +107,7 @@ export class InventoryController {
   @Patch('parts/:id')
   @Permissions('write:inventory')
   @HttpCode(HttpStatus.OK)
-  async updatePart(
-    @Param('id') id: string,
-    @Body() dto: any,
-  ) {
+  async updatePart(@Param('id') id: string, @Body() dto: any) {
     return {
       success: true,
       data: await this.inventoryService.updatePart(id, dto),

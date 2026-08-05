@@ -47,16 +47,44 @@ export class IntegrationService {
     if (count === 0) {
       await this.prisma.integrationProvider.createMany({
         data: [
-          { code: 'SSLCOMMERZ', name: 'SSLCommerz Payment Gateway', category: 'PAYMENT' },
-          { code: 'AMARPAY', name: 'AmarPay Payment Gateway', category: 'PAYMENT' },
+          {
+            code: 'SSLCOMMERZ',
+            name: 'SSLCommerz Payment Gateway',
+            category: 'PAYMENT',
+          },
+          {
+            code: 'AMARPAY',
+            name: 'AmarPay Payment Gateway',
+            category: 'PAYMENT',
+          },
           { code: 'STRIPE', name: 'Stripe Payments', category: 'PAYMENT' },
-          { code: 'TWILIO', name: 'Twilio SMS & WhatsApp', category: 'MESSAGING' },
+          {
+            code: 'TWILIO',
+            name: 'Twilio SMS & WhatsApp',
+            category: 'MESSAGING',
+          },
           { code: 'SSL_SMS', name: 'SSL Wireless SMS', category: 'MESSAGING' },
-          { code: 'SENDGRID', name: 'SendGrid Email API', category: 'MESSAGING' },
-          { code: 'FCM', name: 'Firebase Cloud Messaging (Push)', category: 'MESSAGING' },
-          { code: 'GOOGLE_MAPS', name: 'Google Maps Platform', category: 'MAPS' },
+          {
+            code: 'SENDGRID',
+            name: 'SendGrid Email API',
+            category: 'MESSAGING',
+          },
+          {
+            code: 'FCM',
+            name: 'Firebase Cloud Messaging (Push)',
+            category: 'MESSAGING',
+          },
+          {
+            code: 'GOOGLE_MAPS',
+            name: 'Google Maps Platform',
+            category: 'MAPS',
+          },
           { code: 'AWS_S3', name: 'Amazon S3 Storage', category: 'STORAGE' },
-          { code: 'CLOUDINARY', name: 'Cloudinary Media Storage', category: 'STORAGE' },
+          {
+            code: 'CLOUDINARY',
+            name: 'Cloudinary Media Storage',
+            category: 'STORAGE',
+          },
         ],
       });
     }
@@ -79,9 +107,12 @@ export class IntegrationService {
       where: { code: providerCode },
     });
 
-    if (!provider) throw new NotFoundException(`Provider ${providerCode} not found`);
+    if (!provider)
+      throw new NotFoundException(`Provider ${providerCode} not found`);
 
-    const encryptedSecret = apiSecret ? this.encryptSecret(apiSecret) : undefined;
+    const encryptedSecret = apiSecret
+      ? this.encryptSecret(apiSecret)
+      : undefined;
 
     return this.prisma.integrationCredential.upsert({
       where: {
@@ -109,15 +140,21 @@ export class IntegrationService {
     });
   }
 
-  async testConnection(providerCode: string, environment: 'SANDBOX' | 'PRODUCTION') {
+  async testConnection(
+    providerCode: string,
+    environment: 'SANDBOX' | 'PRODUCTION',
+  ) {
     const provider = await this.prisma.integrationProvider.findUnique({
       where: { code: providerCode },
       include: { credentials: true },
     });
 
-    if (!provider) throw new NotFoundException(`Provider ${providerCode} not found`);
+    if (!provider)
+      throw new NotFoundException(`Provider ${providerCode} not found`);
 
-    const cred = provider.credentials.find((c) => c.environment === environment);
+    const cred = provider.credentials.find(
+      (c) => c.environment === environment,
+    );
 
     return {
       success: true,
@@ -126,7 +163,9 @@ export class IntegrationService {
       status: 'CONNECTED',
       latencyMs: Math.floor(20 + Math.random() * 40),
       testedAt: new Date().toISOString(),
-      details: cred ? 'API Credentials verified against remote service gateway' : 'Default sandbox environment active',
+      details: cred
+        ? 'API Credentials verified against remote service gateway'
+        : 'Default sandbox environment active',
     };
   }
 
@@ -205,8 +244,14 @@ export class IntegrationService {
   // ==========================================
   // STEP 3: SMS GATEWAY
   // ==========================================
-  async sendSMS(data: { recipient: string; message: string; type?: 'OTP' | 'TRANSACTIONAL' | 'MARKETING' }) {
-    this.logger.log(`[SMS OUTBOUND] To: ${data.recipient} | Msg: ${data.message}`);
+  async sendSMS(data: {
+    recipient: string;
+    message: string;
+    type?: 'OTP' | 'TRANSACTIONAL' | 'MARKETING';
+  }) {
+    this.logger.log(
+      `[SMS OUTBOUND] To: ${data.recipient} | Msg: ${data.message}`,
+    );
     return {
       success: true,
       messageId: `SMS-${Date.now()}`,
@@ -230,8 +275,15 @@ export class IntegrationService {
   // ==========================================
   // STEP 4: EMAIL SYSTEM
   // ==========================================
-  async sendEmail(data: { to: string; subject: string; htmlBody: string; attachments?: any[] }) {
-    this.logger.log(`[EMAIL OUTBOUND] To: ${data.to} | Subject: ${data.subject}`);
+  async sendEmail(data: {
+    to: string;
+    subject: string;
+    htmlBody: string;
+    attachments?: any[];
+  }) {
+    this.logger.log(
+      `[EMAIL OUTBOUND] To: ${data.to} | Subject: ${data.subject}`,
+    );
     return {
       success: true,
       emailId: `EML-${Date.now()}`,
@@ -245,8 +297,15 @@ export class IntegrationService {
   // ==========================================
   // STEP 5: WHATSAPP BUSINESS API
   // ==========================================
-  async sendWhatsAppMessage(data: { recipient: string; templateName?: string; parameters?: string[]; message?: string }) {
-    this.logger.log(`[WHATSAPP OUTBOUND] To: ${data.recipient} | Template: ${data.templateName}`);
+  async sendWhatsAppMessage(data: {
+    recipient: string;
+    templateName?: string;
+    parameters?: string[];
+    message?: string;
+  }) {
+    this.logger.log(
+      `[WHATSAPP OUTBOUND] To: ${data.recipient} | Template: ${data.templateName}`,
+    );
     return {
       success: true,
       waMessageId: `WA-${Date.now()}`,
@@ -259,8 +318,15 @@ export class IntegrationService {
   // ==========================================
   // STEP 6: PUSH NOTIFICATIONS
   // ==========================================
-  async sendPushNotification(data: { title: string; body: string; topicOrToken: string; payload?: any }) {
-    this.logger.log(`[FCM PUSH OUTBOUND] Target: ${data.topicOrToken} | Title: ${data.title}`);
+  async sendPushNotification(data: {
+    title: string;
+    body: string;
+    topicOrToken: string;
+    payload?: any;
+  }) {
+    this.logger.log(
+      `[FCM PUSH OUTBOUND] Target: ${data.topicOrToken} | Title: ${data.title}`,
+    );
     return {
       success: true,
       multicastId: `FCM-${Date.now()}`,
@@ -309,7 +375,11 @@ export class IntegrationService {
   // ==========================================
   // STEP 10: WEBHOOKS ENGINE
   // ==========================================
-  async createWebhookEndpoint(targetUrl: string, events: string[], secretKey?: string) {
+  async createWebhookEndpoint(
+    targetUrl: string,
+    events: string[],
+    secretKey?: string,
+  ) {
     const secret = secretKey || crypto.randomBytes(24).toString('hex');
     return this.prisma.webhookEndpoint.create({
       data: {
@@ -331,7 +401,11 @@ export class IntegrationService {
   // ==========================================
   // STEP 11: PUBLIC API KEYS
   // ==========================================
-  async generateApiKey(name: string, scopes: string[] = ['read', 'write'], rateLimit = 100) {
+  async generateApiKey(
+    name: string,
+    scopes: string[] = ['read', 'write'],
+    rateLimit = 100,
+  ) {
     // Create default client if none
     let client = await this.prisma.apiClient.findFirst();
     if (!client) {

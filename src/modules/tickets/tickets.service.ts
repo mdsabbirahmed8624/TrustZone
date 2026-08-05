@@ -45,7 +45,18 @@ export class TicketsService {
         where: { ...where, createdAt: { gte: startOfToday } },
       }),
       this.prisma.ticket.count({
-        where: { ...where, status: { in: ['booked', 'diagnosing', 'waiting_approval', 'waiting_parts', 'repairing'] } },
+        where: {
+          ...where,
+          status: {
+            in: [
+              'booked',
+              'diagnosing',
+              'waiting_approval',
+              'waiting_parts',
+              'repairing',
+            ],
+          },
+        },
       }),
       this.prisma.ticket.count({
         where: { ...where, status: 'diagnosing' },
@@ -111,7 +122,11 @@ export class TicketsService {
   }
 
   // Consume Inventory Parts
-  async consumeParts(ticketId: string, parts: { partId: string; quantity: number }[], userId?: string) {
+  async consumeParts(
+    ticketId: string,
+    parts: { partId: string; quantity: number }[],
+    userId?: string,
+  ) {
     const ticket = await this.findOne(ticketId);
 
     for (const p of parts) {
@@ -163,7 +178,12 @@ export class TicketsService {
   }
 
   // Log Time Track for Technician Workload
-  async logTimeTrack(ticketId: string, durationMinutes: number, notes?: string, userId?: string) {
+  async logTimeTrack(
+    ticketId: string,
+    durationMinutes: number,
+    notes?: string,
+    userId?: string,
+  ) {
     const ticket = await this.findOne(ticketId);
 
     await this.prisma.ticketHistory.create({
@@ -180,7 +200,12 @@ export class TicketsService {
   }
 
   // Dispatch Multi-Channel Repair Notification
-  async sendNotification(ticketId: string, recipientRole: string, channel: string, message: string) {
+  async sendNotification(
+    ticketId: string,
+    recipientRole: string,
+    channel: string,
+    message: string,
+  ) {
     const ticket = await this.findOne(ticketId);
 
     await this.prisma.customerCommunication.create({
@@ -282,7 +307,9 @@ export class TicketsService {
   async publicBooking(dto: any) {
     let branch = await this.prisma.branch.findFirst();
     if (dto.branchId) {
-      const foundBranch = await this.prisma.branch.findUnique({ where: { id: dto.branchId } });
+      const foundBranch = await this.prisma.branch.findUnique({
+        where: { id: dto.branchId },
+      });
       if (foundBranch) branch = foundBranch;
     }
 
@@ -324,7 +351,9 @@ export class TicketsService {
       },
     });
 
-    const deadline = dto.preferredDate ? new Date(dto.preferredDate) : new Date(Date.now() + 86400000);
+    const deadline = dto.preferredDate
+      ? new Date(dto.preferredDate)
+      : new Date(Date.now() + 86400000);
 
     const ticket = await this.prisma.ticket.create({
       data: {
@@ -447,7 +476,9 @@ export class TicketsService {
   // Add Photos / Attachments
   async addPhotos(id: string, photos: string[], updatedById?: string) {
     const ticket = await this.findOne(id);
-    const updatedPhotos = Array.from(new Set([...(ticket.photos || []), ...photos]));
+    const updatedPhotos = Array.from(
+      new Set([...(ticket.photos || []), ...photos]),
+    );
 
     await this.prisma.ticket.update({
       where: { id },

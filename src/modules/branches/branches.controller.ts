@@ -43,7 +43,11 @@ export class BranchesController {
     @Query('status') status?: string,
     @Query('district') district?: string,
   ) {
-    const data = await this.branchesService.getBranches({ search, status, district });
+    const data = await this.branchesService.getBranches({
+      search,
+      status,
+      district,
+    });
     return { success: true, data };
   }
 
@@ -63,7 +67,10 @@ export class BranchesController {
 
   @Put(':id')
   @Permissions('write:branches')
-  async updateBranch(@Param('id') id: string, @Body() dto: Partial<CreateBranchDto>) {
+  async updateBranch(
+    @Param('id') id: string,
+    @Body() dto: Partial<CreateBranchDto>,
+  ) {
     const data = await this.branchesService.updateBranch(id, dto);
     return { success: true, data };
   }
@@ -101,7 +108,11 @@ export class BranchesController {
     @Param('id') id: string,
     @Body() body: { userId: string; role?: string },
   ) {
-    const data = await this.branchesService.assignStaffToBranch(id, body.userId, body.role);
+    const data = await this.branchesService.assignStaffToBranch(
+      id,
+      body.userId,
+      body.role,
+    );
     return { success: true, data };
   }
 
@@ -117,7 +128,10 @@ export class BranchesController {
 
   @Get(':id/repairs')
   @Permissions('read:branches')
-  async getBranchRepairQueue(@Param('id') id: string, @Query('status') status?: string) {
+  async getBranchRepairQueue(
+    @Param('id') id: string,
+    @Query('status') status?: string,
+  ) {
     const data = await this.branchesService.getBranchRepairQueue(id, status);
     return { success: true, data };
   }
@@ -128,7 +142,10 @@ export class BranchesController {
     @Param('ticketId') ticketId: string,
     @Body('targetBranchId') targetBranchId: string,
   ) {
-    const data = await this.branchesService.transferRepairTicket(ticketId, targetBranchId);
+    const data = await this.branchesService.transferRepairTicket(
+      ticketId,
+      targetBranchId,
+    );
     return { success: true, data };
   }
 
@@ -147,7 +164,8 @@ export class BranchesController {
   async performDailyClosing(
     @Param('id') id: string,
     @CurrentUser() user: any,
-    @Body() body: { expectedBalance: number; actualBalance: number; notes?: string },
+    @Body()
+    body: { expectedBalance: number; actualBalance: number; notes?: string },
   ) {
     const data = await this.branchesService.performDailyClosing(id, {
       expectedBalance: body.expectedBalance,
@@ -168,13 +186,20 @@ export class BranchesController {
     @Query('toBranchId') toBranchId?: string,
     @Query('status') status?: string,
   ) {
-    const data = await this.branchesService.getBranchTransfers({ fromBranchId, toBranchId, status });
+    const data = await this.branchesService.getBranchTransfers({
+      fromBranchId,
+      toBranchId,
+      status,
+    });
     return { success: true, data };
   }
 
   @Post('transfers')
   @Permissions('write:branches')
-  async createBranchTransfer(@Body() dto: CreateTransferDto, @CurrentUser() user: any) {
+  async createBranchTransfer(
+    @Body() dto: CreateTransferDto,
+    @CurrentUser() user: any,
+  ) {
     const data = await this.branchesService.createBranchTransfer(dto, user?.id);
     return { success: true, data };
   }
@@ -186,7 +211,11 @@ export class BranchesController {
     @CurrentUser() user: any,
     @Body('status') status: 'APPROVED' | 'REJECTED' | 'COMPLETED',
   ) {
-    const data = await this.branchesService.processBranchTransferStatus(id, status, user?.id);
+    const data = await this.branchesService.processBranchTransferStatus(
+      id,
+      status,
+      user?.id,
+    );
     return { success: true, data };
   }
 }

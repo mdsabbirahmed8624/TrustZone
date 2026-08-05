@@ -50,7 +50,14 @@ export class InvoicesController {
   @Permissions('pos:write')
   @HttpCode(HttpStatus.CREATED)
   async createInvoice(
-    @Body() dto: { customerName: string; subtotal: number; taxAmount?: number; discountAmount?: number; items: any[] },
+    @Body()
+    dto: {
+      customerName: string;
+      subtotal: number;
+      taxAmount?: number;
+      discountAmount?: number;
+      items: any[];
+    },
   ) {
     return {
       success: true,
@@ -69,7 +76,13 @@ export class InvoicesController {
   ) {
     return {
       success: true,
-      data: await this.invoiceService.listInvoices({ search, status, branchId, page, limit }),
+      data: await this.invoiceService.listInvoices({
+        search,
+        status,
+        branchId,
+        page,
+        limit,
+      }),
     };
   }
 
@@ -91,7 +104,12 @@ export class InvoicesController {
     @Body('amount') amount: number,
     @Body('reference') reference?: string,
   ) {
-    return await this.invoiceService.recordPayment(id, paymentMethod, amount, reference);
+    return await this.invoiceService.recordPayment(
+      id,
+      paymentMethod,
+      amount,
+      reference,
+    );
   }
 
   @Post(':id/refund')

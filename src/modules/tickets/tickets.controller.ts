@@ -203,7 +203,11 @@ export class TicketsController {
   ) {
     return {
       success: true,
-      data: await this.ticketsService.addSignature(id, signatureData, updatedById),
+      data: await this.ticketsService.addSignature(
+        id,
+        signatureData,
+        updatedById,
+      ),
     };
   }
 
@@ -246,7 +250,12 @@ export class TicketsController {
   ) {
     return {
       success: true,
-      data: await this.ticketsService.logTimeTrack(id, durationMinutes, notes, userId),
+      data: await this.ticketsService.logTimeTrack(
+        id,
+        durationMinutes,
+        notes,
+        userId,
+      ),
     };
   }
 
@@ -259,6 +268,11 @@ export class TicketsController {
     @Body('channel') channel: string,
     @Body('message') message: string,
   ) {
-    return await this.ticketsService.sendNotification(id, recipientRole, channel, message);
+    return await this.ticketsService.sendNotification(
+      id,
+      recipientRole,
+      channel,
+      message,
+    );
   }
 }

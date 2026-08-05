@@ -43,10 +43,22 @@ export class InvoiceService {
       }),
     ]);
 
-    const totalRevenue = allInvoices.reduce((acc, curr) => acc + Number(curr.total || 0), 0);
-    const avgInvoiceValue = allInvoices.length > 0 ? Number((totalRevenue / allInvoices.length).toFixed(2)) : 0;
-    const outstandingBalance = dueCustomers.reduce((acc, curr) => acc + Number(curr.dueBalance || 0), 0);
-    const paymentSuccessRate = allInvoices.length > 0 ? Number(((paidInvoices / allInvoices.length) * 100).toFixed(1)) : 100;
+    const totalRevenue = allInvoices.reduce(
+      (acc, curr) => acc + Number(curr.total || 0),
+      0,
+    );
+    const avgInvoiceValue =
+      allInvoices.length > 0
+        ? Number((totalRevenue / allInvoices.length).toFixed(2))
+        : 0;
+    const outstandingBalance = dueCustomers.reduce(
+      (acc, curr) => acc + Number(curr.dueBalance || 0),
+      0,
+    );
+    const paymentSuccessRate =
+      allInvoices.length > 0
+        ? Number(((paidInvoices / allInvoices.length) * 100).toFixed(1))
+        : 100;
 
     return {
       todaysInvoices,
@@ -78,8 +90,16 @@ export class InvoiceService {
       const term = query.search.trim();
       where.OR = [
         { invoiceNumber: { contains: term, mode: 'insensitive' } },
-        { ticket: { customer: { firstName: { contains: term, mode: 'insensitive' } } } },
-        { ticket: { customer: { phone: { contains: term, mode: 'insensitive' } } } },
+        {
+          ticket: {
+            customer: { firstName: { contains: term, mode: 'insensitive' } },
+          },
+        },
+        {
+          ticket: {
+            customer: { phone: { contains: term, mode: 'insensitive' } },
+          },
+        },
       ];
     }
 
@@ -90,7 +110,10 @@ export class InvoiceService {
     const [items, total] = await Promise.all([
       this.prisma.invoice.findMany({
         where,
-        include: { ticket: { include: { customer: true, device: true } }, payments: true },
+        include: {
+          ticket: { include: { customer: true, device: true } },
+          payments: true,
+        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
@@ -113,7 +136,10 @@ export class InvoiceService {
   async getInvoice(id: string) {
     const invoice = await this.prisma.invoice.findUnique({
       where: { id },
-      include: { ticket: { include: { customer: true, device: true } }, payments: true },
+      include: {
+        ticket: { include: { customer: true, device: true } },
+        payments: true,
+      },
     });
     if (!invoice) {
       throw new NotFoundException(`Invoice '${id}' not found.`);
@@ -183,14 +209,22 @@ export class InvoiceService {
         status: 'unpaid',
         branchId: ticket.branchId,
       },
-      include: { ticket: { include: { customer: true, device: true } }, payments: true },
+      include: {
+        ticket: { include: { customer: true, device: true } },
+        payments: true,
+      },
     });
   }
 
   /**
    * Record Customer Payment
    */
-  async recordPayment(id: string, paymentMethod: string, amount: number, reference?: string) {
+  async recordPayment(
+    id: string,
+    paymentMethod: string,
+    amount: number,
+    reference?: string,
+  ) {
     const invoice = await this.getInvoice(id);
 
     const payment = await this.prisma.payment.create({
@@ -238,7 +272,10 @@ export class InvoiceService {
    */
   async getInvoices() {
     return this.prisma.invoice.findMany({
-      include: { ticket: { include: { customer: true, device: true } }, payments: true },
+      include: {
+        ticket: { include: { customer: true, device: true } },
+        payments: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

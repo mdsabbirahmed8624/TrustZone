@@ -47,18 +47,26 @@ export class CustomersService {
         where,
         take: 5,
         orderBy: { createdAt: 'desc' },
-        include: { devices: true, tickets: { select: { id: true, status: true } } },
+        include: {
+          devices: true,
+          tickets: { select: { id: true, status: true } },
+        },
       }),
       this.prisma.customerActivity.findMany({
         take: 10,
         orderBy: { createdAt: 'desc' },
-        include: { customer: { select: { id: true, firstName: true, lastName: true } } },
+        include: {
+          customer: { select: { id: true, firstName: true, lastName: true } },
+        },
       }),
       this.prisma.customer.count({
         where: { ...where, createdAt: { gte: thirtyDaysAgo } },
       }),
       this.prisma.customer.count({
-        where: { ...where, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+        where: {
+          ...where,
+          createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo },
+        },
       }),
       this.prisma.customer.findMany({
         where,
@@ -79,10 +87,15 @@ export class CustomersService {
 
     const growthRate =
       lastMonthCount > 0
-        ? Number((((thisMonthCount - lastMonthCount) / lastMonthCount) * 100).toFixed(1))
+        ? Number(
+            (
+              ((thisMonthCount - lastMonthCount) / lastMonthCount) *
+              100
+            ).toFixed(1),
+          )
         : thisMonthCount > 0
-        ? 100
-        : 0;
+          ? 100
+          : 0;
 
     return {
       totalCustomers,
@@ -123,10 +136,20 @@ export class CustomersService {
         { lastName: { contains: term, mode: 'insensitive' } },
         { email: { contains: term, mode: 'insensitive' } },
         { phone: { contains: term, mode: 'insensitive' } },
-        { devices: { some: { brand: { contains: term, mode: 'insensitive' } } } },
-        { devices: { some: { model: { contains: term, mode: 'insensitive' } } } },
-        { devices: { some: { serialNumber: { contains: term, mode: 'insensitive' } } } },
-        { devices: { some: { imei: { contains: term, mode: 'insensitive' } } } },
+        {
+          devices: { some: { brand: { contains: term, mode: 'insensitive' } } },
+        },
+        {
+          devices: { some: { model: { contains: term, mode: 'insensitive' } } },
+        },
+        {
+          devices: {
+            some: { serialNumber: { contains: term, mode: 'insensitive' } },
+          },
+        },
+        {
+          devices: { some: { imei: { contains: term, mode: 'insensitive' } } },
+        },
       ];
     }
 
@@ -424,7 +447,10 @@ export class CustomersService {
   }
 
   // Add Device to Customer
-  async addDevice(customerId: string, dto: { brand: string; model: string; serialNumber?: string; imei?: string }) {
+  async addDevice(
+    customerId: string,
+    dto: { brand: string; model: string; serialNumber?: string; imei?: string },
+  ) {
     await this.findOne(customerId);
     const device = await this.prisma.device.create({
       data: {
@@ -455,11 +481,19 @@ export class CustomersService {
       where: { id: deviceId },
     });
 
-    return { success: true, message: `Device ${deviceId} removed from customer.` };
+    return {
+      success: true,
+      message: `Device ${deviceId} removed from customer.`,
+    };
   }
 
   // Send Communication (SMS, WhatsApp, Email, Call, Reminder, Wishes)
-  async sendCommunication(customerId: string, type: string, channel: string, message: string) {
+  async sendCommunication(
+    customerId: string,
+    type: string,
+    channel: string,
+    message: string,
+  ) {
     const customer = await this.findOne(customerId);
     const comm = await this.prisma.customerCommunication.create({
       data: {

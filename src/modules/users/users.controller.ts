@@ -35,7 +35,13 @@ export class UsersController {
     @Query('status') status?: string,
     @Query('department') department?: string,
   ) {
-    const data = await this.usersService.getUsers({ search, role, branchId, status, department });
+    const data = await this.usersService.getUsers({
+      search,
+      role,
+      branchId,
+      status,
+      department,
+    });
     return { success: true, data };
   }
 
@@ -55,7 +61,10 @@ export class UsersController {
 
   @Put(':id')
   @Permissions('write:users')
-  async updateUser(@Param('id') id: string, @Body() dto: Partial<CreateUserDto>) {
+  async updateUser(
+    @Param('id') id: string,
+    @Body() dto: Partial<CreateUserDto>,
+  ) {
     const data = await this.usersService.updateUser(id, dto);
     return { success: true, data };
   }
@@ -89,8 +98,19 @@ export class UsersController {
 
   @Post('roles')
   @Permissions('write:roles')
-  async createRole(@Body() body: { name: string; description?: string; permissions?: string[] }) {
-    const data = await this.usersService.createRole(body.name, body.description, body.permissions);
+  async createRole(
+    @Body()
+    body: {
+      name: string;
+      description?: string;
+      permissions?: string[];
+    },
+  ) {
+    const data = await this.usersService.createRole(
+      body.name,
+      body.description,
+      body.permissions,
+    );
     return { success: true, data };
   }
 
@@ -98,7 +118,8 @@ export class UsersController {
   @Permissions('write:roles')
   async updateRole(
     @Param('id') id: string,
-    @Body() body: { name?: string; description?: string; permissions?: string[] },
+    @Body()
+    body: { name?: string; description?: string; permissions?: string[] },
   ) {
     const data = await this.usersService.updateRole(id, body);
     return { success: true, data };
@@ -132,7 +153,11 @@ export class UsersController {
     @CurrentUser() user: any,
     @Body() body: { currentPass: string; newPass: string },
   ) {
-    const data = await this.usersService.changePassword(user.id, body.currentPass, body.newPass);
+    const data = await this.usersService.changePassword(
+      user.id,
+      body.currentPass,
+      body.newPass,
+    );
     return { success: true, data };
   }
 

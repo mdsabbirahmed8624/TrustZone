@@ -188,7 +188,13 @@ export class NotificationController {
   async triggerEvent(
     @Body()
     body: {
-      event: 'BOOKING_CREATED' | 'REPAIR_ASSIGNED' | 'REPAIR_STATUS_CHANGED' | 'INVOICE_PAID' | 'WARRANTY_EXPIRING' | 'LOW_STOCK';
+      event:
+        | 'BOOKING_CREATED'
+        | 'REPAIR_ASSIGNED'
+        | 'REPAIR_STATUS_CHANGED'
+        | 'INVOICE_PAID'
+        | 'WARRANTY_EXPIRING'
+        | 'LOW_STOCK';
       userId?: string;
       variables: Record<string, any>;
     },

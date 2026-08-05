@@ -1013,9 +1013,18 @@ export class CrmService
     });
   }
 
-  async createCustomerNote(dto: CreateNoteDto, staffId?: string, staffName?: string) {
-    const customer = await this.prisma.customer.findUnique({ where: { id: dto.customerId } });
-    if (!customer) throw new NotFoundException(`Customer with ID ${dto.customerId} not found.`);
+  async createCustomerNote(
+    dto: CreateNoteDto,
+    staffId?: string,
+    staffName?: string,
+  ) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: dto.customerId },
+    });
+    if (!customer)
+      throw new NotFoundException(
+        `Customer with ID ${dto.customerId} not found.`,
+      );
 
     const note = await this.prisma.cRMNote.create({
       data: {
@@ -1041,7 +1050,10 @@ export class CrmService
     return note;
   }
 
-  async updateCustomerNote(id: string, dto: { content?: string; category?: string; attachments?: string[] }) {
+  async updateCustomerNote(
+    id: string,
+    dto: { content?: string; category?: string; attachments?: string[] },
+  ) {
     const existing = await this.prisma.cRMNote.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Note with ID ${id} not found.`);
 
@@ -1065,7 +1077,12 @@ export class CrmService
   // ==========================================
   // FOLLOW-UP REMINDER SYSTEM (STEP 5)
   // ==========================================
-  async getFollowUps(query: { customerId?: string; status?: string; priority?: string; channel?: string }) {
+  async getFollowUps(query: {
+    customerId?: string;
+    status?: string;
+    priority?: string;
+    channel?: string;
+  }) {
     const where: any = {};
     if (query.customerId) where.customerId = query.customerId;
     if (query.status) where.status = query.status;
@@ -1079,9 +1096,18 @@ export class CrmService
     });
   }
 
-  async createFollowUp(dto: CreateFollowUpDto, staffId?: string, staffName?: string) {
-    const customer = await this.prisma.customer.findUnique({ where: { id: dto.customerId } });
-    if (!customer) throw new NotFoundException(`Customer with ID ${dto.customerId} not found.`);
+  async createFollowUp(
+    dto: CreateFollowUpDto,
+    staffId?: string,
+    staffName?: string,
+  ) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: dto.customerId },
+    });
+    if (!customer)
+      throw new NotFoundException(
+        `Customer with ID ${dto.customerId} not found.`,
+      );
 
     const followup = await this.prisma.followUpReminder.create({
       data: {
@@ -1113,8 +1139,11 @@ export class CrmService
   }
 
   async updateFollowUp(id: string, dto: any) {
-    const existing = await this.prisma.followUpReminder.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException(`Follow-up with ID ${id} not found.`);
+    const existing = await this.prisma.followUpReminder.findUnique({
+      where: { id },
+    });
+    if (!existing)
+      throw new NotFoundException(`Follow-up with ID ${id} not found.`);
 
     return this.prisma.followUpReminder.update({
       where: { id },
@@ -1125,23 +1154,37 @@ export class CrmService
         ...(dto.priority && { priority: dto.priority }),
         ...(dto.channel && { channel: dto.channel }),
         ...(dto.status && { status: dto.status }),
-        ...(dto.assignedStaffId !== undefined && { assignedStaffId: dto.assignedStaffId }),
-        ...(dto.assignedStaffName !== undefined && { assignedStaffName: dto.assignedStaffName }),
+        ...(dto.assignedStaffId !== undefined && {
+          assignedStaffId: dto.assignedStaffId,
+        }),
+        ...(dto.assignedStaffName !== undefined && {
+          assignedStaffName: dto.assignedStaffName,
+        }),
         updatedAt: new Date(),
       },
     });
   }
 
-  async completeFollowUp(id: string, completionNotes?: string, staffId?: string, staffName?: string) {
-    const existing = await this.prisma.followUpReminder.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException(`Follow-up with ID ${id} not found.`);
+  async completeFollowUp(
+    id: string,
+    completionNotes?: string,
+    staffId?: string,
+    staffName?: string,
+  ) {
+    const existing = await this.prisma.followUpReminder.findUnique({
+      where: { id },
+    });
+    if (!existing)
+      throw new NotFoundException(`Follow-up with ID ${id} not found.`);
 
     const completed = await this.prisma.followUpReminder.update({
       where: { id },
       data: {
         status: 'COMPLETED',
         completedAt: new Date(),
-        notes: completionNotes ? `${existing.notes ? existing.notes + '\n' : ''}Completion Note: ${completionNotes}` : existing.notes,
+        notes: completionNotes
+          ? `${existing.notes ? existing.notes + '\n' : ''}Completion Note: ${completionNotes}`
+          : existing.notes,
         updatedAt: new Date(),
       },
     });
@@ -1177,11 +1220,22 @@ export class CrmService
     });
   }
 
-  async issueRewardCoupon(dto: IssueRewardDto, staffId?: string, staffName?: string) {
-    const customer = await this.prisma.customer.findUnique({ where: { id: dto.customerId } });
-    if (!customer) throw new NotFoundException(`Customer with ID ${dto.customerId} not found.`);
+  async issueRewardCoupon(
+    dto: IssueRewardDto,
+    staffId?: string,
+    staffName?: string,
+  ) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: dto.customerId },
+    });
+    if (!customer)
+      throw new NotFoundException(
+        `Customer with ID ${dto.customerId} not found.`,
+      );
 
-    const code = dto.code || `TZ-${dto.rewardType.substring(0, 3).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const code =
+      dto.code ||
+      `TZ-${dto.rewardType.substring(0, 3).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     const expiryDays = dto.expiryDays || 30;
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + expiryDays);
@@ -1211,13 +1265,22 @@ export class CrmService
     return coupon;
   }
 
-  async validateRewardCoupon(code: string, customerId?: string, orderValue?: number) {
+  async validateRewardCoupon(
+    code: string,
+    customerId?: string,
+    orderValue?: number,
+  ) {
     const coupon = await this.prisma.coupon.findUnique({ where: { code } });
     if (!coupon) return { valid: false, reason: 'Invalid coupon code.' };
-    if (!coupon.isActive) return { valid: false, reason: 'Coupon is inactive or revoked.' };
-    if (new Date(coupon.expiryDate) < new Date()) return { valid: false, reason: 'Coupon has expired.' };
+    if (!coupon.isActive)
+      return { valid: false, reason: 'Coupon is inactive or revoked.' };
+    if (new Date(coupon.expiryDate) < new Date())
+      return { valid: false, reason: 'Coupon has expired.' };
     if (orderValue && Number(coupon.minOrderValue) > orderValue) {
-      return { valid: false, reason: `Minimum order value of ৳${coupon.minOrderValue} required.` };
+      return {
+        valid: false,
+        reason: `Minimum order value of ৳${coupon.minOrderValue} required.`,
+      };
     }
 
     return {
@@ -1413,8 +1476,12 @@ export class CrmService
   // ==========================================
   async getCrmReports(reportType: string, dateRange?: string) {
     if (reportType === 'retention') {
-      const total = await this.prisma.customer.count({ where: { isDeleted: false } });
-      const active = await this.prisma.customer.count({ where: { tickets: { some: {} } } });
+      const total = await this.prisma.customer.count({
+        where: { isDeleted: false },
+      });
+      const active = await this.prisma.customer.count({
+        where: { tickets: { some: {} } },
+      });
       return {
         totalCustomers: total,
         activeCustomers: active,
@@ -1434,22 +1501,37 @@ export class CrmService
     }
 
     if (reportType === 'followup') {
-      const pending = await this.prisma.followUpReminder.count({ where: { status: 'PENDING' } });
-      const completed = await this.prisma.followUpReminder.count({ where: { status: 'COMPLETED' } });
+      const pending = await this.prisma.followUpReminder.count({
+        where: { status: 'PENDING' },
+      });
+      const completed = await this.prisma.followUpReminder.count({
+        where: { status: 'COMPLETED' },
+      });
       return {
         pendingFollowUps: pending,
         completedFollowUps: completed,
-        completionRate: pending + completed > 0 ? Math.round((completed / (pending + completed)) * 100) : 100,
+        completionRate:
+          pending + completed > 0
+            ? Math.round((completed / (pending + completed)) * 100)
+            : 100,
       };
     }
 
     if (reportType === 'loyalty') {
-      const earned = await this.prisma.loyaltyTransaction.aggregate({ where: { type: 'EARNED' }, _sum: { pointsDelta: true } });
-      const redeemed = await this.prisma.loyaltyTransaction.aggregate({ where: { type: 'REDEEMED' }, _sum: { pointsDelta: true } });
+      const earned = await this.prisma.loyaltyTransaction.aggregate({
+        where: { type: 'EARNED' },
+        _sum: { pointsDelta: true },
+      });
+      const redeemed = await this.prisma.loyaltyTransaction.aggregate({
+        where: { type: 'REDEEMED' },
+        _sum: { pointsDelta: true },
+      });
       return {
         totalPointsIssued: earned._sum.pointsDelta || 0,
         totalPointsRedeemed: Math.abs(redeemed._sum.pointsDelta || 0),
-        netOutstanding: (earned._sum.pointsDelta || 0) - Math.abs(redeemed._sum.pointsDelta || 0),
+        netOutstanding:
+          (earned._sum.pointsDelta || 0) -
+          Math.abs(redeemed._sum.pointsDelta || 0),
       };
     }
 

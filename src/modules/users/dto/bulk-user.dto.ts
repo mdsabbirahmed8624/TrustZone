@@ -5,7 +5,14 @@ export class BulkUserActionDto {
   userIds: string[];
 
   @IsString()
-  action: 'ACTIVATE' | 'DEACTIVATE' | 'SUSPEND' | 'DELETE' | 'ASSIGN_ROLE' | 'ASSIGN_BRANCH' | 'RESET_PASSWORD';
+  action:
+    | 'ACTIVATE'
+    | 'DEACTIVATE'
+    | 'SUSPEND'
+    | 'DELETE'
+    | 'ASSIGN_ROLE'
+    | 'ASSIGN_BRANCH'
+    | 'RESET_PASSWORD';
 
   @IsString()
   @IsOptional()

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { CreateTransferDto } from './dto/create-transfer.dto';
@@ -12,12 +16,22 @@ export class BranchesService {
   // ==========================================
   async getBranchDashboardStats(branchId?: string) {
     const totalBranches = await this.prisma.branch.count();
-    const activeBranches = await this.prisma.branch.count({ where: { status: 'ACTIVE' } });
-    const inactiveBranches = await this.prisma.branch.count({ where: { status: 'INACTIVE' } });
-    const maintenanceBranches = await this.prisma.branch.count({ where: { status: 'MAINTENANCE' } });
+    const activeBranches = await this.prisma.branch.count({
+      where: { status: 'ACTIVE' },
+    });
+    const inactiveBranches = await this.prisma.branch.count({
+      where: { status: 'INACTIVE' },
+    });
+    const maintenanceBranches = await this.prisma.branch.count({
+      where: { status: 'MAINTENANCE' },
+    });
 
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const whereBranch = branchId ? { branchId } : {};
@@ -29,7 +43,11 @@ export class BranchesService {
     });
 
     const monthlyInvoices = await this.prisma.invoice.aggregate({
-      where: { ...whereBranch, status: 'PAID', createdAt: { gte: startOfMonth } },
+      where: {
+        ...whereBranch,
+        status: 'PAID',
+        createdAt: { gte: startOfMonth },
+      },
       _sum: { total: true },
     });
 
@@ -78,10 +96,15 @@ export class BranchesService {
   // ==========================================
   // STEP 3 & 4: BRANCH CRUD & PROFILE
   // ==========================================
-  async getBranches(query?: { search?: string; status?: string; district?: string }) {
+  async getBranches(query?: {
+    search?: string;
+    status?: string;
+    district?: string;
+  }) {
     const where: any = {};
     if (query?.status) where.status = query.status;
-    if (query?.district) where.district = { contains: query.district, mode: 'insensitive' };
+    if (query?.district)
+      where.district = { contains: query.district, mode: 'insensitive' };
     if (query?.search) {
       where.OR = [
         { name: { contains: query.search, mode: 'insensitive' } },
@@ -94,7 +117,13 @@ export class BranchesService {
       where,
       include: {
         users: {
-          select: { id: true, firstName: true, lastName: true, role: true, email: true },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            email: true,
+          },
         },
         _count: {
           select: { tickets: true, customers: true, branchInventory: true },
@@ -122,13 +151,23 @@ export class BranchesService {
   async createBranch(dto: CreateBranchDto) {
     // STEP 13: Duplicate Code and Phone checks
     if (dto.code) {
-      const existingCode = await this.prisma.branch.findUnique({ where: { code: dto.code } });
-      if (existingCode) throw new BadRequestException(`Branch code "${dto.code}" is already assigned.`);
+      const existingCode = await this.prisma.branch.findUnique({
+        where: { code: dto.code },
+      });
+      if (existingCode)
+        throw new BadRequestException(
+          `Branch code "${dto.code}" is already assigned.`,
+        );
     }
 
     if (dto.phone) {
-      const existingPhone = await this.prisma.branch.findFirst({ where: { phone: dto.phone } });
-      if (existingPhone) throw new BadRequestException(`Branch phone "${dto.phone}" is already assigned.`);
+      const existingPhone = await this.prisma.branch.findFirst({
+        where: { phone: dto.phone },
+      });
+      if (existingPhone)
+        throw new BadRequestException(
+          `Branch phone "${dto.phone}" is already assigned.`,
+        );
     }
 
     return this.prisma.branch.create({
@@ -176,7 +215,10 @@ export class BranchesService {
     });
   }
 
-  async updateBranchStatus(id: string, status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE') {
+  async updateBranchStatus(
+    id: string,
+    status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE',
+  ) {
     await this.getBranch(id);
     return this.prisma.branch.update({
       where: { id },
@@ -286,7 +328,15 @@ export class BranchesService {
     };
   }
 
-  async performDailyClosing(branchId: string, dto: { expectedBalance: number; actualBalance: number; closedById: string; notes?: string }) {
+  async performDailyClosing(
+    branchId: string,
+    dto: {
+      expectedBalance: number;
+      actualBalance: number;
+      closedById: string;
+      notes?: string;
+    },
+  ) {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
 
@@ -323,7 +373,11 @@ export class BranchesService {
   // ==========================================
   // STEP 10: MULTI-BRANCH TRANSFERS & APPROVAL WORKFLOW
   // ==========================================
-  async getBranchTransfers(query?: { fromBranchId?: string; toBranchId?: string; status?: string }) {
+  async getBranchTransfers(query?: {
+    fromBranchId?: string;
+    toBranchId?: string;
+    status?: string;
+  }) {
     const where: any = {};
     if (query?.fromBranchId) where.fromBranchId = query.fromBranchId;
     if (query?.toBranchId) where.toBranchId = query.toBranchId;
@@ -341,7 +395,9 @@ export class BranchesService {
 
   async createBranchTransfer(dto: CreateTransferDto, userId?: string) {
     if (dto.fromBranchId === dto.toBranchId) {
-      throw new BadRequestException('From Branch and To Branch cannot be identical.');
+      throw new BadRequestException(
+        'From Branch and To Branch cannot be identical.',
+      );
     }
 
     return this.prisma.branchTransfer.create({
@@ -359,23 +415,42 @@ export class BranchesService {
     });
   }
 
-  async processBranchTransferStatus(id: string, status: 'APPROVED' | 'REJECTED' | 'COMPLETED', userId?: string) {
-    const transfer = await this.prisma.branchTransfer.findUnique({ where: { id } });
-    if (!transfer) throw new NotFoundException(`Branch transfer ${id} not found`);
+  async processBranchTransferStatus(
+    id: string,
+    status: 'APPROVED' | 'REJECTED' | 'COMPLETED',
+    userId?: string,
+  ) {
+    const transfer = await this.prisma.branchTransfer.findUnique({
+      where: { id },
+    });
+    if (!transfer)
+      throw new NotFoundException(`Branch transfer ${id} not found`);
 
-    if (status === 'COMPLETED' && transfer.transferType === 'TICKET' && transfer.entityId) {
+    if (
+      status === 'COMPLETED' &&
+      transfer.transferType === 'TICKET' &&
+      transfer.entityId
+    ) {
       // Reassign repair ticket to target branch
       await this.prisma.ticket.update({
         where: { id: transfer.entityId },
         data: { branchId: transfer.toBranchId },
       });
-    } else if (status === 'COMPLETED' && transfer.transferType === 'CUSTOMER' && transfer.entityId) {
+    } else if (
+      status === 'COMPLETED' &&
+      transfer.transferType === 'CUSTOMER' &&
+      transfer.entityId
+    ) {
       // Reassign customer to target branch
       await this.prisma.customer.update({
         where: { id: transfer.entityId },
         data: { branchId: transfer.toBranchId },
       });
-    } else if (status === 'COMPLETED' && transfer.transferType === 'TECHNICIAN' && transfer.entityId) {
+    } else if (
+      status === 'COMPLETED' &&
+      transfer.transferType === 'TECHNICIAN' &&
+      transfer.entityId
+    ) {
       // Reassign staff to target branch
       await this.prisma.user.update({
         where: { id: transfer.entityId },

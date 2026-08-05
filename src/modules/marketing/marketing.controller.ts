@@ -51,7 +51,11 @@ export class MarketingController {
     @Query('status') status?: string,
     @Query('search') search?: string,
   ) {
-    const data = await this.marketingService.getCampaigns({ channel, status, search });
+    const data = await this.marketingService.getCampaigns({
+      channel,
+      status,
+      search,
+    });
     return { success: true, data };
   }
 
@@ -64,14 +68,20 @@ export class MarketingController {
 
   @Post('campaigns')
   @Permissions('write:marketing')
-  async createCampaign(@Body() dto: CreateCampaignDto, @CurrentUser() user: any) {
+  async createCampaign(
+    @Body() dto: CreateCampaignDto,
+    @CurrentUser() user: any,
+  ) {
     const data = await this.marketingService.createCampaign(dto, user?.id);
     return { success: true, data };
   }
 
   @Put('campaigns/:id')
   @Permissions('write:marketing')
-  async updateCampaign(@Param('id') id: string, @Body() dto: Partial<CreateCampaignDto>) {
+  async updateCampaign(
+    @Param('id') id: string,
+    @Body() dto: Partial<CreateCampaignDto>,
+  ) {
     const data = await this.marketingService.updateCampaign(id, dto);
     return { success: true, data };
   }
@@ -94,7 +104,8 @@ export class MarketingController {
   @Permissions('write:marketing')
   async updateCampaignStatus(
     @Param('id') id: string,
-    @Body('status') status: 'SCHEDULED' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED',
+    @Body('status')
+    status: 'SCHEDULED' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED',
   ) {
     const data = await this.marketingService.updateCampaignStatus(id, status);
     return { success: true, data };
@@ -113,7 +124,9 @@ export class MarketingController {
   @Get('audience/segments')
   @Permissions('read:marketing')
   async getAudienceSegments(@Query('segment') segment: string) {
-    const data = await this.marketingService.getAudienceSegmentCustomers(segment || 'VIP');
+    const data = await this.marketingService.getAudienceSegmentCustomers(
+      segment || 'VIP',
+    );
     return { success: true, data };
   }
 
@@ -136,7 +149,10 @@ export class MarketingController {
 
   @Put('templates/:id')
   @Permissions('write:marketing')
-  async updateTemplate(@Param('id') id: string, @Body() dto: Partial<CreateTemplateDto>) {
+  async updateTemplate(
+    @Param('id') id: string,
+    @Body() dto: Partial<CreateTemplateDto>,
+  ) {
     const data = await this.marketingService.updateTemplate(id, dto);
     return { success: true, data };
   }
@@ -161,7 +177,10 @@ export class MarketingController {
   @Post('automation/trigger')
   @Permissions('write:marketing')
   async triggerAutomationRule(@Body() body: { event: string; payload: any }) {
-    const data = await this.marketingService.triggerAutomationRule(body.event, body.payload);
+    const data = await this.marketingService.triggerAutomationRule(
+      body.event,
+      body.payload,
+    );
     return { success: true, data };
   }
 
@@ -184,7 +203,10 @@ export class MarketingController {
 
   @Put('coupons/:id')
   @Permissions('write:marketing')
-  async updateCoupon(@Param('id') id: string, @Body() dto: Partial<CreateCouponDto>) {
+  async updateCoupon(
+    @Param('id') id: string,
+    @Body() dto: Partial<CreateCouponDto>,
+  ) {
     const data = await this.marketingService.updateCoupon(id, dto);
     return { success: true, data };
   }

@@ -352,18 +352,27 @@ export class NotificationService {
   }) {
     // Find target users
     const where: any = {};
-    if (data.targetAudience === 'BRANCH' && data.targetId) where.branchId = data.targetId;
-    if (data.targetAudience === 'ROLE' && data.targetId) where.role = data.targetId;
-    if (data.targetAudience === 'TECHNICIANS') where.role = { in: ['TECHNICIAN', 'SENIOR_TECHNICIAN'] };
+    if (data.targetAudience === 'BRANCH' && data.targetId)
+      where.branchId = data.targetId;
+    if (data.targetAudience === 'ROLE' && data.targetId)
+      where.role = data.targetId;
+    if (data.targetAudience === 'TECHNICIANS')
+      where.role = { in: ['TECHNICIAN', 'SENIOR_TECHNICIAN'] };
 
-    const targetUsers = await this.prisma.user.findMany({ where, select: { id: true } });
+    const targetUsers = await this.prisma.user.findMany({
+      where,
+      select: { id: true },
+    });
 
     const campaign = await this.prisma.notificationCampaign.create({
       data: {
         name: data.name,
         subject: data.subject,
         body: data.body,
-        audience: { targetAudience: data.targetAudience, targetId: data.targetId },
+        audience: {
+          targetAudience: data.targetAudience,
+          targetId: data.targetId,
+        },
         status: data.scheduledAt ? 'DRAFT' : 'PUBLISHED',
         scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : new Date(),
         sentCount: targetUsers.length,
@@ -383,7 +392,10 @@ export class NotificationService {
             channel: 'WEBSOCKET',
           },
         });
-        this.emitRealtimeEvent(u.id, 'NEW_NOTIFICATION', { title: data.subject, body: data.body });
+        this.emitRealtimeEvent(u.id, 'NEW_NOTIFICATION', {
+          title: data.subject,
+          body: data.body,
+        });
       }
     }
 
@@ -400,7 +412,13 @@ export class NotificationService {
   // STEP 8: EVENT AUTOMATION
   // ==========================================
   async triggerEventNotification(data: {
-    event: 'BOOKING_CREATED' | 'REPAIR_ASSIGNED' | 'REPAIR_STATUS_CHANGED' | 'INVOICE_PAID' | 'WARRANTY_EXPIRING' | 'LOW_STOCK';
+    event:
+      | 'BOOKING_CREATED'
+      | 'REPAIR_ASSIGNED'
+      | 'REPAIR_STATUS_CHANGED'
+      | 'INVOICE_PAID'
+      | 'WARRANTY_EXPIRING'
+      | 'LOW_STOCK';
     userId?: string;
     variables: Record<string, any>;
   }) {
@@ -435,7 +453,10 @@ export class NotificationService {
           channel: 'WEBSOCKET',
         },
       });
-      this.emitRealtimeEvent(data.userId, 'NEW_NOTIFICATION', { title, message });
+      this.emitRealtimeEvent(data.userId, 'NEW_NOTIFICATION', {
+        title,
+        message,
+      });
     }
 
     return { success: true, event: data.event, title, message };
@@ -446,10 +467,15 @@ export class NotificationService {
   // ==========================================
   async getNotificationReports() {
     const totalSent = await this.prisma.notification.count();
-    const totalRead = await this.prisma.notification.count({ where: { isRead: true } });
-    const totalArchived = await this.prisma.notification.count({ where: { isArchived: true } });
+    const totalRead = await this.prisma.notification.count({
+      where: { isRead: true },
+    });
+    const totalArchived = await this.prisma.notification.count({
+      where: { isArchived: true },
+    });
 
-    const readRate = totalSent > 0 ? ((totalRead / totalSent) * 100).toFixed(1) : '100.0';
+    const readRate =
+      totalSent > 0 ? ((totalRead / totalSent) * 100).toFixed(1) : '100.0';
 
     return {
       overview: {
@@ -460,10 +486,20 @@ export class NotificationService {
         readRatePercentage: parseFloat(readRate),
       },
       channels: [
-        { channel: 'In-App / WebSocket', sent: 1420, delivered: 1420, openRate: '92%' },
+        {
+          channel: 'In-App / WebSocket',
+          sent: 1420,
+          delivered: 1420,
+          openRate: '92%',
+        },
         { channel: 'SMS Gateway', sent: 890, delivered: 885, openRate: '98%' },
         { channel: 'Email SMTP', sent: 650, delivered: 642, openRate: '74%' },
-        { channel: 'WhatsApp Cloud API', sent: 420, delivered: 418, openRate: '95%' },
+        {
+          channel: 'WhatsApp Cloud API',
+          sent: 420,
+          delivered: 418,
+          openRate: '95%',
+        },
         { channel: 'Browser Push', sent: 310, delivered: 305, openRate: '88%' },
       ],
     };

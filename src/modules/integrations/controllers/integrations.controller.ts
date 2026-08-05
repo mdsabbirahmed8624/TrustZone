@@ -107,7 +107,11 @@ export class IntegrationsController {
     @Param('id') id: string,
     @Body() body: { amount?: number; reason?: string },
   ) {
-    const data = await this.integrationService.refundPayment(id, body.amount, body.reason);
+    const data = await this.integrationService.refundPayment(
+      id,
+      body.amount,
+      body.reason,
+    );
     return { success: true, data };
   }
 
@@ -117,7 +121,12 @@ export class IntegrationsController {
   @Post('sms/send')
   @Permissions('write:settings')
   async sendSMS(
-    @Body() body: { recipient: string; message: string; type?: 'OTP' | 'TRANSACTIONAL' | 'MARKETING' },
+    @Body()
+    body: {
+      recipient: string;
+      message: string;
+      type?: 'OTP' | 'TRANSACTIONAL' | 'MARKETING';
+    },
   ) {
     const data = await this.integrationService.sendSMS(body);
     return { success: true, data };
@@ -148,7 +157,13 @@ export class IntegrationsController {
   @Post('whatsapp/send')
   @Permissions('write:settings')
   async sendWhatsAppMessage(
-    @Body() body: { recipient: string; templateName?: string; parameters?: string[]; message?: string },
+    @Body()
+    body: {
+      recipient: string;
+      templateName?: string;
+      parameters?: string[];
+      message?: string;
+    },
   ) {
     const data = await this.integrationService.sendWhatsAppMessage(body);
     return { success: true, data };
@@ -181,7 +196,10 @@ export class IntegrationsController {
   async calculateDistance(
     @Body() body: { origin: string; destination: string },
   ) {
-    const data = await this.integrationService.calculateDistance(body.origin, body.destination);
+    const data = await this.integrationService.calculateDistance(
+      body.origin,
+      body.destination,
+    );
     return { success: true, data };
   }
 
@@ -196,7 +214,11 @@ export class IntegrationsController {
     const fileName = file?.originalname || 'attachment.pdf';
     const mimeType = file?.mimetype || 'application/pdf';
 
-    const data = await this.integrationService.uploadFile(buffer, fileName, mimeType);
+    const data = await this.integrationService.uploadFile(
+      buffer,
+      fileName,
+      mimeType,
+    );
     return { success: true, data };
   }
 

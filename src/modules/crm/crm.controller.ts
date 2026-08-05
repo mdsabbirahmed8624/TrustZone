@@ -212,7 +212,9 @@ export class CrmController {
     @Body() dto: CreateNoteDto,
     @CurrentUser() staff: any,
   ) {
-    const staffName = staff ? `${staff.firstName} ${staff.lastName}`.trim() : 'System';
+    const staffName = staff
+      ? `${staff.firstName} ${staff.lastName}`.trim()
+      : 'System';
     return {
       success: true,
       data: await this.crmService.createCustomerNote(dto, staff?.id, staffName),
@@ -224,7 +226,8 @@ export class CrmController {
   @HttpCode(HttpStatus.OK)
   async updateCustomerNote(
     @Param('id') id: string,
-    @Body() dto: { content?: string; category?: string; attachments?: string[] },
+    @Body()
+    dto: { content?: string; category?: string; attachments?: string[] },
   ) {
     return {
       success: true,
@@ -253,7 +256,12 @@ export class CrmController {
   ) {
     return {
       success: true,
-      data: await this.crmService.getFollowUps({ customerId, status, priority, channel }),
+      data: await this.crmService.getFollowUps({
+        customerId,
+        status,
+        priority,
+        channel,
+      }),
     };
   }
 
@@ -264,7 +272,9 @@ export class CrmController {
     @Body() dto: CreateFollowUpDto,
     @CurrentUser() staff: any,
   ) {
-    const staffName = staff ? `${staff.firstName} ${staff.lastName}`.trim() : 'System';
+    const staffName = staff
+      ? `${staff.firstName} ${staff.lastName}`.trim()
+      : 'System';
     return {
       success: true,
       data: await this.crmService.createFollowUp(dto, staff?.id, staffName),
@@ -289,10 +299,17 @@ export class CrmController {
     @Body('completionNotes') completionNotes?: string,
     @CurrentUser() staff?: any,
   ) {
-    const staffName = staff ? `${staff.firstName} ${staff.lastName}`.trim() : 'System';
+    const staffName = staff
+      ? `${staff.firstName} ${staff.lastName}`.trim()
+      : 'System';
     return {
       success: true,
-      data: await this.crmService.completeFollowUp(id, completionNotes, staff?.id, staffName),
+      data: await this.crmService.completeFollowUp(
+        id,
+        completionNotes,
+        staff?.id,
+        staffName,
+      ),
     };
   }
 
@@ -302,7 +319,9 @@ export class CrmController {
   async getRewards(@Query('activeOnly') activeOnly?: string) {
     return {
       success: true,
-      data: await this.crmService.getRewards({ activeOnly: activeOnly === 'true' }),
+      data: await this.crmService.getRewards({
+        activeOnly: activeOnly === 'true',
+      }),
     };
   }
 
@@ -313,7 +332,9 @@ export class CrmController {
     @Body() dto: IssueRewardDto,
     @CurrentUser() staff: any,
   ) {
-    const staffName = staff ? `${staff.firstName} ${staff.lastName}`.trim() : 'System';
+    const staffName = staff
+      ? `${staff.firstName} ${staff.lastName}`.trim()
+      : 'System';
     return {
       success: true,
       data: await this.crmService.issueRewardCoupon(dto, staff?.id, staffName),
@@ -330,7 +351,11 @@ export class CrmController {
   ) {
     return {
       success: true,
-      data: await this.crmService.validateRewardCoupon(code, customerId, orderValue),
+      data: await this.crmService.validateRewardCoupon(
+        code,
+        customerId,
+        orderValue,
+      ),
     };
   }
 
@@ -355,7 +380,12 @@ export class CrmController {
   ) {
     return {
       success: true,
-      data: await this.crmService.getSegmentedCustomers({ segment, search, tag, branchId }),
+      data: await this.crmService.getSegmentedCustomers({
+        segment,
+        search,
+        tag,
+        branchId,
+      }),
     };
   }
 

@@ -18,7 +18,7 @@ export class InventoryService {
       include: { branchInventory: true },
     });
 
-    let totalProducts = parts.length;
+    const totalProducts = parts.length;
     let totalPartsQuantity = 0;
     let inStockCount = 0;
     let lowStockCount = 0;
@@ -80,7 +80,8 @@ export class InventoryService {
         category: dto.category,
         brand: dto.brand,
         brandCompatibility: dto.brandCompatibility,
-        basePrice: dto.basePrice !== undefined ? Number(dto.basePrice) : undefined,
+        basePrice:
+          dto.basePrice !== undefined ? Number(dto.basePrice) : undefined,
         minimumStockBuffer: dto.minimumStockBuffer,
       },
     });
@@ -108,7 +109,9 @@ export class InventoryService {
       category: part.category,
       brand: part.brand,
       brandCompatibility: part.brandCompatibility,
-      modelCompatibility: part.brandCompatibility ? [part.brandCompatibility] : ['Universal'],
+      modelCompatibility: part.brandCompatibility
+        ? [part.brandCompatibility]
+        : ['Universal'],
       basePrice: Number(part.basePrice),
       minimumStockBuffer: part.minimumStockBuffer,
       supplierId: part.supplierId || undefined,

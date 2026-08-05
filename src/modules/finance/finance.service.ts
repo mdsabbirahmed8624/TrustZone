@@ -1859,9 +1859,16 @@ export class FinanceService {
   }
 
   // Cash / Bank Reconciliation
-  async reconcileAccount(data: { accountId: string; statementBalance: number; notes?: string }) {
-    const account = await this.prisma.financialAccount.findUnique({ where: { id: data.accountId } });
-    if (!account) throw new NotFoundException(`Account ${data.accountId} not found.`);
+  async reconcileAccount(data: {
+    accountId: string;
+    statementBalance: number;
+    notes?: string;
+  }) {
+    const account = await this.prisma.financialAccount.findUnique({
+      where: { id: data.accountId },
+    });
+    if (!account)
+      throw new NotFoundException(`Account ${data.accountId} not found.`);
 
     const systemBalance = Number(account.currentBalance);
     const variance = data.statementBalance - systemBalance;
@@ -1874,9 +1881,10 @@ export class FinanceService {
       statementBalance: data.statementBalance,
       variance,
       isReconciled: Math.abs(variance) < 0.01,
-      message: Math.abs(variance) < 0.01
-        ? 'Account balance reconciled perfectly with bank statement.'
-        : `Variance of BDT ${variance.toFixed(2)} detected between system and bank statement.`,
+      message:
+        Math.abs(variance) < 0.01
+          ? 'Account balance reconciled perfectly with bank statement.'
+          : `Variance of BDT ${variance.toFixed(2)} detected between system and bank statement.`,
     };
   }
 
@@ -1888,16 +1896,26 @@ export class FinanceService {
     const liabilities = accounts.filter((a) => a.accountClass === 'LIABILITY');
     const equity = accounts.filter((a) => a.accountClass === 'EQUITY');
 
-    const totalAssets = assets.reduce((acc, a) => acc + Number(a.currentBalance || 0), 0);
-    const totalLiabilities = liabilities.reduce((acc, a) => acc + Number(a.currentBalance || 0), 0);
-    const totalEquity = equity.reduce((acc, a) => acc + Number(a.currentBalance || 0), 0);
+    const totalAssets = assets.reduce(
+      (acc, a) => acc + Number(a.currentBalance || 0),
+      0,
+    );
+    const totalLiabilities = liabilities.reduce(
+      (acc, a) => acc + Number(a.currentBalance || 0),
+      0,
+    );
+    const totalEquity = equity.reduce(
+      (acc, a) => acc + Number(a.currentBalance || 0),
+      0,
+    );
 
     return {
       asOfDate: new Date().toISOString(),
       assets: { items: assets, total: totalAssets },
       liabilities: { items: liabilities, total: totalLiabilities },
       equity: { items: equity, total: totalEquity },
-      isBalanced: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 1.0,
+      isBalanced:
+        Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 1.0,
     };
   }
 
@@ -1907,12 +1925,22 @@ export class FinanceService {
     const end = new Date(query.endDate);
 
     const [incomes, expenses] = await Promise.all([
-      this.prisma.income.findMany({ where: { date: { gte: start, lte: end } } }),
-      this.prisma.expense.findMany({ where: { date: { gte: start, lte: end } } }),
+      this.prisma.income.findMany({
+        where: { date: { gte: start, lte: end } },
+      }),
+      this.prisma.expense.findMany({
+        where: { date: { gte: start, lte: end } },
+      }),
     ]);
 
-    const operatingInflow = incomes.reduce((acc, i) => acc + Number(i.amount || 0), 0);
-    const operatingOutflow = expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+    const operatingInflow = incomes.reduce(
+      (acc, i) => acc + Number(i.amount || 0),
+      0,
+    );
+    const operatingOutflow = expenses.reduce(
+      (acc, e) => acc + Number(e.amount || 0),
+      0,
+    );
     const netCashFlow = operatingInflow - operatingOutflow;
 
     return {

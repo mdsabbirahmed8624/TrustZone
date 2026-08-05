@@ -47,7 +47,9 @@ export class AuthService implements OnModuleInit {
             isEmailVerified: true,
           },
         });
-        console.log('[AuthService] Production Super Admin user seeded successfully.');
+        console.log(
+          '[AuthService] Production Super Admin user seeded successfully.',
+        );
       } else {
         await this.prisma.user.update({
           where: { id: admin.id },
@@ -57,20 +59,31 @@ export class AuthService implements OnModuleInit {
             lockoutUntil: null,
           },
         });
-        console.log('[AuthService] Production Super Admin user password hash & lockout refreshed.');
+        console.log(
+          '[AuthService] Production Super Admin user password hash & lockout refreshed.',
+        );
       }
     } catch (err) {
-      console.warn('[AuthService] Could not auto-seed default admin user:', err);
+      console.warn(
+        '[AuthService] Could not auto-seed default admin user:',
+        err,
+      );
     }
   }
 
   // Dual-Algorithm Password Verification (Argon2 & Bcrypt)
-  private async verifyPassword(hashedPassword: string, plainText: string): Promise<boolean> {
+  private async verifyPassword(
+    hashedPassword: string,
+    plainText: string,
+  ): Promise<boolean> {
     try {
       if (hashedPassword.startsWith('$argon2')) {
         return await argon2.verify(hashedPassword, plainText);
       }
-      if (hashedPassword.startsWith('$2a$') || hashedPassword.startsWith('$2b$')) {
+      if (
+        hashedPassword.startsWith('$2a$') ||
+        hashedPassword.startsWith('$2b$')
+      ) {
         return await bcrypt.compare(plainText, hashedPassword);
       }
       try {
@@ -228,7 +241,10 @@ export class AuthService implements OnModuleInit {
       }
     }
 
-    const isPasswordValid = await this.verifyPassword(user.password, dto.password);
+    const isPasswordValid = await this.verifyPassword(
+      user.password,
+      dto.password,
+    );
 
     if (!isPasswordValid) {
       // Increment failed logins
@@ -1085,14 +1101,24 @@ export class AuthService implements OnModuleInit {
       );
     }
 
-    let isPasswordValid = await this.verifyPassword(user.password, dto.password);
+    let isPasswordValid = await this.verifyPassword(
+      user.password,
+      dto.password,
+    );
 
     if (!isPasswordValid) {
-      if (dto.email === 'admin@trustzone.care' && dto.password === 'Password123!') {
+      if (
+        dto.email === 'admin@trustzone.care' &&
+        dto.password === 'Password123!'
+      ) {
         const newHash = await argon2.hash('Password123!');
         await this.prisma.user.update({
           where: { id: user.id },
-          data: { password: newHash, lockoutUntil: null, failedLoginAttempts: 0 },
+          data: {
+            password: newHash,
+            lockoutUntil: null,
+            failedLoginAttempts: 0,
+          },
         });
         isPasswordValid = true;
       } else {
@@ -1101,10 +1127,15 @@ export class AuthService implements OnModuleInit {
 
         if (attempts >= 5) {
           lockoutUntil = new Date(Date.now() + 30 * 60 * 1000);
-          await this.logAction(user.id, 'account_lockout_triggered', ipAddress, {
-            attempts,
-            userAgent,
-          });
+          await this.logAction(
+            user.id,
+            'account_lockout_triggered',
+            ipAddress,
+            {
+              attempts,
+              userAgent,
+            },
+          );
         }
 
         await this.prisma.user.update({
@@ -1125,7 +1156,14 @@ export class AuthService implements OnModuleInit {
     }
 
     // Restrict login to administrative staff roles
-    const isAdminRole = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'TECHNICIAN', 'RECEPTIONIST', 'RECEPTION'].includes((user.role || '').toUpperCase());
+    const isAdminRole = [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'MANAGER',
+      'TECHNICIAN',
+      'RECEPTIONIST',
+      'RECEPTION',
+    ].includes((user.role || '').toUpperCase());
     if (user.role === 'customer' || (!isAdminRole && !user.roleId)) {
       await this.logAction(user.id, 'admin_login_failed', ipAddress, {
         email: dto.email,
