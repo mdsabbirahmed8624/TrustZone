@@ -83,7 +83,7 @@ export default function AttendanceLogsPage() {
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={`flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300 ${sidebarOpen ? 'md:pl-64' : 'md:pl-20'}`}>
         <Header 
           sidebarOpen={sidebarOpen} 
           setSidebarOpen={setSidebarOpen}
