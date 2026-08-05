@@ -4505,6 +4505,155 @@ export const api = {
     async revokeApiKey(id: string, token?: string): Promise<ApiResponse<any>> {
       return apiRequest<ApiResponse<any>>(`/integrations/api-keys/${id}`, { method: 'DELETE', token });
     }
+  },
+
+  automation: {
+    async fetchRules(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/automation/rules', { token });
+      } catch {
+        return { success: true, data: getMockAutomationRules() };
+      }
+    },
+    async createRule(data: any, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>('/automation/rules', { method: 'POST', body: JSON.stringify(data), token });
+      } catch {
+        const rules = getMockAutomationRules();
+        const newRule = { id: `rule-${Date.now()}`, ...data, createdAt: new Date().toISOString() };
+        rules.unshift(newRule);
+        saveMockAutomationRules(rules);
+        return { success: true, data: newRule };
+      }
+    },
+    async updateRule(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/automation/rules/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+      } catch {
+        const rules = getMockAutomationRules();
+        const idx = rules.findIndex((r: any) => r.id === id);
+        if (idx !== -1) {
+          rules[idx] = { ...rules[idx], ...data };
+          saveMockAutomationRules(rules);
+          return { success: true, data: rules[idx] };
+        }
+        return { success: false, data: null };
+      }
+    },
+    async deleteRule(id: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/automation/rules/${id}`, { method: 'DELETE', token });
+      } catch {
+        const rules = getMockAutomationRules();
+        const filtered = rules.filter((r: any) => r.id !== id);
+        saveMockAutomationRules(filtered);
+        return { success: true, data: null };
+      }
+    },
+    async simulateRule(id: string, context: any, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/automation/rules/${id}/simulate`, { method: 'POST', body: JSON.stringify({ context }), token });
+      } catch {
+        return {
+          success: true,
+          data: {
+            matchResult: true,
+            evaluatedConditions: [{ field: 'status', operator: 'EQUALS', matched: true }],
+            potentialActions: ['SEND_NOTIFICATION', 'GENERATE_WARRANTY']
+          }
+        };
+      }
+    },
+    async fetchExecutions(query?: any, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/automation/executions', { token });
+      } catch {
+        return { success: true, data: getMockAutomationExecutions() };
+      }
+    },
+    async retryExecution(id: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/automation/executions/${id}/retry`, { method: 'POST', token });
+      } catch {
+        const execs = getMockAutomationExecutions();
+        const found = execs.find((e: any) => e.id === id);
+        if (found) {
+          found.status = 'SUCCESS';
+          saveMockAutomationExecutions(execs);
+        }
+        return { success: true, data: found || null };
+      }
+    },
+    async fetchTemplates(query?: any, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/automation/templates', { token });
+      } catch {
+        return { success: true, data: getMockAutomationTemplates() };
+      }
+    },
+    async createTemplate(data: any, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>('/automation/templates', { method: 'POST', body: JSON.stringify(data), token });
+      } catch {
+        const temps = getMockAutomationTemplates();
+        const newTemp = { id: `temp-${Date.now()}`, ...data, createdAt: new Date().toISOString() };
+        temps.unshift(newTemp);
+        saveMockAutomationTemplates(temps);
+        return { success: true, data: newTemp };
+      }
+    },
+    async updateTemplate(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/automation/templates/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
+      } catch {
+        const temps = getMockAutomationTemplates();
+        const idx = temps.findIndex((t: any) => t.id === id);
+        if (idx !== -1) {
+          temps[idx] = { ...temps[idx], ...data };
+          saveMockAutomationTemplates(temps);
+          return { success: true, data: temps[idx] };
+        }
+        return { success: false, data: null };
+      }
+    },
+    async deleteTemplate(id: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/automation/templates/${id}`, { method: 'DELETE', token });
+      } catch {
+        const temps = getMockAutomationTemplates();
+        const filtered = temps.filter((t: any) => t.id !== id);
+        saveMockAutomationTemplates(filtered);
+        return { success: true, data: null };
+      }
+    },
+    async fetchSchedulerJobs(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/automation/scheduler/jobs', { token });
+      } catch {
+        return { success: true, data: getMockAutomationJobs() };
+      }
+    },
+    async fetchSchedulerLogs(token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/automation/scheduler/logs', { token });
+      } catch {
+        return { success: true, data: getMockAutomationExecutions() };
+      }
+    },
+    async triggerScheduler(token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>('/automation/scheduler/trigger', { method: 'POST', token });
+      } catch {
+        return { success: true, data: { triggeredJobs: 4, message: 'All scheduled scan routines executed successfully.' } };
+      }
+    },
+    async fetchWebhookLogs(query?: any, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        return await apiRequest<ApiResponse<any[]>>('/automation/webhooks/logs', { token });
+      } catch {
+        return { success: true, data: getMockWebhookLogs() };
+      }
+    }
   }
 };
 
@@ -4867,4 +5016,139 @@ function getMockBranchTransfers(): any[] {
 function saveMockBranchTransfers(data: any[]) {
   if (typeof window !== 'undefined') localStorage.setItem('tz_mock_branch_transfers', JSON.stringify(data));
 }
+
+function getMockAutomationRules(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_auto_rules');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    {
+      id: 'rule-1',
+      name: 'Low Spare Parts Inventory Alert',
+      description: 'Trigger instant in-app notification & email alert to warehouse manager when stock falls below reorder threshold.',
+      triggerEvent: 'STOCK_BELOW_THRESHOLD',
+      priority: 'HIGH',
+      enabled: true,
+      conditions: { logicalOperator: 'AND', conditions: [{ field: 'quantity', operator: 'LESS_THAN', value: '5' }] },
+      actions: [{ type: 'SEND_NOTIFICATION', params: { channel: 'IN_APP', priority: 'HIGH' } }],
+      createdAt: new Date(Date.now() - 7 * 86400000).toISOString()
+    },
+    {
+      id: 'rule-2',
+      name: 'Automated Warranty Certificate Generator',
+      description: 'Automatically issue a 12-month digital warranty certificate upon ticket delivery and full invoice payment.',
+      triggerEvent: 'TICKET_DELIVERED',
+      priority: 'CRITICAL',
+      enabled: true,
+      conditions: { logicalOperator: 'AND', conditions: [{ field: 'status', operator: 'EQUALS', value: 'DELIVERED' }] },
+      actions: [{ type: 'GENERATE_WARRANTY', params: { durationMonths: 12 } }],
+      createdAt: new Date(Date.now() - 5 * 86400000).toISOString()
+    },
+    {
+      id: 'rule-3',
+      name: 'VIP Customer Service Escalation',
+      description: 'Tag customer profile as VIP and send instant SMS thank-you code when total repair spend exceeds ৳10,000.',
+      triggerEvent: 'CUSTOMER_PAYMENT_RECEIVED',
+      priority: 'MEDIUM',
+      enabled: true,
+      conditions: { logicalOperator: 'AND', conditions: [{ field: 'amount', operator: 'GREATER_THAN', value: '10000' }] },
+      actions: [{ type: 'UPDATE_CRM', params: { tag: 'VIP' } }],
+      createdAt: new Date(Date.now() - 3 * 86400000).toISOString()
+    },
+    {
+      id: 'rule-4',
+      name: 'Overdue Invoice Reminder Webhook',
+      description: 'Trigger external Zapier/SMS gateway webhook for invoices overdue by more than 7 days.',
+      triggerEvent: 'INVOICE_OVERDUE',
+      priority: 'HIGH',
+      enabled: false,
+      conditions: { logicalOperator: 'AND', conditions: [{ field: 'daysOverdue', operator: 'GREATER_THAN', value: '7' }] },
+      actions: [{ type: 'WEBHOOK', params: { url: 'https://hooks.zapier.com/v1/event' } }],
+      createdAt: new Date(Date.now() - 1 * 86400000).toISOString()
+    }
+  ];
+  localStorage.setItem('tz_mock_auto_rules', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockAutomationRules(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_auto_rules', JSON.stringify(data));
+}
+
+function getMockAutomationTemplates(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_auto_templates');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    {
+      id: 'temp-1',
+      name: 'Repair Ticket Delivery SMS',
+      type: 'SMS',
+      subject: '',
+      content: 'Dear {{customer_name}}, your device {{device_model}} (Ticket #{{ticket_id}}) has been repaired and quality tested. Ready for collection at {{branch_name}}.',
+      variables: ['{{customer_name}}', '{{device_model}}', '{{ticket_id}}', '{{branch_name}}'],
+      createdAt: new Date(Date.now() - 10 * 86400000).toISOString()
+    },
+    {
+      id: 'temp-2',
+      name: 'Digital Repair Invoice Email',
+      type: 'EMAIL',
+      subject: 'TrustZone Mobile Care — Official Repair Invoice #{{invoice_number}}',
+      content: 'Hello {{customer_name}},\n\nThank you for trusting TrustZone Mobile Care. Your repair invoice #{{invoice_number}} for ৳{{total_amount}} is attached.\n\nWarranty Code: {{warranty_code}}',
+      variables: ['{{customer_name}}', '{{invoice_number}}', '{{total_amount}}', '{{warranty_code}}'],
+      createdAt: new Date(Date.now() - 8 * 86400000).toISOString()
+    },
+    {
+      id: 'temp-3',
+      name: 'Standard Service Warranty Terms',
+      type: 'WARRANTY',
+      subject: 'Warranty Certificate Terms',
+      content: 'This certificate guarantees genuine replacement parts and workmanship for {{duration_months}} months from issue date. Physical impact and liquid corrosion are excluded.',
+      variables: ['{{duration_months}}', '{{serial_number}}'],
+      createdAt: new Date(Date.now() - 6 * 86400000).toISOString()
+    }
+  ];
+  localStorage.setItem('tz_mock_auto_templates', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockAutomationTemplates(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_auto_templates', JSON.stringify(data));
+}
+
+function getMockAutomationJobs(): any[] {
+  return [
+    { name: 'NIGHTLY_STOCK_SCAN', cron: '0 0 * * *', description: 'Scans all branch spare parts inventories against reorder min thresholds and generates low stock notifications.' },
+    { name: 'OVERDUE_TICKET_ESCALATION', cron: '0 */4 * * *', description: 'Checks repair queue tickets in DIAGNOSING/IN_PROGRESS state exceeding SLA limits and flags lead technician.' },
+    { name: 'WARRANTY_EXPIRY_WATCH', cron: '0 8 * * *', description: 'Identifies customer warranties expiring within 30 days and sends renewal reminder notifications.' },
+    { name: 'DAILY_REGISTER_AUDIT', cron: '59 23 * * *', description: 'Audits daily cashier closing balances across Dhanmondi, Banani, and Uttara outlets for variance report.' }
+  ];
+}
+
+function getMockAutomationExecutions(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_auto_execs');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    { id: 'exec-1', rule: { name: 'Low Spare Parts Inventory Alert', triggerEvent: 'STOCK_BELOW_THRESHOLD' }, status: 'SUCCESS', createdAt: new Date().toISOString() },
+    { id: 'exec-2', rule: { name: 'Automated Warranty Certificate Generator', triggerEvent: 'TICKET_DELIVERED' }, status: 'SUCCESS', createdAt: new Date(Date.now() - 1800000).toISOString() },
+    { id: 'exec-3', rule: { name: 'VIP Customer Service Escalation', triggerEvent: 'CUSTOMER_PAYMENT_RECEIVED' }, status: 'SUCCESS', createdAt: new Date(Date.now() - 3600000).toISOString() },
+    { id: 'exec-4', rule: { name: 'Overdue Invoice Reminder Webhook', triggerEvent: 'INVOICE_OVERDUE' }, status: 'FAILED', createdAt: new Date(Date.now() - 7200000).toISOString() }
+  ];
+  localStorage.setItem('tz_mock_auto_execs', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockAutomationExecutions(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_auto_execs', JSON.stringify(data));
+}
+
+function getMockWebhookLogs(): any[] {
+  return [
+    { id: 'wh-1', rule: { name: 'Zapier Customer Sync' }, url: 'https://hooks.zapier.com/v1/work/99218', method: 'POST', responseStatus: 200, status: 'SUCCESS', createdAt: new Date().toISOString() },
+    { id: 'wh-2', rule: { name: 'SSLCommerz Gateway Callback' }, url: 'https://api.sslcommerz.com/gwprocess/v4/verify', method: 'POST', responseStatus: 200, status: 'SUCCESS', createdAt: new Date(Date.now() - 3600000).toISOString() },
+    { id: 'wh-3', rule: { name: 'SMS Gateway Dispatch' }, url: 'https://api.sms-bangladesh.com/send', method: 'POST', responseStatus: 201, status: 'SUCCESS', createdAt: new Date(Date.now() - 7200000).toISOString() }
+  ];
+}
+
 
