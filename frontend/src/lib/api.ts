@@ -3113,11 +3113,8 @@ export const api = {
         return {
           success: true,
           data: {
-            items: [
-              { id: 'act-1', module: 'AUTH', action: 'LOGIN', details: 'User admin@trustzone.care logged in successfully.', createdAt: new Date().toISOString() },
-              { id: 'act-2', module: 'FINANCE', action: 'PAYMENT_RECEIVED', details: 'Payment of ৳12,500 settled for Invoice #TZ-INV-1092.', createdAt: new Date().toISOString() }
-            ],
-            total: 2
+            items: getMockTimelineItems(),
+            total: getMockTimelineItems().length
           }
         };
       }
@@ -3132,12 +3129,24 @@ export const api = {
         return {
           success: true,
           data: {
-            items: [
-              { id: 'audit-1', affectedModule: 'TICKETS', action: 'UPDATE', recordId: 't-1', beforeValue: { status: 'booked' }, afterValue: { status: 'diagnosing' }, userEmail: 'tech@trustzone.care', userRole: 'TECHNICIAN', createdAt: new Date().toISOString() }
-            ],
-            total: 1
+            items: getMockTimelineAuditLogs(),
+            total: getMockTimelineAuditLogs().length
           }
         };
+      }
+    },
+    async bookmarkEvent(id: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/timeline/${id}/bookmark`, { method: 'POST', token });
+      } catch {
+        const list = getMockTimelineItems();
+        const item = list.find((i: any) => i.id === id);
+        if (item) {
+          item.isBookmarked = !item.isBookmarked;
+          saveMockTimelineItems(list);
+          return { success: true, data: item };
+        }
+        return { success: false, data: null };
       }
     }
   },
@@ -5178,6 +5187,133 @@ function getMockAnnouncements(): any[] {
 function saveMockAnnouncements(data: any[]) {
   if (typeof window !== 'undefined') localStorage.setItem('tz_mock_announcements', JSON.stringify(data));
 }
+
+function getMockTimelineItems(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_timeline_items');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    {
+      id: 'act-1',
+      module: 'AUTH',
+      action: 'MFA_VERIFIED_LOGIN',
+      severity: 'INFO',
+      details: 'User admin@trustzone.care logged in successfully with MFA TOTP verification from Dhaka, Bangladesh (IP: 103.114.28.10).',
+      userEmail: 'admin@trustzone.care',
+      userRole: 'SUPER_ADMIN',
+      ipAddress: '103.114.28.10',
+      userAgent: 'Chrome 122.0.0.0 (Windows 11)',
+      branch: 'Dhanmondi Central',
+      isBookmarked: false,
+      createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'act-2',
+      module: 'FINANCE',
+      action: 'PAYMENT_SETTLED',
+      severity: 'INFO',
+      details: 'Payment of ৳12,500 settled for Invoice #TZ-INV-1092 via SSLCommerz Gateway (TrxID: SSL_9081234).',
+      userEmail: 'cashier@trustzone.care',
+      userRole: 'CASHIER',
+      ipAddress: '103.114.28.12',
+      userAgent: 'Chrome 122.0.0.0 (Windows 11)',
+      branch: 'Dhanmondi Central',
+      isBookmarked: true,
+      createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'act-3',
+      module: 'REPAIRS',
+      action: 'STATUS_ADVANCED',
+      severity: 'HIGH',
+      details: 'Repair ticket #TZ-901 state advanced from DIAGNOSING to REPAIR_IN_PROGRESS by Lead Tech Rafiq (OLED Assembly replaced).',
+      userEmail: 'rafiq@trustzone.care',
+      userRole: 'TECHNICIAN',
+      ipAddress: '103.114.28.15',
+      userAgent: 'Firefox 123.0 (Ubuntu Linux)',
+      branch: 'Banani Lab',
+      isBookmarked: false,
+      createdAt: new Date(Date.now() - 1 * 3600 * 1000).toISOString()
+    },
+    {
+      id: 'act-4',
+      module: 'INVENTORY',
+      action: 'STOCK_REORDER_ALERT',
+      severity: 'CRITICAL',
+      details: 'Spare Part SKU #BAT-S22-ORIG dropped below min threshold (2 units left). Reorder trigger created for Supplier M/S Tech Corp.',
+      userEmail: 'system@trustzone.care',
+      userRole: 'SYSTEM_BOT',
+      ipAddress: '127.0.0.1 (Internal Cron)',
+      userAgent: 'Node.js Automated Scheduler',
+      branch: 'Uttara Hub',
+      isBookmarked: true,
+      createdAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
+    },
+    {
+      id: 'act-5',
+      module: 'USERS',
+      action: 'ROLE_PERMISSION_UPDATED',
+      severity: 'HIGH',
+      details: 'Role TECHNICIAN permissions updated: Granted read:inventory and write:repairs privileges.',
+      userEmail: 'admin@trustzone.care',
+      userRole: 'SUPER_ADMIN',
+      ipAddress: '103.114.28.10',
+      userAgent: 'Chrome 122.0.0.0 (Windows 11)',
+      branch: 'Dhanmondi Central',
+      isBookmarked: false,
+      createdAt: new Date(Date.now() - 6 * 3600 * 1000).toISOString()
+    }
+  ];
+  localStorage.setItem('tz_mock_timeline_items', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockTimelineItems(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_timeline_items', JSON.stringify(data));
+}
+
+function getMockTimelineAuditLogs(): any[] {
+  return [
+    {
+      id: 'audit-1',
+      affectedModule: 'TICKETS',
+      action: 'UPDATE_STATUS',
+      recordId: 'TZ-TKT-901',
+      userEmail: 'rafiq@trustzone.care',
+      userRole: 'TECHNICIAN',
+      ipAddress: '103.114.28.15',
+      createdAt: new Date(Date.now() - 1 * 3600 * 1000).toISOString(),
+      beforeValue: { status: 'DIAGNOSING', estimatedCost: 8500, technicianId: 'tech-1' },
+      afterValue: { status: 'REPAIR_IN_PROGRESS', estimatedCost: 12500, technicianId: 'tech-1' }
+    },
+    {
+      id: 'audit-2',
+      affectedModule: 'INVENTORY',
+      action: 'ADJUST_QUANTITY',
+      recordId: 'SKU-BAT-S22',
+      userEmail: 'inventory.mgr@trustzone.care',
+      userRole: 'INVENTORY_MANAGER',
+      ipAddress: '103.114.28.18',
+      createdAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+      beforeValue: { stockQuantity: 15, unitCost: 1400 },
+      afterValue: { stockQuantity: 2, unitCost: 1450 }
+    },
+    {
+      id: 'audit-3',
+      affectedModule: 'ROLES',
+      action: 'MODIFY_PERMISSIONS',
+      recordId: 'ROLE-TECH-01',
+      userEmail: 'admin@trustzone.care',
+      userRole: 'SUPER_ADMIN',
+      ipAddress: '103.114.28.10',
+      createdAt: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
+      beforeValue: { permissions: ['read:repairs', 'write:repairs'] },
+      afterValue: { permissions: ['read:repairs', 'write:repairs', 'read:inventory'] }
+    }
+  ];
+}
+
+
 
 
 
