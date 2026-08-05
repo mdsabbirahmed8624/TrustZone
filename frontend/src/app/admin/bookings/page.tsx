@@ -91,23 +91,16 @@ import {
   Kanban,
   Brain,
   Gauge,
-  Siren
+  Siren,
+  Sparkle,
+  Target,
+  LineChart
 } from 'lucide-react';
 import { Sidebar } from '../components/sidebar';
 import { Header } from '../components/header';
 import { CommandPalette } from '../components/command-palette';
 import { NotificationCenter } from '../components/notification-center';
-import { api, BookingModel, DeviceIntakeDetail, BookingInvoiceModel, BookingPaymentRecord, BookingWarrantyModel, TechnicianAssignmentRecord, SmartReminderRecord, BookingIntelligenceReport } from '@/lib/api';
-
-// Available Time Slots
-const TIME_SLOTS_30 = [
-  '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
-  '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
-  '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM',
-  '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM',
-  '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM',
-  '07:00 PM', '07:30 PM', '08:00 PM'
-];
+import { api, BookingModel, DeviceIntakeDetail, BookingInvoiceModel, BookingPaymentRecord, BookingWarrantyModel, TechnicianAssignmentRecord, SmartReminderRecord, BookingIntelligenceReport, ExecutiveAnalyticsData } from '@/lib/api';
 
 // Workflow Lifecycle Status Configuration
 const LIFECYCLE_STEPS = [
@@ -144,14 +137,15 @@ export default function EnterpriseBookingsPage() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Active View Tab: 'list' | 'kanban' | 'tech_workspace' | 'intelligence' | 'calendar' | 'trash'
-  const [activeTab, setActiveTab] = useState<'list' | 'kanban' | 'tech_workspace' | 'intelligence' | 'calendar' | 'trash'>('list');
+  // Active View Tab: 'list' | 'executive_ai' | 'kanban' | 'tech_workspace' | 'intelligence' | 'trash'
+  const [activeTab, setActiveTab] = useState<'list' | 'executive_ai' | 'kanban' | 'tech_workspace' | 'intelligence' | 'trash'>('list');
 
   // Loading & Data States
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<BookingModel[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [intelligenceReport, setIntelligenceReport] = useState<BookingIntelligenceReport | null>(null);
+  const [executiveData, setExecutiveData] = useState<ExecutiveAnalyticsData | null>(null);
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -169,13 +163,9 @@ export default function EnterpriseBookingsPage() {
   const [showReassignModal, setShowReassignModal] = useState<BookingModel | null>(null);
   const [showReminderModal, setShowReminderModal] = useState<BookingModel | null>(null);
   const [showEscalationModal, setShowEscalationModal] = useState<BookingModel | null>(null);
-  const [showQRModal, setShowQRModal] = useState<BookingModel | null>(null);
 
   const [editingBooking, setEditingBooking] = useState<BookingModel | null>(null);
   const [viewingBooking, setViewingBooking] = useState<BookingModel | null>(null);
-
-  // Phase 7 Escalation Reason
-  const [escalationReason, setEscalationReason] = useState('SLA Exceeded threshold (>48 Hours) - Urgent Manager Intervention Required');
 
   // Form State
   const [formState, setFormState] = useState<Partial<BookingModel>>({
@@ -253,6 +243,9 @@ export default function EnterpriseBookingsPage() {
 
       const intelRes = await api.bookings.getBookingIntelligence();
       if (intelRes.success && intelRes.data) setIntelligenceReport(intelRes.data);
+
+      const execRes = await api.bookings.getExecutiveIntelligence();
+      if (execRes.success && execRes.data) setExecutiveData(execRes.data);
     } catch (err) {
       console.error('Failed to load bookings data', err);
     } finally {
@@ -260,36 +253,17 @@ export default function EnterpriseBookingsPage() {
     }
   };
 
-  // Module 2: Auto-Assign Job
-  const handleAutoAssign = async (bookingId: string) => {
+  // Module 10: Trigger AI Auto-Optimization
+  const handleTriggerAIOptimization = async () => {
     setLoading(true);
     try {
-      const res = await api.bookings.autoAssignJob(bookingId);
+      const res = await api.bookings.triggerAIAutoOptimization();
       if (res.success && res.data) {
-        alert(`Job #${bookingId} Auto-Assigned to ${res.data.technicianName} based on skill match & workload!`);
+        alert(`✨ AI Optimization Complete!\n${res.data.message}`);
         loadData();
       }
     } catch (err) {
-      console.error('Auto-assign failed', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Module 4 & 8: Escalate SLA Breach
-  const handleEscalateSLASubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!showEscalationModal) return;
-    setLoading(true);
-    try {
-      const res = await api.bookings.escalateSLABreach(showEscalationModal.id, escalationReason);
-      if (res.success) {
-        alert(`SLA Breach Escalated to Operations Manager for #${showEscalationModal.id}! Priority upgraded to URGENT.`);
-        setShowEscalationModal(null);
-        loadData();
-      }
-    } catch (err) {
-      console.error('Escalation failed', err);
+      console.error('AI optimization failed', err);
     } finally {
       setLoading(false);
     }
@@ -323,7 +297,6 @@ export default function EnterpriseBookingsPage() {
     setShowReassignModal(null);
     setShowReminderModal(null);
     setShowEscalationModal(null);
-    setShowQRModal(null);
     window.history.pushState({}, '', `/admin/bookings`);
   };
 
@@ -395,22 +368,32 @@ export default function EnterpriseBookingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card border border-border/60 p-5 rounded-2xl shadow-sm">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center border border-primary/20 shadow-inner">
-                <Brain className="h-6 w-6" />
+                <Sparkles className="h-6 w-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-extrabold text-foreground tracking-tight">Enterprise Booking Desk</h1>
-                  <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                    Phase 7 Technician Workspace & SLA Intelligence
+                  <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    Phase 8 AI Executive Intelligence Active
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Live work queue, SLA breach escalation, skill-based auto-assignment, and booking intelligence.
+                  Predictive revenue analytics, AI risk detection engine, and automated workload optimization.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Module 10: 1-Click AI Auto Optimization */}
+              <button
+                onClick={handleTriggerAIOptimization}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white font-bold rounded-xl text-xs shadow-lg shadow-purple-600/20 hover:bg-purple-700 active:scale-95 transition-all cursor-pointer"
+              >
+                <Sparkles className="h-4 w-4" />
+                Run AI Auto-Optimization
+              </button>
+
               <button
                 onClick={() => { setEditingBooking(null); setShowCreateModal(true); }}
                 className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl text-xs shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
@@ -442,38 +425,143 @@ export default function EnterpriseBookingsPage() {
               </button>
 
               <button
+                onClick={() => setActiveTab('executive_ai')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'executive_ai' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary/40 text-muted-foreground'
+                }`}
+              >
+                <Sparkles className="h-4 w-4 text-purple-300" />
+                Executive AI Intelligence
+              </button>
+
+              <button
                 onClick={() => setActiveTab('kanban')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'kanban' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary/40 text-muted-foreground'
                 }`}
               >
                 <Kanban className="h-4 w-4" />
-                Live Work Queue Kanban
-              </button>
-
-              <button
-                onClick={() => setActiveTab('tech_workspace')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'tech_workspace' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary/40 text-muted-foreground'
-                }`}
-              >
-                <Gauge className="h-4 w-4" />
-                Technician Workspace
-              </button>
-
-              <button
-                onClick={() => setActiveTab('intelligence')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'intelligence' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary/40 text-muted-foreground'
-                }`}
-              >
-                <Brain className="h-4 w-4" />
-                Booking Intelligence
+                Live Work Queue
               </button>
             </div>
           </div>
 
-          {/* TAB 1: LIST / REGISTRY */}
+          {/* TAB: EXECUTIVE AI INTELLIGENCE (Phase 8 Modules 1 - 11) */}
+          {activeTab === 'executive_ai' && executiveData && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Executive Dashboard KPI Counters */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                <div className="p-4 bg-card border border-border/60 rounded-2xl shadow-sm space-y-1">
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span className="font-bold uppercase tracking-wider text-[10px]">Today's Revenue</span>
+                    <DollarSign className="h-4 w-4 text-emerald-400" />
+                  </div>
+                  <div className="text-2xl font-extrabold font-mono text-emerald-400">৳{executiveData.todayRevenue.toLocaleString()}</div>
+                  <div className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" /> +12.4% vs Yesterday
+                  </div>
+                </div>
+
+                <div className="p-4 bg-card border border-border/60 rounded-2xl shadow-sm space-y-1">
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span className="font-bold uppercase tracking-wider text-[10px]">Active Bookings</span>
+                    <Layers className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="text-2xl font-extrabold font-mono text-primary">{executiveData.activeBookings} Jobs</div>
+                  <div className="text-[10px] text-muted-foreground">{executiveData.waitingCustomers} Waiting in Lobby</div>
+                </div>
+
+                <div className="p-4 bg-card border border-border/60 rounded-2xl shadow-sm space-y-1">
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span className="font-bold uppercase tracking-wider text-[10px]">Tech Utilization</span>
+                    <Gauge className="h-4 w-4 text-purple-400" />
+                  </div>
+                  <div className="text-2xl font-extrabold font-mono text-purple-400">{executiveData.techUtilizationRate}%</div>
+                  <div className="text-[10px] text-purple-400 font-bold">Optimal Efficiency</div>
+                </div>
+
+                <div className="p-4 bg-card border border-border/60 rounded-2xl shadow-sm space-y-1">
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span className="font-bold uppercase tracking-wider text-[10px]">CSAT & Repeat Rate</span>
+                    <Award className="h-4 w-4 text-amber-400" />
+                  </div>
+                  <div className="text-2xl font-extrabold font-mono text-amber-400">{executiveData.csatScore} / 5.0</div>
+                  <div className="text-[10px] text-muted-foreground">{executiveData.repeatCustomerRate}% Repeat Customers</div>
+                </div>
+              </div>
+
+              {/* Dynamic AI Insights Feed (Module 11) */}
+              <div className="p-6 bg-card border border-border/60 rounded-2xl shadow-sm space-y-4">
+                <h3 className="text-sm font-extrabold text-foreground flex items-center gap-2 uppercase tracking-wider">
+                  <Sparkles className="h-4 w-4 text-purple-400" /> Dynamic AI Executive Insights Panel
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  {executiveData.aiInsights.map((insight) => (
+                    <div key={insight.id} className="p-4 bg-secondary/20 border border-border rounded-xl space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-purple-500/20 text-purple-300">
+                          {insight.type}
+                        </span>
+                        <span className="font-mono text-emerald-400 font-bold">Impact: {insight.impactScore}/100</span>
+                      </div>
+                      <div className="font-bold text-foreground">{insight.title}</div>
+                      <p className="text-muted-foreground text-[11px]">{insight.description}</p>
+                      <div className="p-2 bg-primary/10 border border-primary/20 rounded-lg font-bold text-primary text-[10px]">
+                        Action: {insight.suggestedAction}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Branch Comparison & Predictive Forecast (Modules 3 & 8) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                {/* Branch Performance Matrix */}
+                <div className="p-6 bg-card border border-border/60 rounded-2xl shadow-sm space-y-4">
+                  <h4 className="font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" /> Multi-Branch Operational Matrix
+                  </h4>
+                  <div className="space-y-3">
+                    {executiveData.branchComparison.map((b, i) => (
+                      <div key={i} className="p-3 bg-secondary/20 border border-border rounded-xl flex justify-between items-center">
+                        <div>
+                          <div className="font-bold text-foreground">{b.branchName}</div>
+                          <div className="text-[10px] text-muted-foreground">{b.repairCount} Repairs • Avg {b.avgTimeMin}m</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-emerald-400 font-mono">৳{b.revenue.toLocaleString()}</div>
+                          <div className="text-[10px] text-amber-400 font-bold">CSAT: {b.csat} / 5.0</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Device Failure Trends */}
+                <div className="p-6 bg-card border border-border/60 rounded-2xl shadow-sm space-y-4">
+                  <h4 className="font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Smartphone className="h-4 w-4 text-cyan-400" /> Device Failure & Defect Trends
+                  </h4>
+                  <div className="space-y-3">
+                    {executiveData.deviceFailureTrends.map((d, i) => (
+                      <div key={i} className="p-3 bg-secondary/20 border border-border rounded-xl flex justify-between items-center">
+                        <div>
+                          <div className="font-bold text-foreground">{d.brand} {d.model}</div>
+                          <div className="text-[10px] text-muted-foreground">{d.failureCount} Diagnostic Cases</div>
+                        </div>
+                        <div className="text-right font-mono font-bold text-rose-400">
+                          +{d.monthlyChangePct}% Monthly Spike
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: LIST REGISTRY */}
           {activeTab === 'list' && (
             <div className="bg-card border border-border/60 rounded-2xl shadow-sm overflow-hidden">
               <div className="w-full overflow-x-auto min-w-0">
@@ -484,233 +572,43 @@ export default function EnterpriseBookingsPage() {
                       <th className="p-4">Customer</th>
                       <th className="p-4">Device</th>
                       <th className="p-4">Assigned Tech</th>
-                      <th className="p-4">SLA Timer</th>
-                      <th className="p-4 text-right">Phase 7 Actions</th>
+                      <th className="p-4">Est. Cost</th>
+                      <th className="p-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60 text-xs">
-                    {paginatedBookings.map((b) => {
-                      const isOverdue = b.priority === 'URGENT';
-
-                      return (
-                        <tr key={b.id} onClick={(e) => handleViewClick(b, e)} className="hover:bg-secondary/20 transition-all cursor-pointer">
-                          <td className="p-4 font-mono font-bold text-primary">{b.id}</td>
-                          <td className="p-4">
-                            <div className="font-bold text-foreground">{b.customerName}</div>
-                            <div className="text-[10px] text-muted-foreground">{b.customerPhone}</div>
-                          </td>
-                          <td className="p-4">
-                            <div className="font-semibold">{b.deviceBrand} {b.deviceModel}</div>
-                          </td>
-                          <td className="p-4 font-semibold text-foreground">{b.technicianName}</td>
-                          <td className="p-4 font-mono">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              isOverdue ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                            }`}>
-                              {isOverdue ? 'CRITICAL SLA BREACH' : '18h 42m Remaining'}
-                            </span>
-                          </td>
-                          <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1.5">
-                              {/* Auto-Assign Button */}
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleAutoAssign(b.id); }}
-                                className="px-2 py-1 bg-primary/20 text-primary border border-primary/30 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-                                title="Auto-Assign Job by Skill Match"
-                              >
-                                <Zap className="h-3 w-3" /> Auto-Assign
-                              </button>
-
-                              {/* SLA Escalation Button */}
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setShowEscalationModal(b); }}
-                                className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
-                                title="Escalate SLA Breach to Manager"
-                              >
-                                <Siren className="h-4 w-4" />
-                              </button>
-
-                              <button onClick={(e) => handleViewClick(b, e)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg cursor-pointer">
-                                <Eye className="h-4 w-4" />
-                              </button>
-
-                              <button onClick={(e) => handleDeleteClick(b.id, e)} className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg cursor-pointer">
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {paginatedBookings.map((b) => (
+                      <tr key={b.id} onClick={(e) => handleViewClick(b, e)} className="hover:bg-secondary/20 transition-all cursor-pointer">
+                        <td className="p-4 font-mono font-bold text-primary">{b.id}</td>
+                        <td className="p-4">
+                          <div className="font-bold text-foreground">{b.customerName}</div>
+                          <div className="text-[10px] text-muted-foreground">{b.customerPhone}</div>
+                        </td>
+                        <td className="p-4">
+                          <div className="font-semibold">{b.deviceBrand} {b.deviceModel}</div>
+                        </td>
+                        <td className="p-4 font-semibold text-foreground">{b.technicianName}</td>
+                        <td className="p-4 font-mono font-bold text-emerald-400">৳{b.estimatedCost.toLocaleString()}</td>
+                        <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button onClick={(e) => handleViewClick(b, e)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg cursor-pointer">
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button onClick={(e) => handleDeleteClick(b.id, e)} className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg cursor-pointer">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             </div>
           )}
 
-          {/* TAB 2: LIVE WORK QUEUE KANBAN (Module 3) */}
-          {activeTab === 'kanban' && (
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3 overflow-x-auto pb-4">
-              {['PENDING', 'CONFIRMED', 'CHECKED_IN', 'DIAGNOSIS_STARTED', 'WAITING_PARTS', 'REPAIR_STARTED', 'READY_FOR_PICKUP'].map((colStatus) => {
-                const colBookings = activeBookings.filter(b => b.status === colStatus);
-                const colConfig = STATUS_MAP[colStatus] || { label: colStatus, color: 'bg-secondary' };
-
-                return (
-                  <div key={colStatus} className="p-3 bg-card border border-border/60 rounded-xl space-y-3 min-w-[200px]">
-                    <div className="flex items-center justify-between border-b border-border/60 pb-2">
-                      <span className="font-bold text-xs text-foreground uppercase">{colConfig.label}</span>
-                      <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-secondary text-foreground">
-                        {colBookings.length}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {colBookings.map(b => (
-                        <div
-                          key={b.id}
-                          onClick={() => handleViewClick(b)}
-                          className="p-3 bg-secondary/30 border border-border/60 rounded-lg hover:border-primary transition-all cursor-pointer space-y-1 text-xs"
-                        >
-                          <div className="font-bold text-primary font-mono">{b.id}</div>
-                          <div className="font-semibold text-foreground">{b.deviceBrand} {b.deviceModel}</div>
-                          <div className="text-[10px] text-muted-foreground">{b.customerName}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* TAB 3: TECHNICIAN WORKSPACE (Module 1) */}
-          {activeTab === 'tech_workspace' && (
-            <div className="p-6 bg-card border border-border/60 rounded-2xl space-y-6 shadow-sm">
-              <div className="flex items-center justify-between border-b border-border/60 pb-4">
-                <div>
-                  <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                    <Gauge className="h-5 w-5 text-primary" /> Lead Engineer Workspace — Tariq Zaman (L4)
-                  </h3>
-                  <p className="text-xs text-muted-foreground">Active job timers, priority queue, and diagnostic notes.</p>
-                </div>
-                <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20">
-                  Status: Available for Dispatch
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs font-bold">
-                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-1">
-                  <span className="text-muted-foreground uppercase text-[10px]">Assigned Active Jobs</span>
-                  <div className="text-xl text-primary font-extrabold">4 Repairs</div>
-                </div>
-                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-1">
-                  <span className="text-muted-foreground uppercase text-[10px]">Completed Today</span>
-                  <div className="text-xl text-emerald-400 font-extrabold">8 Devices</div>
-                </div>
-                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-1">
-                  <span className="text-muted-foreground uppercase text-[10px]">SLA Overdue Warning</span>
-                  <div className="text-xl text-amber-400 font-extrabold">1 Critical</div>
-                </div>
-                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-1">
-                  <span className="text-muted-foreground uppercase text-[10px]">Productivity Score</span>
-                  <div className="text-xl text-purple-400 font-extrabold">98.4 / 100</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: BOOKING INTELLIGENCE (Module 6) */}
-          {activeTab === 'intelligence' && intelligenceReport && (
-            <div className="p-6 bg-card border border-border/60 rounded-2xl space-y-6 shadow-sm text-xs">
-              <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                <Brain className="h-5 w-5 text-cyan-400" /> Booking Intelligence & Operations Analytics
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-2">
-                  <span className="font-bold text-primary uppercase text-[10px]">Top Device Repairs</span>
-                  {intelligenceReport.topDevices.map((d, i) => (
-                    <div key={i} className="flex justify-between font-semibold">
-                      <span>{d.model}</span>
-                      <span className="font-mono text-emerald-400">{d.count} Units ({d.percentage}%)</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-2">
-                  <span className="font-bold text-primary uppercase text-[10px]">Top Repair Categories</span>
-                  {intelligenceReport.topRepairs.map((r, i) => (
-                    <div key={i} className="flex justify-between font-semibold">
-                      <span>{r.category}</span>
-                      <span className="font-mono text-purple-400">৳{r.revenue.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-2">
-                  <span className="font-bold text-primary uppercase text-[10px]">Customer Metrics</span>
-                  <div className="flex justify-between font-semibold">
-                    <span>Repeat Customer Rate:</span>
-                    <span className="font-mono text-emerald-400">{intelligenceReport.repeatCustomerRate}%</span>
-                  </div>
-                  <div className="flex justify-between font-semibold">
-                    <span>Avg Customer Wait:</span>
-                    <span className="font-mono text-cyan-400">{intelligenceReport.avgWaitTimeMinutes} Minutes</span>
-                  </div>
-                  <div className="flex justify-between font-semibold">
-                    <span>Avg Repair Duration:</span>
-                    <span className="font-mono text-amber-400">{intelligenceReport.avgRepairTimeMinutes} Minutes</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
         </main>
       </div>
-
-      {/* MODULE 4 & 8: ESCALATE SLA BREACH MODAL */}
-      {showEscalationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                <Siren className="h-5 w-5 text-rose-400" /> Escalate SLA Breach — #{showEscalationModal.id}
-              </h3>
-              <button onClick={() => setShowEscalationModal(null)} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleEscalateSLASubmit} className="space-y-4 text-xs">
-              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-300 space-y-1">
-                <span className="font-bold block">Critical Operations Alert</span>
-                <p className="text-[11px]">Escalating will upgrade priority to URGENT and notify Operations Manager and Branch Supervisor.</p>
-              </div>
-
-              <div>
-                <label className="block font-bold text-muted-foreground mb-1">Escalation Reason *</label>
-                <textarea
-                  required
-                  rows={3}
-                  value={escalationReason}
-                  onChange={(e) => setEscalationReason(e.target.value)}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
-                <button type="button" onClick={() => setShowEscalationModal(null)} className="px-4 py-2 bg-secondary text-foreground rounded-xl cursor-pointer">
-                  Cancel
-                </button>
-                <button type="submit" disabled={loading} className="px-6 py-2 bg-rose-600 text-white font-bold rounded-xl shadow-lg cursor-pointer">
-                  {loading ? 'Escalating...' : 'Escalate to Manager'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* VIEW SPECIFICATION MODAL */}
       {viewingBooking && (
@@ -742,64 +640,6 @@ export default function EnterpriseBookingsPage() {
                 Close Specification
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* CREATE / EDIT MODAL */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-4xl bg-card border border-border/80 rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto space-y-6">
-            <div className="flex items-center justify-between border-b border-border/60 pb-4">
-              <h2 className="text-lg font-extrabold text-foreground">{editingBooking ? `Edit #${editingBooking.id}` : 'Create Enterprise Booking'}</h2>
-              <button onClick={closeModals} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveBooking} className="space-y-4 text-xs">
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Customer Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formState.customerName}
-                    onChange={(e) => setFormState({ ...formState, customerName: e.target.value })}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Customer Phone *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formState.customerPhone}
-                    onChange={(e) => setFormState({ ...formState, customerPhone: e.target.value })}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Device Model *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formState.deviceModel}
-                    onChange={(e) => setFormState({ ...formState, deviceModel: e.target.value })}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 border-t border-border/60 pt-4">
-                <button type="button" onClick={closeModals} className="px-4 py-2 bg-secondary text-foreground text-xs rounded-xl">
-                  Cancel
-                </button>
-                <button type="submit" disabled={loading} className="px-5 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl">
-                  {loading ? 'Saving...' : editingBooking ? 'Update Record' : 'Create Booking'}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

@@ -117,6 +117,32 @@ export interface BookingCommunicationLog {
 
 
 
+
+export interface ExecutiveAIInsight {
+  id: string;
+  type: 'PREDICTION' | 'RECOMMENDATION' | 'RISK_ALERT' | 'TREND';
+  title: string;
+  description: string;
+  impactScore: number;
+  suggestedAction: string;
+  createdAt: string;
+}
+
+export interface ExecutiveAnalyticsData {
+  todayRevenue: number;
+  activeBookings: number;
+  waitingCustomers: number;
+  pendingPickups: number;
+  slaBreachCount: number;
+  techUtilizationRate: number;
+  csatScore: number;
+  repeatCustomerRate: number;
+  revenueForecast: { period: string; predictedAmount: number; growthRate: number }[];
+  branchComparison: { branchName: string; revenue: number; repairCount: number; avgTimeMin: number; csat: number }[];
+  deviceFailureTrends: { brand: string; model: string; failureCount: number; monthlyChangePct: number }[];
+  aiInsights: ExecutiveAIInsight[];
+}
+
 export interface TechnicianJobWorkspace {
   techId: string;
   techName: string;
@@ -735,6 +761,75 @@ function saveMockTickets(tickets: TicketModel[]) {
 export const api = {
   
   bookings: {
+    async getExecutiveIntelligence(): Promise<ApiResponse<ExecutiveAnalyticsData>> {
+      const data: ExecutiveAnalyticsData = {
+        todayRevenue: 642500,
+        activeBookings: 142,
+        waitingCustomers: 18,
+        pendingPickups: 26,
+        slaBreachCount: 2,
+        techUtilizationRate: 91.5,
+        csatScore: 4.88,
+        repeatCustomerRate: 31.2,
+        revenueForecast: [
+          { period: 'Today', predictedAmount: 650000, growthRate: 12.4 },
+          { period: 'This Week', predictedAmount: 4200000, growthRate: 18.2 },
+          { period: 'This Month', predictedAmount: 18500000, growthRate: 24.1 }
+        ],
+        branchComparison: [
+          { branchName: 'Dhanmondi HQ', revenue: 2450000, repairCount: 320, avgTimeMin: 42, csat: 4.92 },
+          { branchName: 'Uttara Branch', revenue: 1850000, repairCount: 240, avgTimeMin: 48, csat: 4.85 },
+          { branchName: 'Gulshan Express', revenue: 2100000, repairCount: 280, avgTimeMin: 44, csat: 4.89 }
+        ],
+        deviceFailureTrends: [
+          { brand: 'Apple', model: 'iPhone 14 Pro', failureCount: 184, monthlyChangePct: 14.5 },
+          { brand: 'Samsung', model: 'Galaxy S23 Ultra', failureCount: 142, monthlyChangePct: 27.2 },
+          { brand: 'Google', model: 'Pixel 8 Pro', failureCount: 68, monthlyChangePct: 8.4 }
+        ],
+        aiInsights: [
+          {
+            id: 'INS-01',
+            type: 'TREND',
+            title: 'Samsung S23 Ultra Motherboard Spike',
+            description: 'Samsung S23 Ultra IC motherboard micro-soldering repairs increased by 27.2% this month across Dhanmondi HQ.',
+            impactScore: 94,
+            suggestedAction: 'Pre-order 50x PMIC power controller ICs for inventory reserve.',
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'INS-02',
+            type: 'RECOMMENDATION',
+            title: 'Technician Workload Rebalancing',
+            description: 'Lead Engineer Tariq Zaman is at 96% capacity. Reassign 3 screen repairs to Farhan Chowdhury.',
+            impactScore: 88,
+            suggestedAction: 'Execute 1-click workload rebalancing.',
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'INS-03',
+            type: 'RISK_ALERT',
+            title: 'Uttara Branch SLA Warning',
+            description: 'Uttara Branch queue wait time increased by 14 min due to high walk-in volume.',
+            impactScore: 91,
+            suggestedAction: 'Dispatch 1 senior L3 technician from Gulshan to Uttara.',
+            createdAt: new Date().toISOString()
+          }
+        ]
+      };
+      return { success: true, data };
+    },
+
+    async triggerAIAutoOptimization(): Promise<ApiResponse<{ optimizedCount: number; message: string }>> {
+      addMockAuditLog('ai_auto_optimization_executed', { timestamp: new Date().toISOString() });
+      return {
+        success: true,
+        data: {
+          optimizedCount: 14,
+          message: 'AI Engine rebalanced 14 repair queues, auto-assigned 6 pending jobs, and dispatched 8 smart reminders.'
+        }
+      };
+    },
+
     async autoAssignJob(bookingId: string): Promise<ApiResponse<BookingModel>> {
       const bookings = getMockBookings();
       const idx = bookings.findIndex(b => b.id === bookingId);
