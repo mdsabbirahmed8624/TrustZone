@@ -480,79 +480,118 @@ export const api = {
       } catch (err: unknown) {
         const errorObj = err as Error;
         if (errorObj.message === 'BACKEND_OFFLINE' || errorObj.message.includes('401') || errorObj.message.includes('Unauthorized') || errorObj.message.includes('API request failed')) {
-          // Mock user registry — all seeded admin users
-          interface MockAdminUser { id: string; email: string; firstName: string; lastName: string; role: string; permissions: string[]; branchId: string | null; }
-          const MOCK_ADMIN_USERS: Record<string, { password: string; user: MockAdminUser }> = {
-            'admin@trustzone.care': {
-              password: 'Password123!',
-              user: {
-                id: 'super-admin-uid-1111',
+          const emailInput = ((fields.email as string) || '').trim().toLowerCase();
+          const passwordInput = (fields.password as string) || '';
+
+          // 1. Fetch dynamic user registry from getMockUsers()
+          const allMockUsers = getMockUsers();
+          const foundUser = allMockUsers.find((u: any) => 
+            u.email?.toLowerCase() === emailInput || u.username?.toLowerCase() === emailInput
+          );
+
+          // 2. Default hardcoded fallback credentials map for pre-seeded accounts
+          const DEFAULT_PASSWORDS: Record<string, string> = {
+            'admin@trustzone.care': 'Password123!',
+            'branch.admin@trustzone.care': 'AdminPass123!',
+            'mirpur.manager@trustzone.care': 'ManagerPass123!',
+            'tariq.tech@trustzone.care': 'TechPass123!',
+          };
+
+          // 3. User evaluation
+          let targetUser: any = null;
+          let expectedPassword = '';
+
+          if (foundUser) {
+            targetUser = foundUser;
+            expectedPassword = foundUser.password || DEFAULT_PASSWORDS[foundUser.email] || 'Password123!';
+          } else {
+            // Check fallback dictionary
+            if (emailInput === 'admin@trustzone.care') {
+              targetUser = {
+                id: 'usr-1',
                 email: 'admin@trustzone.care',
                 firstName: 'System',
                 lastName: 'Administrator',
                 role: 'SUPER_ADMIN',
                 permissions: ['*'],
                 branchId: 'd1111111-1111-1111-1111-111111111111',
-              }
-            },
-            'branch.admin@trustzone.care': {
-              password: 'AdminPass123!',
-              user: {
-                id: 'branch-admin-uid-2222',
+                status: 'ACTIVE',
+              };
+              expectedPassword = 'Password123!';
+            } else if (emailInput === 'branch.admin@trustzone.care') {
+              targetUser = {
+                id: 'usr-2',
                 email: 'branch.admin@trustzone.care',
                 firstName: 'Rafiq',
                 lastName: 'Ahmed',
                 role: 'ADMIN',
-                permissions: [
-                  'read:dashboard','read:repairs','write:repairs','read:bookings','write:bookings',
-                  'read:customers','write:customers','read:technicians','write:technicians',
-                  'read:inventory','write:inventory','read:suppliers','write:suppliers',
-                  'read:invoices','write:invoices','read:warranty','write:warranty',
-                  'read:reports','read:finance','read:marketing','read:crm',
-                  'read:branches','write:branches','read:settings','write:settings',
-                  'read:audit_logs','read:api','write:api','read:support'
-                ],
+                permissions: ['read:dashboard', 'read:repairs', 'write:repairs', 'read:inventory', 'write:inventory', 'read:customers', 'write:customers'],
                 branchId: 'b2222222-2222-2222-2222-222222222222',
-              }
-            },
-            'mirpur.manager@trustzone.care': {
-              password: 'ManagerPass123!',
-              user: {
-                id: 'manager-uid-3333',
+                status: 'ACTIVE',
+              };
+              expectedPassword = 'AdminPass123!';
+            } else if (emailInput === 'mirpur.manager@trustzone.care') {
+              targetUser = {
+                id: 'usr-3',
                 email: 'mirpur.manager@trustzone.care',
                 firstName: 'Nazma',
                 lastName: 'Khatun',
                 role: 'MANAGER',
-                permissions: [
-                  'read:dashboard','read:repairs','write:repairs','read:bookings','write:bookings',
-                  'read:customers','write:customers','read:technicians',
-                  'read:inventory','write:inventory','read:suppliers',
-                  'read:invoices','write:invoices','read:warranty','write:warranty',
-                  'read:reports','read:branches'
-                ],
+                permissions: ['read:dashboard', 'read:repairs', 'write:repairs', 'read:bookings', 'read:customers'],
                 branchId: 'c3333333-3333-3333-3333-333333333333',
-              }
-            },
+                status: 'ACTIVE',
+              };
+              expectedPassword = 'ManagerPass123!';
+            }
+          }
+
+          if (!targetUser) {
+            addMockAuditLog('admin_login_failed', { email: emailInput, reason: 'Unknown Email' });
+            throw new Error('No administrative account found with this email address.');
+          }
+
+          // Account status check
+          if (targetUser.status && targetUser.status !== 'ACTIVE') {
+            addMockAuditLog('admin_login_failed', { email: emailInput, reason: `Account status: ${targetUser.status}` });
+            throw new Error(`Account suspended: Your administrative access is currently ${targetUser.status.toLowerCase()}.`);
+          }
+
+          // Password check
+          if (passwordInput !== expectedPassword) {
+            addMockAuditLog('admin_login_failed', { email: emailInput, reason: 'Invalid Password' });
+            throw new Error('Invalid security key password. Please check your credentials.');
+          }
+
+          // Map permissions
+          let userPermissions = targetUser.permissions || [];
+          if (!userPermissions || userPermissions.length === 0) {
+            if (targetUser.role === 'SUPER_ADMIN' || targetUser.role === 'OWNER') {
+              userPermissions = ['*'];
+            } else {
+              userPermissions = ['read:dashboard', 'read:repairs', 'write:repairs', 'read:customers'];
+            }
+          }
+
+          const authenticatedUser = {
+            id: targetUser.id || `usr-${Date.now()}`,
+            email: targetUser.email,
+            firstName: targetUser.firstName || 'Admin',
+            lastName: targetUser.lastName || 'User',
+            role: targetUser.role || 'ADMIN',
+            permissions: userPermissions,
+            branchId: targetUser.branchId || null,
           };
 
-          const emailStr = fields.email as string;
-          const passwordStr = fields.password as string;
-          const mockUser = MOCK_ADMIN_USERS[emailStr];
+          addMockAuditLog('admin_login_success', { email: emailInput, role: authenticatedUser.role });
 
-          if (mockUser && mockUser.password === passwordStr) {
-            addMockAuditLog('admin_login_success', { email: emailStr, browser: 'Chrome', device: 'Desktop PC', role: mockUser.user.role });
-            return {
-              success: true,
-              data: {
-                accessToken: `tz-admin-auth-token-${mockUser.user.role.toLowerCase()}-${Date.now()}`,
-                refreshToken: `tz-refresh-token-${mockUser.user.role.toLowerCase()}-${Date.now()}`,
-                user: mockUser.user,
-              }
-            };
-          } else {
-            addMockAuditLog('admin_login_failed', { email: emailStr, reason: 'Invalid credentials' });
-            throw new Error('Invalid credentials. Please check your email and password.');
-          }
+          return {
+            success: true,
+            data: {
+              accessToken: `tz-admin-auth-token-${authenticatedUser.role.toLowerCase()}-${Date.now()}`,
+              refreshToken: `tz-refresh-token-${authenticatedUser.role.toLowerCase()}-${Date.now()}`,
+              user: authenticatedUser,
+            },
+          };
         }
         throw err;
       }

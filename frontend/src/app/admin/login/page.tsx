@@ -132,7 +132,7 @@ export default function AdminLoginPage() {
           <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-primary/25 mb-4 border border-primary/20">
             TZ
           </div>
-          <h1 className="text-xl font-extrabold text-white tracking-tight">TrustZone Mobile Care</h1>
+          <h1 className="text-xl font-extrabold text-foreground tracking-tight">TrustZone Mobile Care</h1>
           <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-1">Enterprise Admin Control Panel</p>
         </div>
 
@@ -145,14 +145,14 @@ export default function AdminLoginPage() {
         )}
 
         {error && (
-          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg flex items-start gap-2 text-xs font-semibold animate-shake">
+          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg flex items-start gap-2 text-xs font-semibold animate-shake">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
         {success && !error && (
-          <div className="mb-6 p-3 bg-green-500/10 border border-green-500/20 text-green-400 rounded-lg flex items-start gap-2 text-xs font-semibold">
+          <div className="mb-6 p-3 bg-green-500/10 border border-green-500/20 text-green-500 rounded-lg flex items-start gap-2 text-xs font-semibold">
             <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
             <span>{success}</span>
           </div>
@@ -164,7 +164,7 @@ export default function AdminLoginPage() {
             <div className="h-14 w-14 bg-red-500/15 text-red-500 rounded-full flex items-center justify-center mx-auto border border-red-500/20">
               <Lock className="h-6 w-6 animate-pulse" />
             </div>
-            <h2 className="text-base font-bold text-white">System Console Lockout</h2>
+            <h2 className="text-base font-bold text-foreground">System Console Lockout</h2>
             <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
               Multiple invalid authentication requests were flagged. Security protocol has suspended further login attempts.
             </p>
@@ -186,7 +186,7 @@ export default function AdminLoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={loading}
-              className="bg-secondary/20 border-border/60 text-white placeholder:text-slate-600 focus:ring-primary/20 focus:border-primary"
+              className="bg-secondary/30 border-border/60 text-foreground placeholder:text-muted-foreground/60 focus:ring-primary/20 focus:border-primary"
             />
 
             <div className="space-y-1">
@@ -198,7 +198,7 @@ export default function AdminLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
-                className="bg-secondary/20 border-border/60 text-white placeholder:text-slate-600 focus:ring-primary/20 focus:border-primary"
+                className="bg-secondary/30 border-border/60 text-foreground placeholder:text-muted-foreground/60 focus:ring-primary/20 focus:border-primary"
               />
               <div className="flex items-center justify-between pt-1">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -223,7 +223,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-white font-bold rounded-lg text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-primary/20 mt-4 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground font-bold rounded-lg text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-primary/20 mt-4 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -254,7 +254,7 @@ export default function AdminLoginPage() {
               <div className="h-10 w-10 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto border border-primary/20">
                 <KeyRound className="h-5 w-5" />
               </div>
-              <h2 className="text-sm font-bold text-white">Verification OTP Code</h2>
+              <h2 className="text-sm font-bold text-foreground">Verification OTP Code</h2>
               <p className="text-[11px] text-muted-foreground max-w-xs mx-auto leading-relaxed">
                 Provide the 6-digit temporary key sent to your administrator workstation to complete dynamic MFA authorization.
               </p>
@@ -269,13 +269,13 @@ export default function AdminLoginPage() {
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
               required
               disabled={loading}
-              className="text-center font-mono text-lg tracking-widest bg-secondary/20 border-border/60 text-white placeholder:text-slate-700 focus:ring-primary/20 focus:border-primary"
+              className="text-center font-mono text-lg tracking-widest bg-secondary/30 border-border/60 text-foreground placeholder:text-muted-foreground/60 focus:ring-primary/20 focus:border-primary"
             />
 
             <button
               type="submit"
               disabled={loading || otpCode.length !== 6}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-white font-bold rounded-lg text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-primary/20 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground font-bold rounded-lg text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-primary/20 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -294,7 +294,7 @@ export default function AdminLoginPage() {
               <button
                 type="button"
                 onClick={() => setPhase('login')}
-                className="text-muted-foreground hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
               >
                 Back to Sign In
               </button>
@@ -313,7 +313,7 @@ export default function AdminLoginPage() {
         {phase === 'forgot' && (
           <form onSubmit={handleForgotPassword} className="space-y-5">
             <div className="text-center py-2 space-y-1">
-              <h2 className="text-sm font-bold text-white">Reset Credentials Request</h2>
+              <h2 className="text-sm font-bold text-foreground">Reset Credentials Request</h2>
               <p className="text-[11px] text-muted-foreground max-w-xs mx-auto leading-relaxed">
                 Provide your admin email. An access log report will notify the owner to initiate recovery.
               </p>
@@ -325,13 +325,13 @@ export default function AdminLoginPage() {
               placeholder="e.g. admin@trustzone.care"
               required
               disabled={loading}
-              className="bg-secondary/20 border-border/60 text-white placeholder:text-slate-600 focus:ring-primary/20 focus:border-primary"
+              className="bg-secondary/30 border-border/60 text-foreground placeholder:text-muted-foreground/60 focus:ring-primary/20 focus:border-primary"
             />
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-white font-bold rounded-lg text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-primary/20 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground font-bold rounded-lg text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-primary/20 cursor-pointer"
             >
               {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Dispatch Reset Token'}
             </button>
@@ -343,7 +343,7 @@ export default function AdminLoginPage() {
                 setError(null);
                 setSuccess(null);
               }}
-              className="w-full text-center text-xs font-semibold text-muted-foreground hover:text-white pt-1"
+              className="w-full text-center text-xs font-semibold text-muted-foreground hover:text-foreground pt-1"
             >
               Cancel and Return
             </button>
