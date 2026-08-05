@@ -3031,19 +3031,73 @@ export const api = {
       try {
         return await apiRequest<ApiResponse<any[]>>('/announcements', { token });
       } catch {
-        return {
-          success: true,
-          data: [
-            { id: 'ann-1', title: 'Eid-ul-Adha Office Closing Hours', content: 'Our labs and desks will remain closed from July 15 to July 18. Regular operations resume July 19.', targetType: 'ALL', createdAt: new Date().toISOString() }
-          ]
-        };
+        return { success: true, data: getMockAnnouncements() };
       }
     },
     async createAnnouncement(body: any, token?: string): Promise<ApiResponse<any>> {
       try {
         return await apiRequest<ApiResponse<any>>('/announcements', { method: 'POST', body: JSON.stringify(body), token });
       } catch {
-        return { success: true, data: { id: `ann-${Date.now()}`, ...body, createdAt: new Date().toISOString() } };
+        const list = getMockAnnouncements();
+        const newAnn = {
+          id: `ann-${Date.now()}`,
+          title: body.title || 'Untitled Broadcast',
+          content: body.content || '',
+          targetType: body.targetType || 'ALL',
+          targetValue: body.targetValue || '',
+          category: body.category || 'GENERAL',
+          priority: body.priority || 'MEDIUM',
+          status: body.status || (body.scheduledFor ? 'SCHEDULED' : 'PUBLISHED'),
+          scheduledFor: body.scheduledFor || null,
+          expiryDate: body.expiryDate || null,
+          isPinned: body.isPinned || false,
+          isSticky: body.isSticky || false,
+          attachmentUrl: body.attachmentUrl || '',
+          readCount: 1,
+          totalTargetCount: 35,
+          createdAt: new Date().toISOString()
+        };
+        list.unshift(newAnn);
+        saveMockAnnouncements(list);
+        return { success: true, data: newAnn };
+      }
+    },
+    async updateAnnouncement(id: string, body: any, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/announcements/${id}`, { method: 'PUT', body: JSON.stringify(body), token });
+      } catch {
+        const list = getMockAnnouncements();
+        const idx = list.findIndex((a: any) => a.id === id);
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...body, updatedAt: new Date().toISOString() };
+          saveMockAnnouncements(list);
+          return { success: true, data: list[idx] };
+        }
+        return { success: false, data: null };
+      }
+    },
+    async deleteAnnouncement(id: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/announcements/${id}`, { method: 'DELETE', token });
+      } catch {
+        const list = getMockAnnouncements();
+        const filtered = list.filter((a: any) => a.id !== id);
+        saveMockAnnouncements(filtered);
+        return { success: true, data: null };
+      }
+    },
+    async togglePin(id: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/announcements/${id}/pin`, { method: 'PATCH', token });
+      } catch {
+        const list = getMockAnnouncements();
+        const item = list.find((a: any) => a.id === id);
+        if (item) {
+          item.isPinned = !item.isPinned;
+          saveMockAnnouncements(list);
+          return { success: true, data: item };
+        }
+        return { success: false, data: null };
       }
     }
   },
@@ -5056,6 +5110,75 @@ function getMockCalendarEvents(): any[] {
 function saveMockCalendarEvents(data: any[]) {
   if (typeof window !== 'undefined') localStorage.setItem('tz_mock_calendar_events', JSON.stringify(data));
 }
+
+function getMockAnnouncements(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_announcements');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    {
+      id: 'ann-1',
+      title: 'Eid-ul-Adha Holiday & Emergency Lab Shift Schedule',
+      content: 'Our central repair labs and customer service desks will operate on a modified holiday schedule from July 15 to July 18. Emergency micro-soldering and warranty drop-offs resume regular hours July 19.',
+      targetType: 'ALL',
+      targetValue: '',
+      category: 'GENERAL',
+      priority: 'HIGH',
+      status: 'PUBLISHED',
+      scheduledFor: null,
+      expiryDate: new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString(),
+      isPinned: true,
+      isSticky: true,
+      attachmentUrl: '',
+      readCount: 28,
+      totalTargetCount: 32,
+      createdAt: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString()
+    },
+    {
+      id: 'ann-2',
+      title: 'System Upgrade Notice: New Component Inventory Catalog',
+      content: 'We are deploying updated spare parts catalog indexing across Dhanmondi and Banani outlets. Barcode scanning latency will be reduced by 40%.',
+      targetType: 'BRANCH',
+      targetValue: 'Dhanmondi Central & Banani Lab',
+      category: 'SYSTEM_MAINTENANCE',
+      priority: 'MEDIUM',
+      status: 'PUBLISHED',
+      scheduledFor: null,
+      expiryDate: null,
+      isPinned: false,
+      isSticky: false,
+      attachmentUrl: '',
+      readCount: 19,
+      totalTargetCount: 22,
+      createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString()
+    },
+    {
+      id: 'ann-3',
+      title: 'Mandatory Technical Safety SOP Protocol v4.2',
+      content: 'All technicians handling Lithium-Ion battery replacements must review the ESD grounding and thermal safety checklist attached.',
+      targetType: 'ROLE',
+      targetValue: 'TECHNICIAN',
+      category: 'POLICY_UPDATE',
+      priority: 'CRITICAL',
+      status: 'PUBLISHED',
+      scheduledFor: null,
+      expiryDate: null,
+      isPinned: true,
+      isSticky: false,
+      attachmentUrl: 'https://example.com/esd-sop-v4.pdf',
+      readCount: 15,
+      totalTargetCount: 18,
+      createdAt: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString()
+    }
+  ];
+  localStorage.setItem('tz_mock_announcements', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockAnnouncements(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_announcements', JSON.stringify(data));
+}
+
 
 
 
