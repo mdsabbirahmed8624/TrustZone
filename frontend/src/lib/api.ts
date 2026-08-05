@@ -113,6 +113,73 @@ export interface BookingCommunicationLog {
   timestamp: string;
 }
 
+
+export interface DeviceIntakeDetail {
+  imei1: string;
+  imei2?: string;
+  variant?: string;
+  storage?: string;
+  conditionMatrix: {
+    screen: 'GOOD' | 'AVERAGE' | 'DAMAGED' | 'UNKNOWN';
+    frame: 'GOOD' | 'AVERAGE' | 'DAMAGED' | 'UNKNOWN';
+    backGlass: 'GOOD' | 'AVERAGE' | 'DAMAGED' | 'UNKNOWN';
+    camera: 'GOOD' | 'AVERAGE' | 'DAMAGED' | 'UNKNOWN';
+    chargingPort: 'GOOD' | 'AVERAGE' | 'DAMAGED' | 'UNKNOWN';
+    buttons: 'GOOD' | 'AVERAGE' | 'DAMAGED' | 'UNKNOWN';
+    speaker: 'GOOD' | 'AVERAGE' | 'DAMAGED' | 'UNKNOWN';
+    microphone: 'GOOD' | 'AVERAGE' | 'DAMAGED' | 'UNKNOWN';
+    faceId: 'GOOD' | 'AVERAGE' | 'DAMAGED' | 'UNKNOWN';
+    fingerprint: 'GOOD' | 'AVERAGE' | 'DAMAGED' | 'UNKNOWN';
+    battery: 'GOOD' | 'AVERAGE' | 'DAMAGED' | 'UNKNOWN';
+  };
+  batteryHealth: {
+    batteryPct: number;
+    cycleCount: number;
+    batteryMessage: string;
+    tempCelsius: number;
+    chargingState: 'NORMAL' | 'FAST' | 'DEGRADED' | 'NOT_CHARGING';
+    isOriginal: boolean;
+  };
+  physicalInspection: {
+    waterDamage: boolean;
+    liquidIndicator: boolean;
+    dust: boolean;
+    dent: boolean;
+    bentFrame: boolean;
+    scratchLevel: 'NONE' | 'LIGHT' | 'MODERATE' | 'HEAVY';
+    brokenGlass: boolean;
+    housingDamage: boolean;
+    cameraDamage: boolean;
+    lcdCondition: string;
+    touchCondition: string;
+  };
+  accessoriesChecklist: {
+    item: string;
+    qty: number;
+    notes: string;
+  }[];
+  problemVerification: {
+    complaint: string;
+    techObservation: string;
+    difficulty: 'EASY' | 'MODERATE' | 'HARD' | 'EXPERT';
+    riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+    warrantyEligible: boolean;
+  };
+  multiPhotos: {
+    type: 'FRONT' | 'BACK' | 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM' | 'DAMAGE' | 'ACCESSORY';
+    url: string;
+    caption?: string;
+  }[];
+  signatures: {
+    customerSig: string;
+    receptionSig: string;
+    techSig: string;
+    timestamp: string;
+    ip: string;
+    browser: string;
+  };
+}
+
 export interface BookingModel {
   id: string;
   customerId: string;
@@ -174,6 +241,7 @@ export interface BookingModel {
   queueToken?: string;
   intakeSummary?: any;
   aiRecommendations?: any;
+  deviceIntakeDetail?: DeviceIntakeDetail;
   isDeleted?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -567,6 +635,65 @@ function saveMockTickets(tickets: TicketModel[]) {
 export const api = {
   
   bookings: {
+    async checkInCustomer(bookingId: string, receptionStaff: string = 'Front Desk Staff'): Promise<ApiResponse<BookingModel>> {
+      try {
+        return await apiRequest<ApiResponse<BookingModel>>(`/bookings/${bookingId}/check-in`, {
+          method: 'POST',
+          body: JSON.stringify({ receptionStaff })
+        });
+      } catch {
+        const bookings = getMockBookings();
+        const idx = bookings.findIndex(b => b.id === bookingId);
+        if (idx !== -1) {
+          bookings[idx].status = 'CHECKED_IN';
+          bookings[idx].updatedAt = new Date().toISOString();
+          const history = bookings[idx].history || [];
+          history.push({
+            timestamp: new Date().toISOString(),
+            status: 'CHECKED_IN',
+            note: `Customer arrived at reception. Checked in by ${receptionStaff}.`,
+            updatedBy: receptionStaff,
+            branch: bookings[idx].branchName
+          });
+          bookings[idx].history = history;
+          saveMockBookings(bookings);
+          addMockAuditLog('booking_customer_checkin', { bookingId, receptionStaff, branch: bookings[idx].branchName });
+          return { success: true, data: bookings[idx] };
+        }
+        return { success: false, message: 'Booking not found.', data: null as any };
+      }
+    },
+
+    async saveFullIntakeWizard(bookingId: string, intakeDetail: DeviceIntakeDetail): Promise<ApiResponse<DeviceIntakeDetail>> {
+      try {
+        return await apiRequest<ApiResponse<DeviceIntakeDetail>>(`/bookings/${bookingId}/intake-wizard`, {
+          method: 'POST',
+          body: JSON.stringify(intakeDetail)
+        });
+      } catch {
+        const bookings = getMockBookings();
+        const idx = bookings.findIndex(b => b.id === bookingId);
+        if (idx !== -1) {
+          bookings[idx].deviceIntakeDetail = intakeDetail;
+          bookings[idx].updatedAt = new Date().toISOString();
+          saveMockBookings(bookings);
+          addMockAuditLog('booking_intake_wizard_saved', { bookingId, imei: intakeDetail.imei1 });
+        }
+        return { success: true, data: intakeDetail };
+      }
+    },
+
+    async generateIntakePdf(bookingId: string): Promise<ApiResponse<{ pdfUrl: string; fileName: string }>> {
+      const fileName = `TrustZone_Device_Intake_${bookingId}_${Date.now()}.pdf`;
+      return {
+        success: true,
+        data: {
+          pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+          fileName
+        }
+      };
+    },
+
     async generateQRCode(bookingId: string): Promise<ApiResponse<{ qrCode: string; qrDataUrl: string }>> {
       const qrCode = `TZ-QR-${bookingId}`;
       const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrCode)}`;
