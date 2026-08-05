@@ -3138,20 +3138,52 @@ export const api = {
         if (endDate) q.set('endDate', endDate);
         return await apiRequest<ApiResponse<any[]>>(`/calendar?${q.toString()}`, { token });
       } catch {
-        return {
-          success: true,
-          data: [
-            { id: 'cal-1', title: 'Meeting: Weekly Branch Sync', description: 'Weekly alignment.', start: new Date(Date.now() + 1 * 24 * 3600 * 1000).toISOString(), end: new Date(Date.now() + 1 * 24 * 3600 * 1000).toISOString(), type: 'meeting', priority: 'MEDIUM', status: 'ACTIVE' },
-            { id: 'cal-2', title: 'Repair SLA Deadline: iPhone 13 Pro', start: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString(), end: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString(), type: 'repair', priority: 'HIGH', status: 'IN_PROGRESS' }
-          ]
-        };
+        return { success: true, data: getMockCalendarEvents() };
       }
     },
     async createEvent(body: any, token?: string): Promise<ApiResponse<any>> {
       try {
         return await apiRequest<ApiResponse<any>>('/calendar', { method: 'POST', body: JSON.stringify(body), token });
       } catch {
-        return { success: true, data: { id: `cal-${Date.now()}`, ...body } };
+        const events = getMockCalendarEvents();
+        const newEv = {
+          id: `cal-${Date.now()}`,
+          title: body.title || 'Untitled Event',
+          description: body.description || '',
+          start: body.startDate || body.start || new Date().toISOString(),
+          end: body.endDate || body.end || new Date().toISOString(),
+          type: (body.type || 'MEETING').toLowerCase(),
+          priority: body.priority || 'MEDIUM',
+          status: 'ACTIVE',
+          createdAt: new Date().toISOString()
+        };
+        events.unshift(newEv);
+        saveMockCalendarEvents(events);
+        return { success: true, data: newEv };
+      }
+    },
+    async updateEvent(id: string, body: any, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/calendar/${id}`, { method: 'PUT', body: JSON.stringify(body), token });
+      } catch {
+        const events = getMockCalendarEvents();
+        const idx = events.findIndex((e: any) => e.id === id);
+        if (idx !== -1) {
+          events[idx] = { ...events[idx], ...body };
+          saveMockCalendarEvents(events);
+          return { success: true, data: events[idx] };
+        }
+        return { success: false, data: null };
+      }
+    },
+    async deleteEvent(id: string, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/calendar/${id}`, { method: 'DELETE', token });
+      } catch {
+        const events = getMockCalendarEvents();
+        const filtered = events.filter((e: any) => e.id !== id);
+        saveMockCalendarEvents(filtered);
+        return { success: true, data: null };
       }
     }
   },
@@ -4970,5 +5002,60 @@ function getMockWebhookLogs(): any[] {
     { id: 'wh-3', rule: { name: 'SMS Gateway Dispatch' }, url: 'https://api.sms-bangladesh.com/send', method: 'POST', responseStatus: 201, status: 'SUCCESS', createdAt: new Date(Date.now() - 7200000).toISOString() }
   ];
 }
+
+function getMockCalendarEvents(): any[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('tz_mock_calendar_events');
+  if (stored) return JSON.parse(stored);
+  const defaults = [
+    {
+      id: 'cal-1',
+      title: 'Meeting: Weekly Branch Sync',
+      description: 'Weekly operations and technician alignment across Dhanmondi and Banani outlets.',
+      start: new Date(Date.now() + 1 * 24 * 3600 * 1000).toISOString(),
+      end: new Date(Date.now() + 1 * 24 * 3600 * 1000 + 3600000).toISOString(),
+      type: 'meeting',
+      priority: 'MEDIUM',
+      status: 'ACTIVE'
+    },
+    {
+      id: 'cal-2',
+      title: 'Repair SLA Deadline: iPhone 13 Pro Max',
+      description: 'Optically aligned OLED digitizer assembly replacement SLA deadline for ticket #TZ-901.',
+      start: new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString(),
+      end: new Date(Date.now() + 2 * 24 * 3600 * 1000 + 7200000).toISOString(),
+      type: 'repair',
+      priority: 'HIGH',
+      status: 'IN_PROGRESS'
+    },
+    {
+      id: 'cal-3',
+      title: 'Staff Leave: Lead Technician Rafiq',
+      description: 'Approved annual leave for lead micro-soldering specialist.',
+      start: new Date(Date.now() + 5 * 24 * 3600 * 1000).toISOString(),
+      end: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+      type: 'leave',
+      priority: 'LOW',
+      status: 'APPROVED'
+    },
+    {
+      id: 'cal-4',
+      title: 'Parts Shipment Delivery: Samsung S22 Batteries',
+      description: 'Expected vendor dispatch from M/S Tech Suppliers Ltd via Pathao Courier.',
+      start: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString(),
+      end: new Date(Date.now() + 3 * 24 * 3600 * 1000 + 3600000).toISOString(),
+      type: 'purchase',
+      priority: 'HIGH',
+      status: 'SHIPPED'
+    }
+  ];
+  localStorage.setItem('tz_mock_calendar_events', JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveMockCalendarEvents(data: any[]) {
+  if (typeof window !== 'undefined') localStorage.setItem('tz_mock_calendar_events', JSON.stringify(data));
+}
+
 
 
