@@ -86,6 +86,33 @@ export interface TicketHistoryModel {
 }
 
 
+export interface BookingInternalNote {
+  id: string;
+  content: string;
+  priority: 'NORMAL' | 'HIGH' | 'URGENT';
+  isPinned: boolean;
+  author: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface BookingAttachment {
+  id: string;
+  name: string;
+  url: string;
+  type: 'PHOTO_BEFORE' | 'PHOTO_AFTER' | 'PDF' | 'INVOICE' | 'WARRANTY_CARD' | 'VIDEO';
+  uploadedAt: string;
+}
+
+export interface BookingCommunicationLog {
+  id: string;
+  channel: 'SMS' | 'EMAIL' | 'WHATSAPP' | 'PUSH';
+  recipient: string;
+  message: string;
+  status: 'SENT' | 'DELIVERED' | 'FAILED';
+  timestamp: string;
+}
+
 export interface BookingModel {
   id: string;
   customerId: string;
@@ -112,6 +139,7 @@ export interface BookingModel {
   couponCode: string;
   appointmentDate: string;
   appointmentTime: string;
+  slotDuration?: 15 | 30 | 45 | 60;
   technicianId: string;
   technicianName: string;
   branchId: string;
@@ -137,12 +165,15 @@ export interface BookingModel {
     | 'NO_SHOW';
   notes: string;
   attachments: string[];
+  internalNotesList?: BookingInternalNote[];
+  attachmentsList?: BookingAttachment[];
+  communicationLogs?: BookingCommunicationLog[];
   ticketId?: string;
   invoiceId?: string;
   isDeleted?: boolean;
   createdAt: string;
   updatedAt: string;
-  history?: { timestamp: string; status: string; note: string; updatedBy: string }[];
+  history?: { timestamp: string; status: string; note: string; updatedBy: string; branch?: string }[];
 }
 
 export interface TicketModel {
@@ -532,6 +563,110 @@ function saveMockTickets(tickets: TicketModel[]) {
 export const api = {
   
   bookings: {
+    async recommendTechnician(problemCategory: string, branchId: string): Promise<ApiResponse<{ recommendedTechId: string; recommendedTechName: string; score: number; matchReason: string }>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/bookings/recommend-tech?category=${problemCategory}&branchId=${branchId}`);
+      } catch {
+        const techs = [
+          { id: 'tech-1', name: 'Tariq Zaman (Lead L4)', specialty: 'SCREEN_DISPLAY', load: 3, score: 96 },
+          { id: 'tech-2', name: 'Rafiq Ahmed', specialty: 'BATTERY_POWER', load: 2, score: 91 },
+          { id: 'tech-3', name: 'Nazma Khatun', specialty: 'MOTHERBOARD_CHIP', load: 4, score: 94 },
+          { id: 'tech-4', name: 'Kamal Hossain', specialty: 'CAMERA_LENS', load: 1, score: 88 },
+        ];
+        const match = techs.find(t => t.specialty === problemCategory) || techs[0];
+        return {
+          success: true,
+          data: {
+            recommendedTechId: match.id,
+            recommendedTechName: match.name,
+            score: match.score,
+            matchReason: `Specialist in ${problemCategory.replace('_', ' ')} with lowest active queue load (${match.load} active jobs).`
+          }
+        };
+      }
+    },
+
+    async addInternalNote(bookingId: string, noteContent: string, priority: 'NORMAL' | 'HIGH' | 'URGENT' = 'NORMAL', isPinned: boolean = false, author: string = 'Staff Admin'): Promise<ApiResponse<BookingInternalNote>> {
+      try {
+        return await apiRequest<ApiResponse<BookingInternalNote>>(`/bookings/${bookingId}/internal-notes`, {
+          method: 'POST',
+          body: JSON.stringify({ noteContent, priority, isPinned, author })
+        });
+      } catch {
+        const bookings = getMockBookings();
+        const idx = bookings.findIndex(b => b.id === bookingId);
+        const newNote: BookingInternalNote = {
+          id: `note-${Date.now()}`,
+          content: noteContent,
+          priority,
+          isPinned,
+          author,
+          createdAt: new Date().toISOString()
+        };
+        if (idx !== -1) {
+          const list = bookings[idx].internalNotesList || [];
+          list.unshift(newNote);
+          bookings[idx].internalNotesList = list;
+          saveMockBookings(bookings);
+        }
+        return { success: true, data: newNote };
+      }
+    },
+
+    async addAttachment(bookingId: string, attachment: Partial<BookingAttachment>): Promise<ApiResponse<BookingAttachment>> {
+      try {
+        return await apiRequest<ApiResponse<BookingAttachment>>(`/bookings/${bookingId}/attachments`, {
+          method: 'POST',
+          body: JSON.stringify(attachment)
+        });
+      } catch {
+        const bookings = getMockBookings();
+        const idx = bookings.findIndex(b => b.id === bookingId);
+        const newAtt: BookingAttachment = {
+          id: `att-${Date.now()}`,
+          name: attachment.name || 'Device_Attachment.jpg',
+          url: attachment.url || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=400&q=80',
+          type: attachment.type || 'PHOTO_BEFORE',
+          uploadedAt: new Date().toISOString()
+        };
+        if (idx !== -1) {
+          const list = bookings[idx].attachmentsList || [];
+          list.unshift(newAtt);
+          bookings[idx].attachmentsList = list;
+          saveMockBookings(bookings);
+        }
+        return { success: true, data: newAtt };
+      }
+    },
+
+    async sendCustomerMessage(bookingId: string, channel: 'SMS' | 'EMAIL' | 'WHATSAPP' | 'PUSH', message: string, recipient: string): Promise<ApiResponse<BookingCommunicationLog>> {
+      try {
+        return await apiRequest<ApiResponse<BookingCommunicationLog>>(`/bookings/${bookingId}/send-message`, {
+          method: 'POST',
+          body: JSON.stringify({ channel, message, recipient })
+        });
+      } catch {
+        const bookings = getMockBookings();
+        const idx = bookings.findIndex(b => b.id === bookingId);
+        const log: BookingCommunicationLog = {
+          id: `comm-${Date.now()}`,
+          channel,
+          recipient,
+          message,
+          status: 'DELIVERED',
+          timestamp: new Date().toISOString()
+        };
+        if (idx !== -1) {
+          const list = bookings[idx].communicationLogs || [];
+          list.unshift(log);
+          bookings[idx].communicationLogs = list;
+          saveMockBookings(bookings);
+        }
+        addMockAuditLog('booking_customer_notified', { bookingId, channel, recipient });
+        return { success: true, data: log };
+      }
+    },
+
     async list(params?: { search?: string; status?: string; priority?: string; branchId?: string; technicianId?: string; date?: string }, token?: string): Promise<ApiResponse<BookingModel[]>> {
       try {
         const q = new URLSearchParams();
