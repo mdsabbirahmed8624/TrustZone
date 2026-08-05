@@ -118,6 +118,29 @@ export interface BookingCommunicationLog {
 
 
 
+
+export interface CustomerPortalFeedback {
+  id: string;
+  bookingId: string;
+  overallRating: number;
+  techRating: number;
+  branchRating: number;
+  writtenReview: string;
+  managerResponse?: string;
+  createdAt: string;
+}
+
+export interface CustomerPortalAccount {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  loyaltyPoints: number;
+  membershipTier: 'SILVER' | 'GOLD_VIP' | 'PLATINUM';
+  npsScore: number;
+  feedbacks: CustomerPortalFeedback[];
+}
+
 export interface ExecutiveAIInsight {
   id: string;
   type: 'PREDICTION' | 'RECOMMENDATION' | 'RISK_ALERT' | 'TREND';
@@ -761,6 +784,45 @@ function saveMockTickets(tickets: TicketModel[]) {
 export const api = {
   
   bookings: {
+    async getCustomerPortalData(phone: string = '01711122233'): Promise<ApiResponse<{ account: CustomerPortalAccount; bookings: BookingModel[] }>> {
+      const allBookings = getMockBookings();
+      const customerBookings = allBookings.filter(b => b.customerPhone.includes(phone) || phone === '01711122233');
+
+      const account: CustomerPortalAccount = {
+        id: 'cust-1',
+        name: 'Rafiq Karim',
+        phone: '01711122233',
+        email: 'rafiq.k@gmail.com',
+        loyaltyPoints: 340,
+        membershipTier: 'GOLD_VIP',
+        npsScore: 92,
+        feedbacks: [
+          {
+            id: 'FB-101',
+            bookingId: customerBookings[0]?.id || 'TZ-BK-1001',
+            overallRating: 5,
+            techRating: 5,
+            branchRating: 5,
+            writtenReview: 'Exceptional display replacement service! Tariq fixed my iPhone 14 Pro screen in less than 45 minutes.',
+            managerResponse: 'Thank you Mr. Rafiq! We appreciate your 5-star feedback.',
+            createdAt: new Date(Date.now() - 86400000).toISOString()
+          }
+        ]
+      };
+
+      return { success: true, data: { account, bookings: customerBookings } };
+    },
+
+    async submitCustomerFeedback(bookingId: string, feedback: Omit<CustomerPortalFeedback, 'id' | 'createdAt'>): Promise<ApiResponse<CustomerPortalFeedback>> {
+      const newFeedback: CustomerPortalFeedback = {
+        id: `FB-${Date.now().toString().slice(-4)}`,
+        ...feedback,
+        createdAt: new Date().toISOString()
+      };
+      addMockAuditLog('customer_feedback_submitted', { bookingId, rating: feedback.overallRating });
+      return { success: true, data: newFeedback };
+    },
+
     async getExecutiveIntelligence(): Promise<ApiResponse<ExecutiveAnalyticsData>> {
       const data: ExecutiveAnalyticsData = {
         todayRevenue: 642500,

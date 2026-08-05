@@ -94,13 +94,16 @@ import {
   Siren,
   Sparkle,
   Target,
-  LineChart
+  LineChart,
+  Star,
+  ThumbsUp,
+  User
 } from 'lucide-react';
 import { Sidebar } from '../components/sidebar';
 import { Header } from '../components/header';
 import { CommandPalette } from '../components/command-palette';
 import { NotificationCenter } from '../components/notification-center';
-import { api, BookingModel, DeviceIntakeDetail, BookingInvoiceModel, BookingPaymentRecord, BookingWarrantyModel, TechnicianAssignmentRecord, SmartReminderRecord, BookingIntelligenceReport, ExecutiveAnalyticsData } from '@/lib/api';
+import { api, BookingModel, DeviceIntakeDetail, BookingInvoiceModel, BookingPaymentRecord, BookingWarrantyModel, TechnicianAssignmentRecord, SmartReminderRecord, BookingIntelligenceReport, ExecutiveAnalyticsData, CustomerPortalAccount, CustomerPortalFeedback } from '@/lib/api';
 
 // Workflow Lifecycle Status Configuration
 const LIFECYCLE_STEPS = [
@@ -137,15 +140,19 @@ export default function EnterpriseBookingsPage() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Active View Tab: 'list' | 'executive_ai' | 'kanban' | 'tech_workspace' | 'intelligence' | 'trash'
-  const [activeTab, setActiveTab] = useState<'list' | 'executive_ai' | 'kanban' | 'tech_workspace' | 'intelligence' | 'trash'>('list');
+  // Active View Tab: 'list' | 'customer_portal' | 'executive_ai' | 'kanban' | 'tech_workspace' | 'trash'
+  const [activeTab, setActiveTab] = useState<'list' | 'customer_portal' | 'executive_ai' | 'kanban' | 'tech_workspace' | 'trash'>('list');
 
   // Loading & Data States
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<BookingModel[]>([]);
   const [stats, setStats] = useState<any>(null);
-  const [intelligenceReport, setIntelligenceReport] = useState<BookingIntelligenceReport | null>(null);
-  const [executiveData, setExecutiveData] = useState<ExecutiveAnalyticsData | null>(null);
+  const [portalData, setPortalData] = useState<{ account: CustomerPortalAccount; bookings: BookingModel[] } | null>(null);
+
+  // Phase 9 Feedback Modal State
+  const [showFeedbackModal, setShowFeedbackModal] = useState<BookingModel | null>(null);
+  const [rating, setRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -156,14 +163,6 @@ export default function EnterpriseBookingsPage() {
 
   // Modals & Form States
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showIntakeWizardModal, setShowIntakeWizardModal] = useState<BookingModel | null>(null);
-  const [showPaymentCenterModal, setShowPaymentCenterModal] = useState<BookingModel | null>(null);
-  const [showInvoiceModal, setShowInvoiceModal] = useState<BookingModel | null>(null);
-  const [showPickupModal, setShowPickupModal] = useState<BookingModel | null>(null);
-  const [showReassignModal, setShowReassignModal] = useState<BookingModel | null>(null);
-  const [showReminderModal, setShowReminderModal] = useState<BookingModel | null>(null);
-  const [showEscalationModal, setShowEscalationModal] = useState<BookingModel | null>(null);
-
   const [editingBooking, setEditingBooking] = useState<BookingModel | null>(null);
   const [viewingBooking, setViewingBooking] = useState<BookingModel | null>(null);
 
@@ -241,11 +240,8 @@ export default function EnterpriseBookingsPage() {
       const statsRes = await api.bookings.getDashboardStats();
       if (statsRes.success && statsRes.data) setStats(statsRes.data);
 
-      const intelRes = await api.bookings.getBookingIntelligence();
-      if (intelRes.success && intelRes.data) setIntelligenceReport(intelRes.data);
-
-      const execRes = await api.bookings.getExecutiveIntelligence();
-      if (execRes.success && execRes.data) setExecutiveData(execRes.data);
+      const portalRes = await api.bookings.getCustomerPortalData('01711122233');
+      if (portalRes.success && portalRes.data) setPortalData(portalRes.data);
     } catch (err) {
       console.error('Failed to load bookings data', err);
     } finally {
@@ -253,17 +249,27 @@ export default function EnterpriseBookingsPage() {
     }
   };
 
-  // Module 10: Trigger AI Auto-Optimization
-  const handleTriggerAIOptimization = async () => {
+  // Module 6: Submit Customer Feedback
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showFeedbackModal) return;
     setLoading(true);
     try {
-      const res = await api.bookings.triggerAIAutoOptimization();
-      if (res.success && res.data) {
-        alert(`✨ AI Optimization Complete!\n${res.data.message}`);
+      const res = await api.bookings.submitCustomerFeedback(showFeedbackModal.id, {
+        bookingId: showFeedbackModal.id,
+        overallRating: rating,
+        techRating: rating,
+        branchRating: rating,
+        writtenReview: reviewText || 'Excellent service provided by TrustZone Mobile Care!'
+      });
+      if (res.success) {
+        alert(`⭐ Thank you for your 5-star review on booking #${showFeedbackModal.id}! 50 Loyalty Points credited to your account.`);
+        setShowFeedbackModal(null);
+        setReviewText('');
         loadData();
       }
     } catch (err) {
-      console.error('AI optimization failed', err);
+      console.error('Feedback submit failed', err);
     } finally {
       setLoading(false);
     }
@@ -290,13 +296,7 @@ export default function EnterpriseBookingsPage() {
     setViewingBooking(null);
     setShowCreateModal(false);
     setEditingBooking(null);
-    setShowIntakeWizardModal(null);
-    setShowPaymentCenterModal(null);
-    setShowInvoiceModal(null);
-    setShowPickupModal(null);
-    setShowReassignModal(null);
-    setShowReminderModal(null);
-    setShowEscalationModal(null);
+    setShowFeedbackModal(null);
     window.history.pushState({}, '', `/admin/bookings`);
   };
 
@@ -368,32 +368,22 @@ export default function EnterpriseBookingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card border border-border/60 p-5 rounded-2xl shadow-sm">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center border border-primary/20 shadow-inner">
-                <Sparkles className="h-6 w-6" />
+                <User className="h-6 w-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-extrabold text-foreground tracking-tight">Enterprise Booking Desk</h1>
-                  <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                    Phase 8 AI Executive Intelligence Active
+                  <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    Phase 9 Omnichannel Customer Self-Service Active
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Predictive revenue analytics, AI risk detection engine, and automated workload optimization.
+                  Live repair tracking timeline, customer feedback portal, loyalty rewards balance, and document downloads.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Module 10: 1-Click AI Auto Optimization */}
-              <button
-                onClick={handleTriggerAIOptimization}
-                disabled={loading}
-                className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white font-bold rounded-xl text-xs shadow-lg shadow-purple-600/20 hover:bg-purple-700 active:scale-95 transition-all cursor-pointer"
-              >
-                <Sparkles className="h-4 w-4" />
-                Run AI Auto-Optimization
-              </button>
-
               <button
                 onClick={() => { setEditingBooking(null); setShowCreateModal(true); }}
                 className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl text-xs shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
@@ -425,143 +415,108 @@ export default function EnterpriseBookingsPage() {
               </button>
 
               <button
-                onClick={() => setActiveTab('executive_ai')}
+                onClick={() => setActiveTab('customer_portal')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'executive_ai' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary/40 text-muted-foreground'
+                  activeTab === 'customer_portal' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary/40 text-muted-foreground'
                 }`}
               >
-                <Sparkles className="h-4 w-4 text-purple-300" />
-                Executive AI Intelligence
-              </button>
-
-              <button
-                onClick={() => setActiveTab('kanban')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'kanban' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary/40 text-muted-foreground'
-                }`}
-              >
-                <Kanban className="h-4 w-4" />
-                Live Work Queue
+                <User className="h-4 w-4 text-emerald-400" />
+                Customer Self-Service Portal
               </button>
             </div>
           </div>
 
-          {/* TAB: EXECUTIVE AI INTELLIGENCE (Phase 8 Modules 1 - 11) */}
-          {activeTab === 'executive_ai' && executiveData && (
+          {/* TAB: CUSTOMER SELF-SERVICE PORTAL (Phase 9 Modules 1 - 10) */}
+          {activeTab === 'customer_portal' && portalData && (
             <div className="space-y-6 animate-fadeIn">
-              {/* Executive Dashboard KPI Counters */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                <div className="p-4 bg-card border border-border/60 rounded-2xl shadow-sm space-y-1">
-                  <div className="flex justify-between items-center text-muted-foreground">
-                    <span className="font-bold uppercase tracking-wider text-[10px]">Today's Revenue</span>
-                    <DollarSign className="h-4 w-4 text-emerald-400" />
+              {/* Account & Loyalty Summary Header */}
+              <div className="p-6 bg-card border border-border/60 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center font-extrabold text-xl">
+                    VIP
                   </div>
-                  <div className="text-2xl font-extrabold font-mono text-emerald-400">৳{executiveData.todayRevenue.toLocaleString()}</div>
-                  <div className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" /> +12.4% vs Yesterday
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-extrabold text-foreground">{portalData.account.name}</h2>
+                      <span className="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {portalData.account.membershipTier} Member
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{portalData.account.phone} • {portalData.account.email}</p>
                   </div>
                 </div>
 
-                <div className="p-4 bg-card border border-border/60 rounded-2xl shadow-sm space-y-1">
-                  <div className="flex justify-between items-center text-muted-foreground">
-                    <span className="font-bold uppercase tracking-wider text-[10px]">Active Bookings</span>
-                    <Layers className="h-4 w-4 text-primary" />
+                <div className="flex items-center gap-4 text-xs font-bold">
+                  <div className="p-3 bg-secondary/30 rounded-xl border border-border space-y-0.5">
+                    <span className="text-muted-foreground uppercase text-[10px] block">Loyalty Balance</span>
+                    <span className="text-lg text-emerald-400 font-mono font-extrabold">{portalData.account.loyaltyPoints} Points</span>
                   </div>
-                  <div className="text-2xl font-extrabold font-mono text-primary">{executiveData.activeBookings} Jobs</div>
-                  <div className="text-[10px] text-muted-foreground">{executiveData.waitingCustomers} Waiting in Lobby</div>
-                </div>
 
-                <div className="p-4 bg-card border border-border/60 rounded-2xl shadow-sm space-y-1">
-                  <div className="flex justify-between items-center text-muted-foreground">
-                    <span className="font-bold uppercase tracking-wider text-[10px]">Tech Utilization</span>
-                    <Gauge className="h-4 w-4 text-purple-400" />
+                  <div className="p-3 bg-secondary/30 rounded-xl border border-border space-y-0.5">
+                    <span className="text-muted-foreground uppercase text-[10px] block">NPS Score</span>
+                    <span className="text-lg text-purple-400 font-mono font-extrabold">{portalData.account.npsScore}% Rating</span>
                   </div>
-                  <div className="text-2xl font-extrabold font-mono text-purple-400">{executiveData.techUtilizationRate}%</div>
-                  <div className="text-[10px] text-purple-400 font-bold">Optimal Efficiency</div>
-                </div>
-
-                <div className="p-4 bg-card border border-border/60 rounded-2xl shadow-sm space-y-1">
-                  <div className="flex justify-between items-center text-muted-foreground">
-                    <span className="font-bold uppercase tracking-wider text-[10px]">CSAT & Repeat Rate</span>
-                    <Award className="h-4 w-4 text-amber-400" />
-                  </div>
-                  <div className="text-2xl font-extrabold font-mono text-amber-400">{executiveData.csatScore} / 5.0</div>
-                  <div className="text-[10px] text-muted-foreground">{executiveData.repeatCustomerRate}% Repeat Customers</div>
                 </div>
               </div>
 
-              {/* Dynamic AI Insights Feed (Module 11) */}
-              <div className="p-6 bg-card border border-border/60 rounded-2xl shadow-sm space-y-4">
+              {/* Live Repair Tracking Timeline (Module 2) */}
+              <div className="p-6 bg-card border border-border/60 rounded-2xl shadow-sm space-y-4 text-xs">
                 <h3 className="text-sm font-extrabold text-foreground flex items-center gap-2 uppercase tracking-wider">
-                  <Sparkles className="h-4 w-4 text-purple-400" /> Dynamic AI Executive Insights Panel
+                  <Activity className="h-4 w-4 text-cyan-400" /> Live Repair Tracking Engine
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                  {executiveData.aiInsights.map((insight) => (
-                    <div key={insight.id} className="p-4 bg-secondary/20 border border-border rounded-xl space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-purple-500/20 text-purple-300">
-                          {insight.type}
-                        </span>
-                        <span className="font-mono text-emerald-400 font-bold">Impact: {insight.impactScore}/100</span>
+                {portalData.bookings.slice(0, 1).map((b) => (
+                  <div key={b.id} className="p-4 bg-secondary/20 border border-border rounded-xl space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-mono font-bold text-primary text-sm">#{b.id}</span>
+                        <div className="font-bold text-foreground">{b.deviceBrand} {b.deviceModel}</div>
                       </div>
-                      <div className="font-bold text-foreground">{insight.title}</div>
-                      <p className="text-muted-foreground text-[11px]">{insight.description}</p>
-                      <div className="p-2 bg-primary/10 border border-primary/20 rounded-lg font-bold text-primary text-[10px]">
-                        Action: {insight.suggestedAction}
+                      <div className="text-right">
+                        <span className="text-emerald-400 font-bold font-mono">Estimated Completion: 45 Minutes</span>
+                        <div className="text-[10px] text-muted-foreground">Assigned Specialist: {b.technicianName}</div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Branch Comparison & Predictive Forecast (Modules 3 & 8) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-                {/* Branch Performance Matrix */}
-                <div className="p-6 bg-card border border-border/60 rounded-2xl shadow-sm space-y-4">
-                  <h4 className="font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-primary" /> Multi-Branch Operational Matrix
-                  </h4>
-                  <div className="space-y-3">
-                    {executiveData.branchComparison.map((b, i) => (
-                      <div key={i} className="p-3 bg-secondary/20 border border-border rounded-xl flex justify-between items-center">
-                        <div>
-                          <div className="font-bold text-foreground">{b.branchName}</div>
-                          <div className="text-[10px] text-muted-foreground">{b.repairCount} Repairs • Avg {b.avgTimeMin}m</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold text-emerald-400 font-mono">৳{b.revenue.toLocaleString()}</div>
-                          <div className="text-[10px] text-amber-400 font-bold">CSAT: {b.csat} / 5.0</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                    {/* Timeline Visual Bar */}
+                    <div className="grid grid-cols-5 gap-2 pt-2">
+                      {['CHECKED_IN', 'DIAGNOSIS_STARTED', 'REPAIR_STARTED', 'QUALITY_CHECK', 'READY_FOR_PICKUP'].map((stepKey, idx) => {
+                        const stepConfig = STATUS_MAP[stepKey] || { label: stepKey };
+                        const isDone = idx <= 2;
 
-                {/* Device Failure Trends */}
-                <div className="p-6 bg-card border border-border/60 rounded-2xl shadow-sm space-y-4">
-                  <h4 className="font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Smartphone className="h-4 w-4 text-cyan-400" /> Device Failure & Defect Trends
-                  </h4>
-                  <div className="space-y-3">
-                    {executiveData.deviceFailureTrends.map((d, i) => (
-                      <div key={i} className="p-3 bg-secondary/20 border border-border rounded-xl flex justify-between items-center">
-                        <div>
-                          <div className="font-bold text-foreground">{d.brand} {d.model}</div>
-                          <div className="text-[10px] text-muted-foreground">{d.failureCount} Diagnostic Cases</div>
-                        </div>
-                        <div className="text-right font-mono font-bold text-rose-400">
-                          +{d.monthlyChangePct}% Monthly Spike
-                        </div>
-                      </div>
-                    ))}
+                        return (
+                          <div key={stepKey} className={`p-2.5 rounded-xl border text-center font-bold ${
+                            isDone ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-secondary/40 text-muted-foreground border-border'
+                          }`}>
+                            <div className="text-[10px]">{stepConfig.label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Action Buttons for Feedback & Downloads */}
+                    <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+                      <button
+                        onClick={() => setShowFeedbackModal(b)}
+                        className="px-3 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-xs rounded-lg flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Star className="h-3.5 w-3.5 fill-amber-300" /> Rate Experience
+                      </button>
+
+                      <button
+                        onClick={() => alert(`Downloading Official Invoice & Warranty Certificate PDF for #${b.id}...`)}
+                        className="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 font-bold text-xs rounded-lg flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Download className="h-3.5 w-3.5" /> Download Docs
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
             </div>
           )}
 
-          {/* TAB: LIST REGISTRY */}
+          {/* TAB: REGISTRY LIST */}
           {activeTab === 'list' && (
             <div className="bg-card border border-border/60 rounded-2xl shadow-sm overflow-hidden">
               <div className="w-full overflow-x-auto min-w-0">
@@ -571,8 +526,7 @@ export default function EnterpriseBookingsPage() {
                       <th className="p-4">Booking ID</th>
                       <th className="p-4">Customer</th>
                       <th className="p-4">Device</th>
-                      <th className="p-4">Assigned Tech</th>
-                      <th className="p-4">Est. Cost</th>
+                      <th className="p-4">Status</th>
                       <th className="p-4 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -584,20 +538,16 @@ export default function EnterpriseBookingsPage() {
                           <div className="font-bold text-foreground">{b.customerName}</div>
                           <div className="text-[10px] text-muted-foreground">{b.customerPhone}</div>
                         </td>
+                        <td className="p-4 font-semibold">{b.deviceBrand} {b.deviceModel}</td>
                         <td className="p-4">
-                          <div className="font-semibold">{b.deviceBrand} {b.deviceModel}</div>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_MAP[b.status]?.color}`}>
+                            {STATUS_MAP[b.status]?.label}
+                          </span>
                         </td>
-                        <td className="p-4 font-semibold text-foreground">{b.technicianName}</td>
-                        <td className="p-4 font-mono font-bold text-emerald-400">৳{b.estimatedCost.toLocaleString()}</td>
                         <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button onClick={(e) => handleViewClick(b, e)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg cursor-pointer">
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button onClick={(e) => handleDeleteClick(b.id, e)} className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg cursor-pointer">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
+                          <button onClick={(e) => handleViewClick(b, e)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg cursor-pointer">
+                            <Eye className="h-4 w-4" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -609,6 +559,60 @@ export default function EnterpriseBookingsPage() {
 
         </main>
       </div>
+
+      {/* MODULE 6: CUSTOMER FEEDBACK MODAL */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
+                <Star className="h-5 w-5 text-amber-400 fill-amber-400" /> Customer Review — #{showFeedbackModal.id}
+              </h3>
+              <button onClick={() => setShowFeedbackModal(null)} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleFeedbackSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-muted-foreground mb-2">Overall Experience Rating *</label>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className="p-1.5 hover:scale-110 transition-all cursor-pointer"
+                    >
+                      <Star className={`h-6 w-6 ${star <= rating ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground'}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">Written Review & Feedback</label>
+                <textarea
+                  rows={3}
+                  placeholder="Tell us about your repair experience..."
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+                <button type="button" onClick={() => setShowFeedbackModal(null)} className="px-4 py-2 bg-secondary text-foreground rounded-xl cursor-pointer">
+                  Cancel
+                </button>
+                <button type="submit" disabled={loading} className="px-6 py-2 bg-amber-500 text-black font-bold rounded-xl shadow-lg cursor-pointer">
+                  {loading ? 'Submitting...' : 'Submit 5-Star Review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* VIEW SPECIFICATION MODAL */}
       {viewingBooking && (
