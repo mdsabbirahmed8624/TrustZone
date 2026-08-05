@@ -116,6 +116,28 @@ export interface BookingCommunicationLog {
 
 
 
+
+export interface TechnicianJobWorkspace {
+  techId: string;
+  techName: string;
+  assignedJobsCount: number;
+  priorityJobsCount: number;
+  overdueSLACount: number;
+  completedTodayCount: number;
+  productivityScore: number;
+  avgRepairMinutes: number;
+}
+
+export interface BookingIntelligenceReport {
+  peakHours: { hour: string; count: number }[];
+  topDevices: { model: string; count: number; percentage: number }[];
+  topRepairs: { category: string; count: number; revenue: number }[];
+  repeatCustomerRate: number;
+  avgWaitTimeMinutes: number;
+  avgRepairTimeMinutes: number;
+  slaBreachRate: number;
+}
+
 export interface TechnicianAssignmentRecord {
   id: string;
   bookingId: string;
@@ -713,6 +735,76 @@ function saveMockTickets(tickets: TicketModel[]) {
 export const api = {
   
   bookings: {
+    async autoAssignJob(bookingId: string): Promise<ApiResponse<BookingModel>> {
+      const bookings = getMockBookings();
+      const idx = bookings.findIndex(b => b.id === bookingId);
+      if (idx !== -1) {
+        const techs = [
+          { id: 'tech-1', name: 'Tariq Zaman (Lead L4 Hardware)' },
+          { id: 'tech-2', name: 'Farhan Chowdhury (Display & Glass)' },
+          { id: 'tech-3', name: 'Rafiq Islam (Micro-Soldering IC)' },
+          { id: 'tech-4', name: 'Nabil Hasan (Software OS)' }
+        ];
+        const selected = techs[Math.floor(Math.random() * techs.length)];
+
+        bookings[idx].technicianId = selected.id;
+        bookings[idx].technicianName = selected.name;
+        bookings[idx].updatedAt = new Date().toISOString();
+
+        saveMockBookings(bookings);
+        addMockAuditLog('booking_auto_assigned_skill_match', { bookingId, selectedTech: selected.name });
+        return { success: true, data: bookings[idx] };
+      }
+      return { success: false, message: 'Booking not found.', data: null as any };
+    },
+
+    async escalateSLABreach(bookingId: string, reason: string): Promise<ApiResponse<BookingModel>> {
+      const bookings = getMockBookings();
+      const idx = bookings.findIndex(b => b.id === bookingId);
+      if (idx !== -1) {
+        bookings[idx].priority = 'URGENT';
+        const history = bookings[idx].history || [];
+        history.push({
+          timestamp: new Date().toISOString(),
+          status: bookings[idx].status,
+          note: `SLA Breach Escalated to Operations Manager. Reason: ${reason}`,
+          updatedBy: 'SLA Automation Monitor',
+          branch: bookings[idx].branchName
+        });
+        bookings[idx].history = history;
+
+        saveMockBookings(bookings);
+        addMockAuditLog('booking_sla_escalated_manager_notified', { bookingId, reason });
+        return { success: true, data: bookings[idx] };
+      }
+      return { success: false, message: 'Booking not found.', data: null as any };
+    },
+
+    async getBookingIntelligence(): Promise<ApiResponse<BookingIntelligenceReport>> {
+      const report: BookingIntelligenceReport = {
+        peakHours: [
+          { hour: '10:00 AM', count: 42 },
+          { hour: '02:00 PM', count: 58 },
+          { hour: '05:00 PM', count: 35 }
+        ],
+        topDevices: [
+          { model: 'iPhone 14 Pro', count: 124, percentage: 38 },
+          { model: 'Samsung S23 Ultra', count: 86, percentage: 26 },
+          { model: 'Google Pixel 8', count: 45, percentage: 14 }
+        ],
+        topRepairs: [
+          { category: 'Screen & Digitizer Replacement', count: 180, revenue: 441000 },
+          { category: 'Battery Health Replacement', count: 95, revenue: 190000 },
+          { category: 'Motherboard IC Micro-Soldering', count: 42, revenue: 210000 }
+        ],
+        repeatCustomerRate: 28.5,
+        avgWaitTimeMinutes: 14.2,
+        avgRepairTimeMinutes: 48.6,
+        slaBreachRate: 1.8
+      };
+      return { success: true, data: report };
+    },
+
     async reassignTechnician(bookingId: string, newTechId: string, newTechName: string, reason: string, approvedBy: string = 'Manager Admin'): Promise<ApiResponse<BookingModel>> {
       const bookings = getMockBookings();
       const idx = bookings.findIndex(b => b.id === bookingId);

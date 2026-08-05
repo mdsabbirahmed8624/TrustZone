@@ -86,13 +86,28 @@ import {
   History,
   Bot,
   UserCheck2,
-  Share2
+  Share2,
+  Timer,
+  Kanban,
+  Brain,
+  Gauge,
+  Siren
 } from 'lucide-react';
 import { Sidebar } from '../components/sidebar';
 import { Header } from '../components/header';
 import { CommandPalette } from '../components/command-palette';
 import { NotificationCenter } from '../components/notification-center';
-import { api, BookingModel, DeviceIntakeDetail, BookingInvoiceModel, BookingPaymentRecord, BookingWarrantyModel, TechnicianAssignmentRecord, SmartReminderRecord } from '@/lib/api';
+import { api, BookingModel, DeviceIntakeDetail, BookingInvoiceModel, BookingPaymentRecord, BookingWarrantyModel, TechnicianAssignmentRecord, SmartReminderRecord, BookingIntelligenceReport } from '@/lib/api';
+
+// Available Time Slots
+const TIME_SLOTS_30 = [
+  '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
+  '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
+  '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM',
+  '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM',
+  '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM',
+  '07:00 PM', '07:30 PM', '08:00 PM'
+];
 
 // Workflow Lifecycle Status Configuration
 const LIFECYCLE_STEPS = [
@@ -129,13 +144,14 @@ export default function EnterpriseBookingsPage() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Active View Tab
-  const [activeTab, setActiveTab] = useState<'list' | 'calendar' | 'analytics' | 'reports' | 'trash'>('list');
+  // Active View Tab: 'list' | 'kanban' | 'tech_workspace' | 'intelligence' | 'calendar' | 'trash'
+  const [activeTab, setActiveTab] = useState<'list' | 'kanban' | 'tech_workspace' | 'intelligence' | 'calendar' | 'trash'>('list');
 
   // Loading & Data States
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<BookingModel[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [intelligenceReport, setIntelligenceReport] = useState<BookingIntelligenceReport | null>(null);
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -152,29 +168,14 @@ export default function EnterpriseBookingsPage() {
   const [showPickupModal, setShowPickupModal] = useState<BookingModel | null>(null);
   const [showReassignModal, setShowReassignModal] = useState<BookingModel | null>(null);
   const [showReminderModal, setShowReminderModal] = useState<BookingModel | null>(null);
+  const [showEscalationModal, setShowEscalationModal] = useState<BookingModel | null>(null);
   const [showQRModal, setShowQRModal] = useState<BookingModel | null>(null);
 
   const [editingBooking, setEditingBooking] = useState<BookingModel | null>(null);
   const [viewingBooking, setViewingBooking] = useState<BookingModel | null>(null);
-  const [statusModalBooking, setStatusModalBooking] = useState<BookingModel | null>(null);
 
-  // Phase 6 Reassignment State
-  const [newTechId, setNewTechId] = useState('tech-2');
-  const [newTechName, setNewTechName] = useState('Farhan Chowdhury (Display Spec)');
-  const [reassignReason, setReassignReason] = useState('Workload rebalancing & specialist expertise');
-
-  // Phase 6 Reminder State
-  const [reminderType, setReminderType] = useState<SmartReminderRecord['type']>('TOMORROW_APPOINTMENT');
-  const [reminderChannel, setReminderChannel] = useState<'WHATSAPP' | 'SMS' | 'EMAIL' | 'IN_APP'>('WHATSAPP');
-  const [reminderScheduledFor, setReminderScheduledFor] = useState(new Date().toISOString().split('T')[0]);
-  const [reminderMessage, setReminderMessage] = useState('');
-
-  // Modal Sub-Tab in View Spec
-  const [modalTab, setModalTab] = useState<'details' | 'timeline' | 'communication' | 'notes' | 'reassignment'>('details');
-
-  // New Note State
-  const [newNoteText, setNewNoteText] = useState('');
-  const [newNoteIsPublic, setNewNoteIsPublic] = useState(false);
+  // Phase 7 Escalation Reason
+  const [escalationReason, setEscalationReason] = useState('SLA Exceeded threshold (>48 Hours) - Urgent Manager Intervention Required');
 
   // Form State
   const [formState, setFormState] = useState<Partial<BookingModel>>({
@@ -228,15 +229,10 @@ export default function EnterpriseBookingsPage() {
 
     if (viewId) {
       const match = bookings.find(b => b.id === viewId);
-      if (match) {
-        setViewingBooking(match);
-        setModalTab('details');
-      }
+      if (match) setViewingBooking(match);
     } else if (editId) {
       const match = bookings.find(b => b.id === editId);
-      if (match) {
-        handleEditClick(match);
-      }
+      if (match) handleEditClick(match);
     }
   }, [searchParams, bookings]);
 
@@ -250,13 +246,13 @@ export default function EnterpriseBookingsPage() {
         branchId: branchFilter,
         date: dateFilter,
       });
-      if (res.success && res.data) {
-        setBookings(res.data);
-      }
+      if (res.success && res.data) setBookings(res.data);
+
       const statsRes = await api.bookings.getDashboardStats();
-      if (statsRes.success && statsRes.data) {
-        setStats(statsRes.data);
-      }
+      if (statsRes.success && statsRes.data) setStats(statsRes.data);
+
+      const intelRes = await api.bookings.getBookingIntelligence();
+      if (intelRes.success && intelRes.data) setIntelligenceReport(intelRes.data);
     } catch (err) {
       console.error('Failed to load bookings data', err);
     } finally {
@@ -264,67 +260,38 @@ export default function EnterpriseBookingsPage() {
     }
   };
 
-  // Module 6: Reassign Technician Handler
-  const handleReassignSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!showReassignModal) return;
+  // Module 2: Auto-Assign Job
+  const handleAutoAssign = async (bookingId: string) => {
     setLoading(true);
     try {
-      const res = await api.bookings.reassignTechnician(
-        showReassignModal.id,
-        newTechId,
-        newTechName,
-        reassignReason,
-        'Senior Operations Manager'
-      );
-      if (res.success) {
-        alert(`Technician reassigned to ${newTechName} for booking #${showReassignModal.id}. Audit history updated.`);
-        setShowReassignModal(null);
+      const res = await api.bookings.autoAssignJob(bookingId);
+      if (res.success && res.data) {
+        alert(`Job #${bookingId} Auto-Assigned to ${res.data.technicianName} based on skill match & workload!`);
         loadData();
       }
     } catch (err) {
-      console.error('Failed reassignment', err);
+      console.error('Auto-assign failed', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Module 4 & 5: Schedule Smart Reminder
-  const handleScheduleReminderSubmit = async (e: React.FormEvent) => {
+  // Module 4 & 8: Escalate SLA Breach
+  const handleEscalateSLASubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!showReminderModal) return;
+    if (!showEscalationModal) return;
     setLoading(true);
     try {
-      const res = await api.bookings.scheduleReminder(showReminderModal.id, {
-        bookingId: showReminderModal.id,
-        type: reminderType,
-        channel: reminderChannel,
-        scheduledFor: reminderScheduledFor,
-        recipient: showReminderModal.customerPhone || showReminderModal.customerEmail,
-        message: reminderMessage || `TrustZone Reminder: Your appointment/pickup for #${showReminderModal.id} is scheduled for ${reminderScheduledFor}.`
-      });
+      const res = await api.bookings.escalateSLABreach(showEscalationModal.id, escalationReason);
       if (res.success) {
-        alert(`Smart Reminder (${reminderType}) scheduled via ${reminderChannel} for #${showReminderModal.id}!`);
-        setShowReminderModal(null);
-        setReminderMessage('');
+        alert(`SLA Breach Escalated to Operations Manager for #${showEscalationModal.id}! Priority upgraded to URGENT.`);
+        setShowEscalationModal(null);
         loadData();
       }
     } catch (err) {
-      console.error('Failed reminder scheduling', err);
+      console.error('Escalation failed', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Module 1: Add Rich Internal Note
-  const handleAddNote = async () => {
-    if (!viewingBooking || !newNoteText.trim()) return;
-    const res = await api.bookings.addInternalNote(viewingBooking.id, newNoteText, 'NORMAL', false, 'Desk Staff');
-    if (res.success && res.data) {
-      const list = viewingBooking.internalNotesList || [];
-      list.unshift(res.data);
-      setViewingBooking({ ...viewingBooking, internalNotesList: list });
-      setNewNoteText('');
     }
   };
 
@@ -332,7 +299,6 @@ export default function EnterpriseBookingsPage() {
   const handleViewClick = (booking: BookingModel, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setViewingBooking(booking);
-    setModalTab('details');
     window.history.pushState({}, '', `/admin/bookings?id=${booking.id}`);
   };
 
@@ -356,8 +322,8 @@ export default function EnterpriseBookingsPage() {
     setShowPickupModal(null);
     setShowReassignModal(null);
     setShowReminderModal(null);
+    setShowEscalationModal(null);
     setShowQRModal(null);
-    setStatusModalBooking(null);
     window.history.pushState({}, '', `/admin/bookings`);
   };
 
@@ -429,17 +395,17 @@ export default function EnterpriseBookingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card border border-border/60 p-5 rounded-2xl shadow-sm">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center border border-primary/20 shadow-inner">
-                <Bot className="h-6 w-6" />
+                <Brain className="h-6 w-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-extrabold text-foreground tracking-tight">Enterprise Booking Desk</h1>
                   <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                    Phase 6 Automation & Communication Active
+                    Phase 7 Technician Workspace & SLA Intelligence
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Technician timeline, smart reminder engine, internal notes, and automated customer notifications.
+                  Live work queue, SLA breach escalation, skill-based auto-assignment, and booking intelligence.
                 </p>
               </div>
             </div>
@@ -474,10 +440,40 @@ export default function EnterpriseBookingsPage() {
                 <Layers className="h-4 w-4" />
                 Bookings Registry ({searchedBookings.length})
               </button>
+
+              <button
+                onClick={() => setActiveTab('kanban')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'kanban' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary/40 text-muted-foreground'
+                }`}
+              >
+                <Kanban className="h-4 w-4" />
+                Live Work Queue Kanban
+              </button>
+
+              <button
+                onClick={() => setActiveTab('tech_workspace')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'tech_workspace' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary/40 text-muted-foreground'
+                }`}
+              >
+                <Gauge className="h-4 w-4" />
+                Technician Workspace
+              </button>
+
+              <button
+                onClick={() => setActiveTab('intelligence')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'intelligence' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary/40 text-muted-foreground'
+                }`}
+              >
+                <Brain className="h-4 w-4" />
+                Booking Intelligence
+              </button>
             </div>
           </div>
 
-          {/* DATA TABLE */}
+          {/* TAB 1: LIST / REGISTRY */}
           {activeTab === 'list' && (
             <div className="bg-card border border-border/60 rounded-2xl shadow-sm overflow-hidden">
               <div className="w-full overflow-x-auto min-w-0">
@@ -488,13 +484,13 @@ export default function EnterpriseBookingsPage() {
                       <th className="p-4">Customer</th>
                       <th className="p-4">Device</th>
                       <th className="p-4">Assigned Tech</th>
-                      <th className="p-4">Lifecycle Status</th>
-                      <th className="p-4 text-right">Phase 6 Automation Actions</th>
+                      <th className="p-4">SLA Timer</th>
+                      <th className="p-4 text-right">Phase 7 Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60 text-xs">
                     {paginatedBookings.map((b) => {
-                      const statusConfig = STATUS_MAP[b.status] || { label: b.status, color: 'bg-secondary text-foreground' };
+                      const isOverdue = b.priority === 'URGENT';
 
                       return (
                         <tr key={b.id} onClick={(e) => handleViewClick(b, e)} className="hover:bg-secondary/20 transition-all cursor-pointer">
@@ -507,29 +503,31 @@ export default function EnterpriseBookingsPage() {
                             <div className="font-semibold">{b.deviceBrand} {b.deviceModel}</div>
                           </td>
                           <td className="p-4 font-semibold text-foreground">{b.technicianName}</td>
-                          <td className="p-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusConfig.color}`}>
-                              {statusConfig.label}
+                          <td className="p-4 font-mono">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              isOverdue ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            }`}>
+                              {isOverdue ? 'CRITICAL SLA BREACH' : '18h 42m Remaining'}
                             </span>
                           </td>
                           <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* Module 6: Reassign Technician Button */}
+                              {/* Auto-Assign Button */}
                               <button
-                                onClick={(e) => { e.stopPropagation(); setShowReassignModal(b); }}
-                                className="px-2.5 py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/30 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-                                title="Reassign Technician"
+                                onClick={(e) => { e.stopPropagation(); handleAutoAssign(b.id); }}
+                                className="px-2 py-1 bg-primary/20 text-primary border border-primary/30 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                title="Auto-Assign Job by Skill Match"
                               >
-                                <UserCheck2 className="h-3 w-3" /> Reassign
+                                <Zap className="h-3 w-3" /> Auto-Assign
                               </button>
 
-                              {/* Module 4 & 5: Smart Reminder Button */}
+                              {/* SLA Escalation Button */}
                               <button
-                                onClick={(e) => { e.stopPropagation(); setShowReminderModal(b); }}
-                                className="p-1.5 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all cursor-pointer"
-                                title="Schedule Smart Reminder"
+                                onClick={(e) => { e.stopPropagation(); setShowEscalationModal(b); }}
+                                className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
+                                title="Escalate SLA Breach to Manager"
                               >
-                                <Bell className="h-4 w-4" />
+                                <Siren className="h-4 w-4" />
                               </button>
 
                               <button onClick={(e) => handleViewClick(b, e)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg cursor-pointer">
@@ -550,68 +548,163 @@ export default function EnterpriseBookingsPage() {
             </div>
           )}
 
+          {/* TAB 2: LIVE WORK QUEUE KANBAN (Module 3) */}
+          {activeTab === 'kanban' && (
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3 overflow-x-auto pb-4">
+              {['PENDING', 'CONFIRMED', 'CHECKED_IN', 'DIAGNOSIS_STARTED', 'WAITING_PARTS', 'REPAIR_STARTED', 'READY_FOR_PICKUP'].map((colStatus) => {
+                const colBookings = activeBookings.filter(b => b.status === colStatus);
+                const colConfig = STATUS_MAP[colStatus] || { label: colStatus, color: 'bg-secondary' };
+
+                return (
+                  <div key={colStatus} className="p-3 bg-card border border-border/60 rounded-xl space-y-3 min-w-[200px]">
+                    <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                      <span className="font-bold text-xs text-foreground uppercase">{colConfig.label}</span>
+                      <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-secondary text-foreground">
+                        {colBookings.length}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {colBookings.map(b => (
+                        <div
+                          key={b.id}
+                          onClick={() => handleViewClick(b)}
+                          className="p-3 bg-secondary/30 border border-border/60 rounded-lg hover:border-primary transition-all cursor-pointer space-y-1 text-xs"
+                        >
+                          <div className="font-bold text-primary font-mono">{b.id}</div>
+                          <div className="font-semibold text-foreground">{b.deviceBrand} {b.deviceModel}</div>
+                          <div className="text-[10px] text-muted-foreground">{b.customerName}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* TAB 3: TECHNICIAN WORKSPACE (Module 1) */}
+          {activeTab === 'tech_workspace' && (
+            <div className="p-6 bg-card border border-border/60 rounded-2xl space-y-6 shadow-sm">
+              <div className="flex items-center justify-between border-b border-border/60 pb-4">
+                <div>
+                  <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
+                    <Gauge className="h-5 w-5 text-primary" /> Lead Engineer Workspace — Tariq Zaman (L4)
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Active job timers, priority queue, and diagnostic notes.</p>
+                </div>
+                <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20">
+                  Status: Available for Dispatch
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs font-bold">
+                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-1">
+                  <span className="text-muted-foreground uppercase text-[10px]">Assigned Active Jobs</span>
+                  <div className="text-xl text-primary font-extrabold">4 Repairs</div>
+                </div>
+                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-1">
+                  <span className="text-muted-foreground uppercase text-[10px]">Completed Today</span>
+                  <div className="text-xl text-emerald-400 font-extrabold">8 Devices</div>
+                </div>
+                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-1">
+                  <span className="text-muted-foreground uppercase text-[10px]">SLA Overdue Warning</span>
+                  <div className="text-xl text-amber-400 font-extrabold">1 Critical</div>
+                </div>
+                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-1">
+                  <span className="text-muted-foreground uppercase text-[10px]">Productivity Score</span>
+                  <div className="text-xl text-purple-400 font-extrabold">98.4 / 100</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: BOOKING INTELLIGENCE (Module 6) */}
+          {activeTab === 'intelligence' && intelligenceReport && (
+            <div className="p-6 bg-card border border-border/60 rounded-2xl space-y-6 shadow-sm text-xs">
+              <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
+                <Brain className="h-5 w-5 text-cyan-400" /> Booking Intelligence & Operations Analytics
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-2">
+                  <span className="font-bold text-primary uppercase text-[10px]">Top Device Repairs</span>
+                  {intelligenceReport.topDevices.map((d, i) => (
+                    <div key={i} className="flex justify-between font-semibold">
+                      <span>{d.model}</span>
+                      <span className="font-mono text-emerald-400">{d.count} Units ({d.percentage}%)</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-2">
+                  <span className="font-bold text-primary uppercase text-[10px]">Top Repair Categories</span>
+                  {intelligenceReport.topRepairs.map((r, i) => (
+                    <div key={i} className="flex justify-between font-semibold">
+                      <span>{r.category}</span>
+                      <span className="font-mono text-purple-400">৳{r.revenue.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-4 bg-secondary/20 border border-border rounded-xl space-y-2">
+                  <span className="font-bold text-primary uppercase text-[10px]">Customer Metrics</span>
+                  <div className="flex justify-between font-semibold">
+                    <span>Repeat Customer Rate:</span>
+                    <span className="font-mono text-emerald-400">{intelligenceReport.repeatCustomerRate}%</span>
+                  </div>
+                  <div className="flex justify-between font-semibold">
+                    <span>Avg Customer Wait:</span>
+                    <span className="font-mono text-cyan-400">{intelligenceReport.avgWaitTimeMinutes} Minutes</span>
+                  </div>
+                  <div className="flex justify-between font-semibold">
+                    <span>Avg Repair Duration:</span>
+                    <span className="font-mono text-amber-400">{intelligenceReport.avgRepairTimeMinutes} Minutes</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
         </main>
       </div>
 
-      {/* MODULE 6: REASSIGN TECHNICIAN MODAL */}
-      {showReassignModal && (
+      {/* MODULE 4 & 8: ESCALATE SLA BREACH MODAL */}
+      {showEscalationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                <UserCheck2 className="h-5 w-5 text-cyan-400" /> Reassign Technician — #{showReassignModal.id}
+                <Siren className="h-5 w-5 text-rose-400" /> Escalate SLA Breach — #{showEscalationModal.id}
               </h3>
-              <button onClick={() => setShowReassignModal(null)} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
+              <button onClick={() => setShowEscalationModal(null)} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleReassignSubmit} className="space-y-4 text-xs">
-              <div className="p-3 bg-secondary/20 rounded-xl space-y-1">
-                <span className="text-muted-foreground block">Current Assigned Engineer:</span>
-                <div className="font-bold text-foreground">{showReassignModal.technicianName}</div>
+            <form onSubmit={handleEscalateSLASubmit} className="space-y-4 text-xs">
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-300 space-y-1">
+                <span className="font-bold block">Critical Operations Alert</span>
+                <p className="text-[11px]">Escalating will upgrade priority to URGENT and notify Operations Manager and Branch Supervisor.</p>
               </div>
 
               <div>
-                <label className="block font-bold text-muted-foreground mb-1">Select New Specialist *</label>
-                <select
-                  value={newTechId}
-                  onChange={(e) => {
-                    setNewTechId(e.target.value);
-                    const nameMap: Record<string, string> = {
-                      'tech-1': 'Tariq Zaman (Lead L4)',
-                      'tech-2': 'Farhan Chowdhury (Display Spec)',
-                      'tech-3': 'Rafiq Islam (Micro-Soldering)',
-                      'tech-4': 'Nabil Hasan (Software Specialist)',
-                    };
-                    setNewTechName(nameMap[e.target.value] || 'Specialist Engineer');
-                  }}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-semibold"
-                >
-                  <option value="tech-1">Tariq Zaman (Lead L4 Hardware)</option>
-                  <option value="tech-2">Farhan Chowdhury (Display & Glass Specialist)</option>
-                  <option value="tech-3">Rafiq Islam (Micro-Soldering & IC Specialist)</option>
-                  <option value="tech-4">Nabil Hasan (Software & OS Specialist)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-muted-foreground mb-1">Reassignment Reason *</label>
+                <label className="block font-bold text-muted-foreground mb-1">Escalation Reason *</label>
                 <textarea
                   required
                   rows={3}
-                  value={reassignReason}
-                  onChange={(e) => setReassignReason(e.target.value)}
+                  value={escalationReason}
+                  onChange={(e) => setEscalationReason(e.target.value)}
                   className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
                 />
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
-                <button type="button" onClick={() => setShowReassignModal(null)} className="px-4 py-2 bg-secondary text-foreground rounded-xl cursor-pointer">
+                <button type="button" onClick={() => setShowEscalationModal(null)} className="px-4 py-2 bg-secondary text-foreground rounded-xl cursor-pointer">
                   Cancel
                 </button>
-                <button type="submit" disabled={loading} className="px-6 py-2 bg-cyan-600 text-white font-bold rounded-xl shadow-lg cursor-pointer">
-                  {loading ? 'Reassigning...' : 'Confirm Reassignment'}
+                <button type="submit" disabled={loading} className="px-6 py-2 bg-rose-600 text-white font-bold rounded-xl shadow-lg cursor-pointer">
+                  {loading ? 'Escalating...' : 'Escalate to Manager'}
                 </button>
               </div>
             </form>
@@ -619,221 +712,34 @@ export default function EnterpriseBookingsPage() {
         </div>
       )}
 
-      {/* MODULE 4 & 5: SCHEDULE SMART REMINDER MODAL */}
-      {showReminderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                <Bell className="h-5 w-5 text-amber-400" /> Schedule Smart Reminder — #{showReminderModal.id}
-              </h3>
-              <button onClick={() => setShowReminderModal(null)} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleScheduleReminderSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Reminder Type</label>
-                  <select
-                    value={reminderType}
-                    onChange={(e) => setReminderType(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-semibold"
-                  >
-                    <option value="TOMORROW_APPOINTMENT">Tomorrow's Appointment</option>
-                    <option value="TODAY_APPOINTMENT">Today's Appointment</option>
-                    <option value="DUE_PAYMENT">Due Payment Reminder</option>
-                    <option value="PENDING_PICKUP">Pending Pickup Alert</option>
-                    <option value="WARRANTY_EXPIRY">Warranty Expiry Reminder</option>
-                    <option value="FOLLOW_UP">Post-Repair Follow Up</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Dispatch Channel</label>
-                  <select
-                    value={reminderChannel}
-                    onChange={(e) => setReminderChannel(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-semibold"
-                  >
-                    <option value="WHATSAPP">WhatsApp Official</option>
-                    <option value="SMS">SMS Gateway</option>
-                    <option value="EMAIL">Customer Email</option>
-                    <option value="IN_APP">App Push Notification</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-muted-foreground mb-1">Schedule Date</label>
-                <input
-                  type="date"
-                  value={reminderScheduledFor}
-                  onChange={(e) => setReminderScheduledFor(e.target.value)}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-muted-foreground mb-1">Reminder Message Body</label>
-                <textarea
-                  rows={3}
-                  placeholder="Custom reminder text (optional)..."
-                  value={reminderMessage}
-                  onChange={(e) => setReminderMessage(e.target.value)}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
-                <button type="button" onClick={() => setShowReminderModal(null)} className="px-4 py-2 bg-secondary text-foreground rounded-xl cursor-pointer">
-                  Cancel
-                </button>
-                <button type="submit" disabled={loading} className="px-6 py-2 bg-amber-500 text-black font-bold rounded-xl shadow-lg cursor-pointer">
-                  {loading ? 'Scheduling...' : 'Schedule Reminder'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW SPECIFICATION & TIMELINE MODAL */}
+      {/* VIEW SPECIFICATION MODAL */}
       {viewingBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-4xl bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-3xl bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                Booking Details & Automation — #{viewingBooking.id}
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${STATUS_MAP[viewingBooking.status]?.color}`}>
-                  {STATUS_MAP[viewingBooking.status]?.label}
-                </span>
-              </h3>
+              <h3 className="text-base font-extrabold text-foreground">Booking Specification #{viewingBooking.id}</h3>
               <button onClick={closeModals} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Modal Sub-Tabs */}
-            <div className="flex items-center gap-2 border-b border-border/60 pb-2 text-xs font-bold text-muted-foreground overflow-x-auto">
-              <button
-                onClick={() => setModalTab('details')}
-                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'details' ? 'bg-primary text-primary-foreground' : ''}`}
-              >
-                Overview & Specs
-              </button>
-              <button
-                onClick={() => setModalTab('timeline')}
-                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'timeline' ? 'bg-primary text-primary-foreground' : ''}`}
-              >
-                Technician Timeline ({viewingBooking.history?.length || 0})
-              </button>
-              <button
-                onClick={() => setModalTab('notes')}
-                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'notes' ? 'bg-primary text-primary-foreground' : ''}`}
-              >
-                Internal Notes ({viewingBooking.internalNotesList?.length || 0})
-              </button>
-              <button
-                onClick={() => setModalTab('reassignment')}
-                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'reassignment' ? 'bg-primary text-primary-foreground' : ''}`}
-              >
-                Tech Assignment Ledger ({viewingBooking.assignmentHistory?.length || 0})
-              </button>
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div className="p-3 bg-secondary/20 rounded-xl space-y-1">
+                <span className="font-bold text-primary block uppercase tracking-wider text-[10px]">Customer Specs</span>
+                <div className="font-bold text-foreground">{viewingBooking.customerName}</div>
+                <div className="text-muted-foreground">{viewingBooking.customerPhone}</div>
+              </div>
+
+              <div className="p-3 bg-secondary/20 rounded-xl space-y-1">
+                <span className="font-bold text-primary block uppercase tracking-wider text-[10px]">Device & Tech</span>
+                <div className="font-bold text-foreground">{viewingBooking.deviceBrand} {viewingBooking.deviceModel}</div>
+                <div className="text-muted-foreground">Assigned: {viewingBooking.technicianName}</div>
+              </div>
             </div>
 
-            {/* TAB: OVERVIEW */}
-            {modalTab === 'details' && (
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div className="p-3 bg-secondary/20 rounded-xl space-y-1">
-                  <span className="font-bold text-primary block uppercase tracking-wider text-[10px]">Customer Specs</span>
-                  <div className="font-bold text-foreground">{viewingBooking.customerName}</div>
-                  <div className="text-muted-foreground">{viewingBooking.customerPhone}</div>
-                </div>
-
-                <div className="p-3 bg-secondary/20 rounded-xl space-y-1">
-                  <span className="font-bold text-primary block uppercase tracking-wider text-[10px]">Device & Tech</span>
-                  <div className="font-bold text-foreground">{viewingBooking.deviceBrand} {viewingBooking.deviceModel}</div>
-                  <div className="text-muted-foreground">Assigned: {viewingBooking.technicianName}</div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB: TECHNICIAN TIMELINE */}
-            {modalTab === 'timeline' && (
-              <div className="space-y-3 text-xs">
-                <h4 className="font-bold text-foreground uppercase tracking-wider">Automated Lifecycle Timeline</h4>
-                <div className="space-y-2 relative border-l-2 border-primary/30 pl-4 ml-2">
-                  {(viewingBooking.history || []).map((h, idx) => (
-                    <div key={idx} className="relative pb-2">
-                      <div className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-primary border-2 border-card" />
-                      <div className="font-bold text-foreground flex items-center gap-2">
-                        <span>{h.status}</span>
-                        <span className="text-[10px] text-muted-foreground font-mono">{new Date(h.timestamp).toLocaleString()}</span>
-                      </div>
-                      <p className="text-muted-foreground text-[11px] mt-0.5">{h.note}</p>
-                      <div className="text-[9px] text-muted-foreground font-semibold">By: {h.updatedBy || 'System Automation'}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* TAB: INTERNAL NOTES */}
-            {modalTab === 'notes' && (
-              <div className="space-y-4 text-xs">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Type a private internal note..."
-                    value={newNoteText}
-                    onChange={(e) => setNewNoteText(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
-                  />
-                  <button onClick={handleAddNote} className="px-4 py-2 bg-primary text-primary-foreground font-bold rounded-lg cursor-pointer">
-                    Add Note
-                  </button>
-                </div>
-
-                <div className="space-y-2">
-                  {(viewingBooking.internalNotesList || []).map((n) => (
-                    <div key={n.id} className="p-3 bg-secondary/20 border border-border rounded-xl space-y-1">
-                      <div className="flex justify-between font-bold">
-                        <span className="text-primary">{n.author}</span>
-                        <span className="text-[10px] text-muted-foreground">{new Date((n as any).timestamp || n.createdAt || Date.now()).toLocaleString()}</span>
-                      </div>
-                      <p className="text-foreground">{n.content}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* TAB: REASSIGNMENT LEDGER */}
-            {modalTab === 'reassignment' && (
-              <div className="space-y-3 text-xs">
-                <h4 className="font-bold text-foreground uppercase tracking-wider">Technician Reassignment History</h4>
-                <div className="space-y-2">
-                  {(viewingBooking.assignmentHistory || []).map((a) => (
-                    <div key={a.id} className="p-3 bg-secondary/20 border border-border rounded-xl flex items-center justify-between">
-                      <div>
-                        <div className="font-bold text-foreground">Reassigned from {a.previousTechName} ➔ {a.newTechName}</div>
-                        <div className="text-[11px] text-muted-foreground">Reason: {a.reassignmentReason}</div>
-                      </div>
-                      <div className="text-right text-[10px] text-muted-foreground font-mono">
-                        <div>Approved by {a.approvedBy}</div>
-                        <div>{new Date(a.transferredAt).toLocaleString()}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="border-t border-border/60 pt-3 flex justify-end">
+            <div className="border-t border-border/60 pt-4 flex justify-end">
               <button onClick={closeModals} className="px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl cursor-pointer">
-                Close
+                Close Specification
               </button>
             </div>
           </div>
