@@ -81,23 +81,18 @@ import {
   Award,
   PackageCheck,
   KeyRound,
-  Shield
+  Shield,
+  MessageCircle,
+  History,
+  Bot,
+  UserCheck2,
+  Share2
 } from 'lucide-react';
 import { Sidebar } from '../components/sidebar';
 import { Header } from '../components/header';
 import { CommandPalette } from '../components/command-palette';
 import { NotificationCenter } from '../components/notification-center';
-import { api, BookingModel, DeviceIntakeDetail, BookingInvoiceModel, BookingPaymentRecord, BookingWarrantyModel } from '@/lib/api';
-
-// Available Time Slots
-const TIME_SLOTS_30 = [
-  '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
-  '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
-  '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM',
-  '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM',
-  '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM',
-  '07:00 PM', '07:30 PM', '08:00 PM'
-];
+import { api, BookingModel, DeviceIntakeDetail, BookingInvoiceModel, BookingPaymentRecord, BookingWarrantyModel, TechnicianAssignmentRecord, SmartReminderRecord } from '@/lib/api';
 
 // Workflow Lifecycle Status Configuration
 const LIFECYCLE_STEPS = [
@@ -136,7 +131,6 @@ export default function EnterpriseBookingsPage() {
 
   // Active View Tab
   const [activeTab, setActiveTab] = useState<'list' | 'calendar' | 'analytics' | 'reports' | 'trash'>('list');
-  const [calendarViewMode, setCalendarViewMode] = useState<'day' | 'week' | 'month'>('day');
 
   // Loading & Data States
   const [loading, setLoading] = useState(true);
@@ -150,37 +144,37 @@ export default function EnterpriseBookingsPage() {
   const [branchFilter, setBranchFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
 
-  // Bulk Selection
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [bulkAction, setBulkAction] = useState('');
-
   // Modals & Form States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showIntakeWizardModal, setShowIntakeWizardModal] = useState<BookingModel | null>(null);
   const [showPaymentCenterModal, setShowPaymentCenterModal] = useState<BookingModel | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState<BookingModel | null>(null);
   const [showPickupModal, setShowPickupModal] = useState<BookingModel | null>(null);
-  const [showRefundModal, setShowRefundModal] = useState<BookingModel | null>(null);
+  const [showReassignModal, setShowReassignModal] = useState<BookingModel | null>(null);
+  const [showReminderModal, setShowReminderModal] = useState<BookingModel | null>(null);
   const [showQRModal, setShowQRModal] = useState<BookingModel | null>(null);
 
   const [editingBooking, setEditingBooking] = useState<BookingModel | null>(null);
   const [viewingBooking, setViewingBooking] = useState<BookingModel | null>(null);
   const [statusModalBooking, setStatusModalBooking] = useState<BookingModel | null>(null);
 
-  // Phase 5 Payment Center Form State
-  const [payAmount, setPayAmount] = useState<number>(0);
-  const [payMethod, setPayMethod] = useState<'CASH' | 'CARD' | 'BKASH' | 'NAGAD' | 'ROCKET' | 'UPAY' | 'BANK_TRANSFER'>('BKASH');
-  const [payType, setPayType] = useState<'ADVANCE' | 'PARTIAL' | 'FULL' | 'DUE_COLLECTION'>('FULL');
-  const [payTxnId, setPayTxnId] = useState('');
-  const [payNotes, setPayNotes] = useState('');
+  // Phase 6 Reassignment State
+  const [newTechId, setNewTechId] = useState('tech-2');
+  const [newTechName, setNewTechName] = useState('Farhan Chowdhury (Display Spec)');
+  const [reassignReason, setReassignReason] = useState('Workload rebalancing & specialist expertise');
 
-  // Phase 5 Pickup & OTP Verification State
-  const [pickupOtp, setPickupOtp] = useState('');
-  const [deliveredByStaff, setDeliveredByStaff] = useState('Senior Desk Staff');
+  // Phase 6 Reminder State
+  const [reminderType, setReminderType] = useState<SmartReminderRecord['type']>('TOMORROW_APPOINTMENT');
+  const [reminderChannel, setReminderChannel] = useState<'WHATSAPP' | 'SMS' | 'EMAIL' | 'IN_APP'>('WHATSAPP');
+  const [reminderScheduledFor, setReminderScheduledFor] = useState(new Date().toISOString().split('T')[0]);
+  const [reminderMessage, setReminderMessage] = useState('');
 
-  // Phase 5 Refund State
-  const [refundAmount, setRefundAmount] = useState<number>(0);
-  const [refundReason, setRefundReason] = useState('');
+  // Modal Sub-Tab in View Spec
+  const [modalTab, setModalTab] = useState<'details' | 'timeline' | 'communication' | 'notes' | 'reassignment'>('details');
+
+  // New Note State
+  const [newNoteText, setNewNoteText] = useState('');
+  const [newNoteIsPublic, setNewNoteIsPublic] = useState(false);
 
   // Form State
   const [formState, setFormState] = useState<Partial<BookingModel>>({
@@ -236,6 +230,7 @@ export default function EnterpriseBookingsPage() {
       const match = bookings.find(b => b.id === viewId);
       if (match) {
         setViewingBooking(match);
+        setModalTab('details');
       }
     } else if (editId) {
       const match = bookings.find(b => b.id === editId);
@@ -269,78 +264,67 @@ export default function EnterpriseBookingsPage() {
     }
   };
 
-  // Module 1 & 2: Process Payment Handler
-  const handleProcessPaymentSubmit = async (e: React.FormEvent) => {
+  // Module 6: Reassign Technician Handler
+  const handleReassignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!showPaymentCenterModal || payAmount <= 0) {
-      alert('Please enter a valid payment amount.');
-      return;
-    }
+    if (!showReassignModal) return;
     setLoading(true);
     try {
-      const res = await api.bookings.processPayment(showPaymentCenterModal.id, {
-        bookingId: showPaymentCenterModal.id,
-        invoiceId: showPaymentCenterModal.invoiceData?.invoiceNumber || `INV-${showPaymentCenterModal.id}`,
-        amount: payAmount,
-        paymentMethod: payMethod,
-        type: payType,
-        transactionId: payTxnId || `TXN-${Date.now().toString().slice(-6)}`,
-        cashierName: 'Front Desk Cashier',
-        notes: payNotes
+      const res = await api.bookings.reassignTechnician(
+        showReassignModal.id,
+        newTechId,
+        newTechName,
+        reassignReason,
+        'Senior Operations Manager'
+      );
+      if (res.success) {
+        alert(`Technician reassigned to ${newTechName} for booking #${showReassignModal.id}. Audit history updated.`);
+        setShowReassignModal(null);
+        loadData();
+      }
+    } catch (err) {
+      console.error('Failed reassignment', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Module 4 & 5: Schedule Smart Reminder
+  const handleScheduleReminderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showReminderModal) return;
+    setLoading(true);
+    try {
+      const res = await api.bookings.scheduleReminder(showReminderModal.id, {
+        bookingId: showReminderModal.id,
+        type: reminderType,
+        channel: reminderChannel,
+        scheduledFor: reminderScheduledFor,
+        recipient: showReminderModal.customerPhone || showReminderModal.customerEmail,
+        message: reminderMessage || `TrustZone Reminder: Your appointment/pickup for #${showReminderModal.id} is scheduled for ${reminderScheduledFor}.`
       });
       if (res.success) {
-        alert(`Payment of ৳${payAmount} collected successfully via ${payMethod}! Invoice updated.`);
-        setShowPaymentCenterModal(null);
-        setPayAmount(0);
-        setPayTxnId('');
-        setPayNotes('');
+        alert(`Smart Reminder (${reminderType}) scheduled via ${reminderChannel} for #${showReminderModal.id}!`);
+        setShowReminderModal(null);
+        setReminderMessage('');
         loadData();
       }
     } catch (err) {
-      console.error('Failed to process payment', err);
+      console.error('Failed reminder scheduling', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Module 7 & 8: Process Customer Pickup & Auto Activate Warranty
-  const handleCustomerPickupSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!showPickupModal) return;
-    setLoading(true);
-    try {
-      const res = await api.bookings.processCustomerPickup(showPickupModal.id, pickupOtp || 'OTP-9988', deliveredByStaff);
-      if (res.success) {
-        alert(`Pickup Verified & Delivered! 90-Day Hardware Warranty Auto-Activated for #${showPickupModal.id}.`);
-        setShowPickupModal(null);
-        setPickupOtp('');
-        loadData();
-      }
-    } catch (err) {
-      console.error('Failed customer pickup', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Module 6: Process Refund Handler
-  const handleProcessRefundSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!showRefundModal || refundAmount <= 0) return;
-    setLoading(true);
-    try {
-      const res = await api.bookings.processRefund(showRefundModal.id, refundAmount, refundReason || 'Customer requested cancellation.');
-      if (res.success) {
-        alert(`Refund of ৳${refundAmount} processed & audit trail updated for #${showRefundModal.id}.`);
-        setShowRefundModal(null);
-        setRefundAmount(0);
-        setRefundReason('');
-        loadData();
-      }
-    } catch (err) {
-      console.error('Failed refund process', err);
-    } finally {
-      setLoading(false);
+  // Module 1: Add Rich Internal Note
+  const handleAddNote = async () => {
+    if (!viewingBooking || !newNoteText.trim()) return;
+    const res = await api.bookings.addInternalNote(viewingBooking.id, newNoteText, 'NORMAL', false, 'Desk Staff');
+    if (res.success && res.data) {
+      const list = viewingBooking.internalNotesList || [];
+      list.unshift(res.data);
+      setViewingBooking({ ...viewingBooking, internalNotesList: list });
+      setNewNoteText('');
     }
   };
 
@@ -348,6 +332,7 @@ export default function EnterpriseBookingsPage() {
   const handleViewClick = (booking: BookingModel, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setViewingBooking(booking);
+    setModalTab('details');
     window.history.pushState({}, '', `/admin/bookings?id=${booking.id}`);
   };
 
@@ -369,7 +354,8 @@ export default function EnterpriseBookingsPage() {
     setShowPaymentCenterModal(null);
     setShowInvoiceModal(null);
     setShowPickupModal(null);
-    setShowRefundModal(null);
+    setShowReassignModal(null);
+    setShowReminderModal(null);
     setShowQRModal(null);
     setStatusModalBooking(null);
     window.history.pushState({}, '', `/admin/bookings`);
@@ -443,17 +429,17 @@ export default function EnterpriseBookingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card border border-border/60 p-5 rounded-2xl shadow-sm">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center border border-primary/20 shadow-inner">
-                <Receipt className="h-6 w-6" />
+                <Bot className="h-6 w-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-extrabold text-foreground tracking-tight">Enterprise Booking Desk</h1>
-                  <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                    Phase 5 Financial Workflow Active
+                  <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    Phase 6 Automation & Communication Active
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Payment Center, Multi-Method Invoicing, OTP Pickup Verification, and Auto Warranty Activation.
+                  Technician timeline, smart reminder engine, internal notes, and automated customer notifications.
                 </p>
               </div>
             </div>
@@ -488,15 +474,6 @@ export default function EnterpriseBookingsPage() {
                 <Layers className="h-4 w-4" />
                 Bookings Registry ({searchedBookings.length})
               </button>
-              <button
-                onClick={() => setActiveTab('calendar')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'calendar' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary/40 text-muted-foreground'
-                }`}
-              >
-                <CalendarIcon className="h-4 w-4" />
-                Calendar Scheduler
-              </button>
             </div>
           </div>
 
@@ -510,16 +487,14 @@ export default function EnterpriseBookingsPage() {
                       <th className="p-4">Booking ID</th>
                       <th className="p-4">Customer</th>
                       <th className="p-4">Device</th>
-                      <th className="p-4">Appointment</th>
-                      <th className="p-4">Financial Status</th>
-                      <th className="p-4">Est. Cost</th>
-                      <th className="p-4 text-right">Phase 5 Financial Actions</th>
+                      <th className="p-4">Assigned Tech</th>
+                      <th className="p-4">Lifecycle Status</th>
+                      <th className="p-4 text-right">Phase 6 Automation Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60 text-xs">
                     {paginatedBookings.map((b) => {
-                      const dueAmount = Math.max(0, (b.estimatedCost * 1.05) - (b.advanceAmount || 0));
-                      const isPaid = dueAmount === 0;
+                      const statusConfig = STATUS_MAP[b.status] || { label: b.status, color: 'bg-secondary text-foreground' };
 
                       return (
                         <tr key={b.id} onClick={(e) => handleViewClick(b, e)} className="hover:bg-secondary/20 transition-all cursor-pointer">
@@ -531,51 +506,30 @@ export default function EnterpriseBookingsPage() {
                           <td className="p-4">
                             <div className="font-semibold">{b.deviceBrand} {b.deviceModel}</div>
                           </td>
-                          <td className="p-4">{b.appointmentDate} ({b.appointmentTime})</td>
+                          <td className="p-4 font-semibold text-foreground">{b.technicianName}</td>
                           <td className="p-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              isPaid ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            }`}>
-                              {isPaid ? 'PAID IN FULL' : `DUE: ৳${dueAmount.toLocaleString()}`}
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusConfig.color}`}>
+                              {statusConfig.label}
                             </span>
                           </td>
-                          <td className="p-4 font-mono font-bold text-emerald-400">৳{b.estimatedCost.toLocaleString()}</td>
                           <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* Module 1 & 2: Payment Center Action Button */}
+                              {/* Module 6: Reassign Technician Button */}
                               <button
-                                onClick={(e) => { e.stopPropagation(); setShowPaymentCenterModal(b); setPayAmount(dueAmount > 0 ? dueAmount : 500); }}
-                                className="px-2.5 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-                                title="Open Payment Center"
+                                onClick={(e) => { e.stopPropagation(); setShowReassignModal(b); }}
+                                className="px-2.5 py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/30 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                title="Reassign Technician"
                               >
-                                <CreditCard className="h-3 w-3" /> Collect Payment
+                                <UserCheck2 className="h-3 w-3" /> Reassign
                               </button>
 
-                              {/* Module 3 & 4: View Invoice Button */}
+                              {/* Module 4 & 5: Smart Reminder Button */}
                               <button
-                                onClick={(e) => { e.stopPropagation(); setShowInvoiceModal(b); }}
-                                className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-all cursor-pointer"
-                                title="View & Print Invoice"
+                                onClick={(e) => { e.stopPropagation(); setShowReminderModal(b); }}
+                                className="p-1.5 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all cursor-pointer"
+                                title="Schedule Smart Reminder"
                               >
-                                <Receipt className="h-4 w-4" />
-                              </button>
-
-                              {/* Module 7: Pickup Delivery Button */}
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setShowPickupModal(b); }}
-                                className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all cursor-pointer"
-                                title="Customer Pickup & OTP Verification"
-                              >
-                                <PackageCheck className="h-4 w-4" />
-                              </button>
-
-                              {/* Module 6: Refund Button */}
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setShowRefundModal(b); setRefundAmount(b.advanceAmount || 500); }}
-                                className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
-                                title="Process Financial Refund"
-                              >
-                                <RotateCcw className="h-4 w-4" />
+                                <Bell className="h-4 w-4" />
                               </button>
 
                               <button onClick={(e) => handleViewClick(b, e)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg cursor-pointer">
@@ -599,269 +553,65 @@ export default function EnterpriseBookingsPage() {
         </main>
       </div>
 
-      {/* MODULE 1 & 2: PAYMENT CENTER MODAL */}
-      {showPaymentCenterModal && (
+      {/* MODULE 6: REASSIGN TECHNICIAN MODAL */}
+      {showReassignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-lg bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-5">
+          <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-purple-400" /> Payment Collection Center — #{showPaymentCenterModal.id}
+                <UserCheck2 className="h-5 w-5 text-cyan-400" /> Reassign Technician — #{showReassignModal.id}
               </h3>
-              <button onClick={() => setShowPaymentCenterModal(null)} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
+              <button onClick={() => setShowReassignModal(null)} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleProcessPaymentSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleReassignSubmit} className="space-y-4 text-xs">
               <div className="p-3 bg-secondary/20 rounded-xl space-y-1">
-                <div className="flex justify-between font-bold text-muted-foreground">
-                  <span>Customer: {showPaymentCenterModal.customerName}</span>
-                  <span>Phone: {showPaymentCenterModal.customerPhone}</span>
-                </div>
-                <div className="flex justify-between font-bold text-emerald-400 font-mono text-sm pt-1">
-                  <span>Total Repair Estimate:</span>
-                  <span>৳{(showPaymentCenterModal.estimatedCost * 1.05).toLocaleString()}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Payment Type</label>
-                  <select
-                    value={payType}
-                    onChange={(e) => setPayType(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-semibold"
-                  >
-                    <option value="ADVANCE">Advance Deposit</option>
-                    <option value="PARTIAL">Partial Payment</option>
-                    <option value="FULL">Full Settlement</option>
-                    <option value="DUE_COLLECTION">Due Collection</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Payment Method</label>
-                  <select
-                    value={payMethod}
-                    onChange={(e) => setPayMethod(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-semibold"
-                  >
-                    <option value="BKASH">bKash Merchant</option>
-                    <option value="NAGAD">Nagad Direct</option>
-                    <option value="ROCKET">Dutch-Bangla Rocket</option>
-                    <option value="UPAY">Upay Digital</option>
-                    <option value="CASH">Counter Cash</option>
-                    <option value="CARD">POS Credit/Debit Card</option>
-                    <option value="BANK_TRANSFER">Direct Bank Transfer</option>
-                  </select>
-                </div>
+                <span className="text-muted-foreground block">Current Assigned Engineer:</span>
+                <div className="font-bold text-foreground">{showReassignModal.technicianName}</div>
               </div>
 
               <div>
-                <label className="block font-bold text-muted-foreground mb-1">Payment Amount (৳) *</label>
-                <input
-                  type="number"
-                  required
-                  value={payAmount}
-                  onChange={(e) => setPayAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-mono font-bold text-base"
-                />
+                <label className="block font-bold text-muted-foreground mb-1">Select New Specialist *</label>
+                <select
+                  value={newTechId}
+                  onChange={(e) => {
+                    setNewTechId(e.target.value);
+                    const nameMap: Record<string, string> = {
+                      'tech-1': 'Tariq Zaman (Lead L4)',
+                      'tech-2': 'Farhan Chowdhury (Display Spec)',
+                      'tech-3': 'Rafiq Islam (Micro-Soldering)',
+                      'tech-4': 'Nabil Hasan (Software Specialist)',
+                    };
+                    setNewTechName(nameMap[e.target.value] || 'Specialist Engineer');
+                  }}
+                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-semibold"
+                >
+                  <option value="tech-1">Tariq Zaman (Lead L4 Hardware)</option>
+                  <option value="tech-2">Farhan Chowdhury (Display & Glass Specialist)</option>
+                  <option value="tech-3">Rafiq Islam (Micro-Soldering & IC Specialist)</option>
+                  <option value="tech-4">Nabil Hasan (Software & OS Specialist)</option>
+                </select>
               </div>
 
               <div>
-                <label className="block font-bold text-muted-foreground mb-1">Transaction ID / Reference Number</label>
-                <input
-                  type="text"
-                  placeholder="e.g. BKASH-88776655"
-                  value={payTxnId}
-                  onChange={(e) => setPayTxnId(e.target.value)}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-mono"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
-                <button type="button" onClick={() => setShowPaymentCenterModal(null)} className="px-4 py-2 bg-secondary text-foreground rounded-xl cursor-pointer">
-                  Cancel
-                </button>
-                <button type="submit" disabled={loading} className="px-6 py-2 bg-purple-600 text-white font-bold rounded-xl shadow-lg cursor-pointer">
-                  {loading ? 'Processing...' : 'Confirm & Collect Payment'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODULE 3 & 4: INVOICE GENERATOR & PRINT MODAL */}
-      {showInvoiceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-2xl bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-primary" /> Official Invoice — #{showInvoiceModal.id}
-              </h3>
-              <button onClick={() => setShowInvoiceModal(null)} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="p-6 bg-secondary/10 rounded-2xl border border-border space-y-4 text-xs font-mono">
-              <div className="flex justify-between border-b border-border/60 pb-3">
-                <div>
-                  <h4 className="font-bold text-base text-foreground font-sans">TrustZone Mobile Care ERP</h4>
-                  <p className="text-[10px] text-muted-foreground">Dhanmondi HQ • Dhaka, Bangladesh</p>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-primary">INV-TZ-998877</div>
-                  <div className="text-[10px] text-muted-foreground">{new Date().toLocaleDateString()}</div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-[10px] font-bold text-muted-foreground block uppercase">Bill To:</span>
-                  <div className="font-bold text-foreground">{showInvoiceModal.customerName}</div>
-                  <div>{showInvoiceModal.customerPhone}</div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] font-bold text-muted-foreground block uppercase">Device Specs:</span>
-                  <div className="font-bold text-foreground">{showInvoiceModal.deviceBrand} {showInvoiceModal.deviceModel}</div>
-                  <div>IMEI: {showInvoiceModal.imei || 'TZ-IMEI-8899'}</div>
-                </div>
-              </div>
-
-              <table className="w-full border-t border-b border-border/60 my-3 text-left">
-                <thead>
-                  <tr className="text-muted-foreground text-[10px]">
-                    <th className="py-2">Item / Description</th>
-                    <th className="py-2 text-right">Cost (৳)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="py-1">Spare Parts & Hardware Replacements</td>
-                    <td className="py-1 text-right">৳{(showInvoiceModal.estimatedCost * 0.6).toLocaleString()}</td>
-                  </tr>
-                  <tr>
-                    <td className="py-1">Lead L4 Engineering Labor & Diagnostic Fee</td>
-                    <td className="py-1 text-right">৳{(showInvoiceModal.estimatedCost * 0.4).toLocaleString()}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <div className="space-y-1 text-right font-bold">
-                <div>Subtotal: ৳{showInvoiceModal.estimatedCost.toLocaleString()}</div>
-                <div>VAT / Tax (5%): ৳{(showInvoiceModal.estimatedCost * 0.05).toLocaleString()}</div>
-                <div className="text-emerald-400 text-sm font-extrabold pt-1">
-                  Grand Total: ৳{(showInvoiceModal.estimatedCost * 1.05).toLocaleString()}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
-              <button
-                onClick={() => { alert('Invoice Sent via WhatsApp & Email!'); setShowInvoiceModal(null); }}
-                className="px-4 py-2 bg-secondary text-foreground text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1"
-              >
-                <Send className="h-4 w-4" /> Share WhatsApp
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="px-5 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-lg cursor-pointer flex items-center gap-1"
-              >
-                <Printer className="h-4 w-4" /> Print Invoice
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODULE 7 & 8: CUSTOMER PICKUP & OTP VERIFICATION MODAL */}
-      {showPickupModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                <PackageCheck className="h-5 w-5 text-emerald-400" /> Customer Pickup & OTP Delivery
-              </h3>
-              <button onClick={() => setShowPickupModal(null)} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCustomerPickupSubmit} className="space-y-4 text-xs">
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-1 text-emerald-300">
-                <span className="font-bold block">Delivery Security Verification</span>
-                <p className="text-[11px]">Enter the 4-digit OTP dispatched to customer phone {showPickupModal.customerPhone} to verify identity and trigger 90-Day Auto Warranty Activation.</p>
-              </div>
-
-              <div>
-                <label className="block font-bold text-muted-foreground mb-1">Customer Verification OTP *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter OTP (e.g. 9988)"
-                  value={pickupOtp}
-                  onChange={(e) => setPickupOtp(e.target.value)}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-mono font-bold text-center tracking-widest text-lg"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowPickupModal(null)} className="px-4 py-2 bg-secondary text-foreground rounded-xl cursor-pointer">
-                  Cancel
-                </button>
-                <button type="submit" disabled={loading} className="px-6 py-2 bg-emerald-600 text-white font-bold rounded-xl shadow-lg cursor-pointer">
-                  {loading ? 'Verifying...' : 'Verify OTP & Deliver Device'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODULE 6: REFUND MODAL */}
-      {showRefundModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                <RotateCcw className="h-5 w-5 text-rose-400" /> Process Financial Refund
-              </h3>
-              <button onClick={() => setShowRefundModal(null)} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleProcessRefundSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-muted-foreground mb-1">Refund Amount (৳) *</label>
-                <input
-                  type="number"
-                  required
-                  value={refundAmount}
-                  onChange={(e) => setRefundAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-mono font-bold text-base"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-muted-foreground mb-1">Refund Reason *</label>
+                <label className="block font-bold text-muted-foreground mb-1">Reassignment Reason *</label>
                 <textarea
                   required
                   rows={3}
-                  value={refundReason}
-                  onChange={(e) => setRefundReason(e.target.value)}
+                  value={reassignReason}
+                  onChange={(e) => setReassignReason(e.target.value)}
                   className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowRefundModal(null)} className="px-4 py-2 bg-secondary text-foreground rounded-xl cursor-pointer">
+              <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+                <button type="button" onClick={() => setShowReassignModal(null)} className="px-4 py-2 bg-secondary text-foreground rounded-xl cursor-pointer">
                   Cancel
                 </button>
-                <button type="submit" disabled={loading} className="px-6 py-2 bg-rose-600 text-white font-bold rounded-xl shadow-lg cursor-pointer">
-                  {loading ? 'Processing...' : 'Confirm Refund'}
+                <button type="submit" disabled={loading} className="px-6 py-2 bg-cyan-600 text-white font-bold rounded-xl shadow-lg cursor-pointer">
+                  {loading ? 'Reassigning...' : 'Confirm Reassignment'}
                 </button>
               </div>
             </form>
@@ -869,34 +619,221 @@ export default function EnterpriseBookingsPage() {
         </div>
       )}
 
-      {/* VIEW SPECIFICATION MODAL */}
+      {/* MODULE 4 & 5: SCHEDULE SMART REMINDER MODAL */}
+      {showReminderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
+                <Bell className="h-5 w-5 text-amber-400" /> Schedule Smart Reminder — #{showReminderModal.id}
+              </h3>
+              <button onClick={() => setShowReminderModal(null)} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleScheduleReminderSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-muted-foreground mb-1">Reminder Type</label>
+                  <select
+                    value={reminderType}
+                    onChange={(e) => setReminderType(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-semibold"
+                  >
+                    <option value="TOMORROW_APPOINTMENT">Tomorrow's Appointment</option>
+                    <option value="TODAY_APPOINTMENT">Today's Appointment</option>
+                    <option value="DUE_PAYMENT">Due Payment Reminder</option>
+                    <option value="PENDING_PICKUP">Pending Pickup Alert</option>
+                    <option value="WARRANTY_EXPIRY">Warranty Expiry Reminder</option>
+                    <option value="FOLLOW_UP">Post-Repair Follow Up</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-muted-foreground mb-1">Dispatch Channel</label>
+                  <select
+                    value={reminderChannel}
+                    onChange={(e) => setReminderChannel(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground font-semibold"
+                  >
+                    <option value="WHATSAPP">WhatsApp Official</option>
+                    <option value="SMS">SMS Gateway</option>
+                    <option value="EMAIL">Customer Email</option>
+                    <option value="IN_APP">App Push Notification</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">Schedule Date</label>
+                <input
+                  type="date"
+                  value={reminderScheduledFor}
+                  onChange={(e) => setReminderScheduledFor(e.target.value)}
+                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">Reminder Message Body</label>
+                <textarea
+                  rows={3}
+                  placeholder="Custom reminder text (optional)..."
+                  value={reminderMessage}
+                  onChange={(e) => setReminderMessage(e.target.value)}
+                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+                <button type="button" onClick={() => setShowReminderModal(null)} className="px-4 py-2 bg-secondary text-foreground rounded-xl cursor-pointer">
+                  Cancel
+                </button>
+                <button type="submit" disabled={loading} className="px-6 py-2 bg-amber-500 text-black font-bold rounded-xl shadow-lg cursor-pointer">
+                  {loading ? 'Scheduling...' : 'Schedule Reminder'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW SPECIFICATION & TIMELINE MODAL */}
       {viewingBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-3xl bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-4xl bg-card border border-border/80 rounded-2xl shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h3 className="text-base font-extrabold text-foreground">Booking Specification #{viewingBooking.id}</h3>
+              <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
+                Booking Details & Automation — #{viewingBooking.id}
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${STATUS_MAP[viewingBooking.status]?.color}`}>
+                  {STATUS_MAP[viewingBooking.status]?.label}
+                </span>
+              </h3>
               <button onClick={closeModals} className="p-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div className="p-3 bg-secondary/20 rounded-xl space-y-1">
-                <span className="font-bold text-primary block uppercase tracking-wider text-[10px]">Customer Specs</span>
-                <div className="font-bold text-foreground">{viewingBooking.customerName}</div>
-                <div className="text-muted-foreground">{viewingBooking.customerPhone}</div>
-              </div>
-
-              <div className="p-3 bg-secondary/20 rounded-xl space-y-1">
-                <span className="font-bold text-primary block uppercase tracking-wider text-[10px]">Financial Summary</span>
-                <div className="font-bold text-emerald-400 font-mono">Estimate: ৳{viewingBooking.estimatedCost.toLocaleString()}</div>
-                <div className="text-muted-foreground">Advance Paid: ৳{viewingBooking.advanceAmount || 0}</div>
-              </div>
+            {/* Modal Sub-Tabs */}
+            <div className="flex items-center gap-2 border-b border-border/60 pb-2 text-xs font-bold text-muted-foreground overflow-x-auto">
+              <button
+                onClick={() => setModalTab('details')}
+                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'details' ? 'bg-primary text-primary-foreground' : ''}`}
+              >
+                Overview & Specs
+              </button>
+              <button
+                onClick={() => setModalTab('timeline')}
+                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'timeline' ? 'bg-primary text-primary-foreground' : ''}`}
+              >
+                Technician Timeline ({viewingBooking.history?.length || 0})
+              </button>
+              <button
+                onClick={() => setModalTab('notes')}
+                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'notes' ? 'bg-primary text-primary-foreground' : ''}`}
+              >
+                Internal Notes ({viewingBooking.internalNotesList?.length || 0})
+              </button>
+              <button
+                onClick={() => setModalTab('reassignment')}
+                className={`px-3 py-1.5 rounded-lg cursor-pointer ${modalTab === 'reassignment' ? 'bg-primary text-primary-foreground' : ''}`}
+              >
+                Tech Assignment Ledger ({viewingBooking.assignmentHistory?.length || 0})
+              </button>
             </div>
 
-            <div className="border-t border-border/60 pt-4 flex justify-end">
+            {/* TAB: OVERVIEW */}
+            {modalTab === 'details' && (
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="p-3 bg-secondary/20 rounded-xl space-y-1">
+                  <span className="font-bold text-primary block uppercase tracking-wider text-[10px]">Customer Specs</span>
+                  <div className="font-bold text-foreground">{viewingBooking.customerName}</div>
+                  <div className="text-muted-foreground">{viewingBooking.customerPhone}</div>
+                </div>
+
+                <div className="p-3 bg-secondary/20 rounded-xl space-y-1">
+                  <span className="font-bold text-primary block uppercase tracking-wider text-[10px]">Device & Tech</span>
+                  <div className="font-bold text-foreground">{viewingBooking.deviceBrand} {viewingBooking.deviceModel}</div>
+                  <div className="text-muted-foreground">Assigned: {viewingBooking.technicianName}</div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: TECHNICIAN TIMELINE */}
+            {modalTab === 'timeline' && (
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-foreground uppercase tracking-wider">Automated Lifecycle Timeline</h4>
+                <div className="space-y-2 relative border-l-2 border-primary/30 pl-4 ml-2">
+                  {(viewingBooking.history || []).map((h, idx) => (
+                    <div key={idx} className="relative pb-2">
+                      <div className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-primary border-2 border-card" />
+                      <div className="font-bold text-foreground flex items-center gap-2">
+                        <span>{h.status}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{new Date(h.timestamp).toLocaleString()}</span>
+                      </div>
+                      <p className="text-muted-foreground text-[11px] mt-0.5">{h.note}</p>
+                      <div className="text-[9px] text-muted-foreground font-semibold">By: {h.updatedBy || 'System Automation'}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB: INTERNAL NOTES */}
+            {modalTab === 'notes' && (
+              <div className="space-y-4 text-xs">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Type a private internal note..."
+                    value={newNoteText}
+                    onChange={(e) => setNewNoteText(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-secondary/30 border border-border rounded-lg text-foreground"
+                  />
+                  <button onClick={handleAddNote} className="px-4 py-2 bg-primary text-primary-foreground font-bold rounded-lg cursor-pointer">
+                    Add Note
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {(viewingBooking.internalNotesList || []).map((n) => (
+                    <div key={n.id} className="p-3 bg-secondary/20 border border-border rounded-xl space-y-1">
+                      <div className="flex justify-between font-bold">
+                        <span className="text-primary">{n.author}</span>
+                        <span className="text-[10px] text-muted-foreground">{new Date((n as any).timestamp || n.createdAt || Date.now()).toLocaleString()}</span>
+                      </div>
+                      <p className="text-foreground">{n.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB: REASSIGNMENT LEDGER */}
+            {modalTab === 'reassignment' && (
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-foreground uppercase tracking-wider">Technician Reassignment History</h4>
+                <div className="space-y-2">
+                  {(viewingBooking.assignmentHistory || []).map((a) => (
+                    <div key={a.id} className="p-3 bg-secondary/20 border border-border rounded-xl flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-foreground">Reassigned from {a.previousTechName} ➔ {a.newTechName}</div>
+                        <div className="text-[11px] text-muted-foreground">Reason: {a.reassignmentReason}</div>
+                      </div>
+                      <div className="text-right text-[10px] text-muted-foreground font-mono">
+                        <div>Approved by {a.approvedBy}</div>
+                        <div>{new Date(a.transferredAt).toLocaleString()}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="border-t border-border/60 pt-3 flex justify-end">
               <button onClick={closeModals} className="px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl cursor-pointer">
-                Close Specification
+                Close
               </button>
             </div>
           </div>

@@ -115,6 +115,32 @@ export interface BookingCommunicationLog {
 
 
 
+
+export interface TechnicianAssignmentRecord {
+  id: string;
+  bookingId: string;
+  previousTechId: string;
+  previousTechName: string;
+  newTechId: string;
+  newTechName: string;
+  reassignmentReason: string;
+  approvedBy: string;
+  transferredAt: string;
+}
+
+export interface SmartReminderRecord {
+  id: string;
+  bookingId: string;
+  type: 'TOMORROW_APPOINTMENT' | 'TODAY_APPOINTMENT' | 'DUE_PAYMENT' | 'PENDING_PICKUP' | 'WARRANTY_EXPIRY' | 'MISSED_APPOINTMENT' | 'FOLLOW_UP';
+  channel: 'WHATSAPP' | 'SMS' | 'EMAIL' | 'IN_APP';
+  scheduledFor: string;
+  sentAt?: string;
+  status: 'SCHEDULED' | 'DISPATCHED' | 'FAILED';
+  recipient: string;
+  message: string;
+  createdAt: string;
+}
+
 export interface BookingPaymentRecord {
   id: string;
   bookingId: string;
@@ -290,6 +316,8 @@ export interface BookingModel {
   deviceIntakeDetail?: DeviceIntakeDetail;
   invoiceData?: BookingInvoiceModel;
   warrantyData?: BookingWarrantyModel;
+  assignmentHistory?: TechnicianAssignmentRecord[];
+  remindersList?: SmartReminderRecord[];
   pickupOtp?: string;
   isDelivered?: boolean;
   isDeleted?: boolean;
@@ -685,6 +713,72 @@ function saveMockTickets(tickets: TicketModel[]) {
 export const api = {
   
   bookings: {
+    async reassignTechnician(bookingId: string, newTechId: string, newTechName: string, reason: string, approvedBy: string = 'Manager Admin'): Promise<ApiResponse<BookingModel>> {
+      const bookings = getMockBookings();
+      const idx = bookings.findIndex(b => b.id === bookingId);
+      if (idx !== -1) {
+        const prevId = bookings[idx].technicianId;
+        const prevName = bookings[idx].technicianName;
+
+        const record: TechnicianAssignmentRecord = {
+          id: `REASSIGN-${Date.now().toString().slice(-6)}`,
+          bookingId,
+          previousTechId: prevId,
+          previousTechName: prevName,
+          newTechId,
+          newTechName,
+          reassignmentReason: reason,
+          approvedBy,
+          transferredAt: new Date().toISOString()
+        };
+
+        const assignments = bookings[idx].assignmentHistory || [];
+        assignments.unshift(record);
+        bookings[idx].assignmentHistory = assignments;
+
+        bookings[idx].technicianId = newTechId;
+        bookings[idx].technicianName = newTechName;
+        bookings[idx].updatedAt = new Date().toISOString();
+
+        const history = bookings[idx].history || [];
+        history.push({
+          timestamp: new Date().toISOString(),
+          status: bookings[idx].status,
+          note: `Technician reassigned from ${prevName} to ${newTechName}. Reason: ${reason}`,
+          updatedBy: approvedBy,
+          branch: bookings[idx].branchName
+        });
+        bookings[idx].history = history;
+
+        saveMockBookings(bookings);
+        addMockAuditLog('booking_technician_reassigned', { bookingId, prevName, newTechName, reason, approvedBy });
+        return { success: true, data: bookings[idx] };
+      }
+      return { success: false, message: 'Booking not found.', data: null as any };
+    },
+
+    async scheduleReminder(bookingId: string, reminder: Omit<SmartReminderRecord, 'id' | 'createdAt' | 'status'>): Promise<ApiResponse<SmartReminderRecord>> {
+      const bookings = getMockBookings();
+      const idx = bookings.findIndex(b => b.id === bookingId);
+      if (idx !== -1) {
+        const newReminder: SmartReminderRecord = {
+          id: `REM-${Date.now().toString().slice(-6)}`,
+          ...reminder,
+          status: 'SCHEDULED',
+          createdAt: new Date().toISOString()
+        };
+
+        const list = bookings[idx].remindersList || [];
+        list.unshift(newReminder);
+        bookings[idx].remindersList = list;
+
+        saveMockBookings(bookings);
+        addMockAuditLog('booking_reminder_scheduled', { bookingId, type: reminder.type, scheduledFor: reminder.scheduledFor });
+        return { success: true, data: newReminder };
+      }
+      return { success: false, message: 'Booking not found.', data: null as any };
+    },
+
     async processPayment(bookingId: string, payment: Omit<BookingPaymentRecord, 'id' | 'createdAt'>): Promise<ApiResponse<BookingInvoiceModel>> {
       try {
         return await apiRequest<ApiResponse<BookingInvoiceModel>>(`/bookings/${bookingId}/payments`, {
