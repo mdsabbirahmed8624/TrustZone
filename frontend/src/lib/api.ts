@@ -151,7 +151,18 @@ export async function apiRequest<T = unknown>(
     return await response.json() as T;
   } catch (error: unknown) {
     const err = error as Error;
-    if (err.message && (err.message.includes('fetch') || err.message.includes('Failed to fetch') || err.message.includes('BACKEND_OFFLINE'))) {
+    if (
+      err.message &&
+      (err.message.includes('fetch') ||
+        err.message.includes('Failed to fetch') ||
+        err.message.includes('BACKEND_OFFLINE') ||
+        err.message.includes('API request failed') ||
+        err.message.includes('505') ||
+        err.message.includes('500') ||
+        err.message.includes('502') ||
+        err.message.includes('503') ||
+        err.message.includes('504'))
+    ) {
       throw new Error('BACKEND_OFFLINE');
     }
     throw error;
