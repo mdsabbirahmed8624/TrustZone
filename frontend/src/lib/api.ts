@@ -2597,40 +2597,29 @@ export const api = {
       try {
         return await apiRequest<ApiResponse<any[]>>('/automation/rules', { token });
       } catch {
-        if (typeof window === 'undefined') return { success: true, data: [] };
-        const stored = localStorage.getItem('tz_mock_rules');
-        if (!stored) {
-          const defaults = [
-            { id: 'rule-1', name: 'Delivered Ticket Warranty', triggerEvent: 'TICKET_DELIVERED', conditions: { logicalOperator: 'AND', conditions: [] }, actions: [{ type: 'GENERATE_WARRANTY' }], priority: 'HIGH', enabled: true },
-            { id: 'rule-2', name: 'Low Stock Manager Alert', triggerEvent: 'STOCK_BELOW_THRESHOLD', conditions: { logicalOperator: 'AND', conditions: [] }, actions: [{ type: 'SEND_NOTIFICATION', params: { channel: 'IN_APP', priority: 'HIGH', title: 'Low Stock Alert', message: 'Part is below threshold' } }], priority: 'HIGH', enabled: true },
-            { id: 'rule-3', name: 'Invoice Overdue Reminder', triggerEvent: 'INVOICE_OVERDUE', conditions: { logicalOperator: 'AND', conditions: [] }, actions: [{ type: 'SEND_NOTIFICATION', params: { channel: 'EMAIL', priority: 'MEDIUM', title: 'Invoice Unpaid Reminder', message: 'Invoice {{invoice}} remains unpaid' } }], priority: 'MEDIUM', enabled: true }
-          ];
-          localStorage.setItem('tz_mock_rules', JSON.stringify(defaults));
-          return { success: true, data: defaults };
-        }
-        return { success: true, data: JSON.parse(stored) };
+        return { success: true, data: getMockAutomationRules() };
       }
     },
-    async createRule(body: any, token?: string): Promise<ApiResponse<any>> {
+    async createRule(data: any, token?: string): Promise<ApiResponse<any>> {
       try {
-        return await apiRequest<ApiResponse<any>>('/automation/rules', { method: 'POST', body: JSON.stringify(body), token });
+        return await apiRequest<ApiResponse<any>>('/automation/rules', { method: 'POST', body: JSON.stringify(data), token });
       } catch {
-        const rules = JSON.parse(localStorage.getItem('tz_mock_rules') || '[]');
-        const newRule = { id: `rule-${Date.now()}`, ...body, enabled: true, createdAt: new Date().toISOString() };
-        rules.push(newRule);
-        localStorage.setItem('tz_mock_rules', JSON.stringify(rules));
+        const rules = getMockAutomationRules();
+        const newRule = { id: `rule-${Date.now()}`, ...data, createdAt: new Date().toISOString() };
+        rules.unshift(newRule);
+        saveMockAutomationRules(rules);
         return { success: true, data: newRule };
       }
     },
-    async updateRule(id: string, body: any, token?: string): Promise<ApiResponse<any>> {
+    async updateRule(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
       try {
-        return await apiRequest<ApiResponse<any>>(`/automation/rules/${id}`, { method: 'PUT', body: JSON.stringify(body), token });
+        return await apiRequest<ApiResponse<any>>(`/automation/rules/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
       } catch {
-        const rules = JSON.parse(localStorage.getItem('tz_mock_rules') || '[]');
+        const rules = getMockAutomationRules();
         const idx = rules.findIndex((r: any) => r.id === id);
         if (idx !== -1) {
-          rules[idx] = { ...rules[idx], ...body };
-          localStorage.setItem('tz_mock_rules', JSON.stringify(rules));
+          rules[idx] = { ...rules[idx], ...data };
+          saveMockAutomationRules(rules);
           return { success: true, data: rules[idx] };
         }
         return { success: false, data: null };
@@ -2640,90 +2629,75 @@ export const api = {
       try {
         return await apiRequest<ApiResponse<any>>(`/automation/rules/${id}`, { method: 'DELETE', token });
       } catch {
-        const rules = JSON.parse(localStorage.getItem('tz_mock_rules') || '[]');
+        const rules = getMockAutomationRules();
         const filtered = rules.filter((r: any) => r.id !== id);
-        localStorage.setItem('tz_mock_rules', JSON.stringify(filtered));
+        saveMockAutomationRules(filtered);
         return { success: true, data: null };
       }
     },
-    async simulateRule(id: string, contextObj: any, token?: string): Promise<ApiResponse<any>> {
+    async simulateRule(id: string, context: any, token?: string): Promise<ApiResponse<any>> {
       try {
-        return await apiRequest<ApiResponse<any>>(`/automation/rules/${id}/simulate`, { method: 'POST', body: JSON.stringify(contextObj), token });
-      } catch {
-        return { success: true, data: { matchResult: true, potentialActions: [{ type: 'SEND_NOTIFICATION' }] } };
-      }
-    },
-    async fetchExecutions(ruleId?: string, token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        const q = ruleId ? `?ruleId=${ruleId}` : '';
-        return await apiRequest<ApiResponse<any[]>>(`/automation/executions${q}`, { token });
+        return await apiRequest<ApiResponse<any>>(`/automation/rules/${id}/simulate`, { method: 'POST', body: JSON.stringify({ context }), token });
       } catch {
         return {
           success: true,
-          data: [
-            { id: 'exec-1', rule: { name: 'Low Stock Manager Alert' }, status: 'SUCCESS', retryCount: 0, createdAt: new Date().toISOString(), logs: [{ message: 'Evaluated rule successfully', level: 'INFO' }] }
-          ]
+          data: {
+            matchResult: true,
+            evaluatedConditions: [{ field: 'status', operator: 'EQUALS', matched: true }],
+            potentialActions: ['SEND_NOTIFICATION', 'GENERATE_WARRANTY']
+          }
         };
+      }
+    },
+    async fetchExecutions(query?: any, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        const q = typeof query === 'string' ? `?ruleId=${query}` : '';
+        return await apiRequest<ApiResponse<any[]>>(`/automation/executions${q}`, { token });
+      } catch {
+        return { success: true, data: getMockAutomationExecutions() };
       }
     },
     async retryExecution(id: string, token?: string): Promise<ApiResponse<any>> {
       try {
         return await apiRequest<ApiResponse<any>>(`/automation/executions/${id}/retry`, { method: 'POST', token });
       } catch {
-        return { success: true, data: null };
-      }
-    },
-    async fetchWebhookLogs(ruleId?: string, token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        const q = ruleId ? `?ruleId=${ruleId}` : '';
-        return await apiRequest<ApiResponse<any[]>>(`/automation/webhooks/logs${q}`, { token });
-      } catch {
-        return {
-          success: true,
-          data: [
-            { id: 'web-1', rule: { name: 'Zapier Lead Broadcast' }, url: 'https://hooks.zapier.com/hooks/catch/123/abc', method: 'POST', responseStatus: 200, status: 'SUCCESS', createdAt: new Date().toISOString() }
-          ]
-        };
-      }
-    },
-    async fetchTemplates(type?: string, token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        const q = type ? `?type=${type}` : '';
-        return await apiRequest<ApiResponse<any[]>>(`/notifications/templates${q}`, { token });
-      } catch {
-        if (typeof window === 'undefined') return { success: true, data: [] };
-        const stored = localStorage.getItem('tz_mock_templates');
-        if (!stored) {
-          const defaults = [
-            { id: 'temp-1', name: 'Email Invoice Due', type: 'EMAIL', subject: 'Invoice Payment Due', content: 'Dear {{customer}}, your invoice {{invoice}} for ৳{{amount}} is ready.', variables: ['customer', 'invoice', 'amount'] },
-            { id: 'temp-2', name: 'SMS Delivery Status', type: 'SMS', content: 'TZ Care: Ticket {{ticket}} is ready for pickup in {{branch}}.', variables: ['ticket', 'branch'] }
-          ];
-          localStorage.setItem('tz_mock_templates', JSON.stringify(defaults));
-          return { success: true, data: defaults };
+        const execs = getMockAutomationExecutions();
+        const found = execs.find((e: any) => e.id === id);
+        if (found) {
+          found.status = 'SUCCESS';
+          saveMockAutomationExecutions(execs);
         }
-        return { success: true, data: JSON.parse(stored) };
+        return { success: true, data: found || null };
       }
     },
-    async createTemplate(body: any, token?: string): Promise<ApiResponse<any>> {
+    async fetchTemplates(query?: any, token?: string): Promise<ApiResponse<any[]>> {
       try {
-        return await apiRequest<ApiResponse<any>>('/notifications/templates', { method: 'POST', body: JSON.stringify(body), token });
+        const q = typeof query === 'string' ? `?type=${query}` : '';
+        return await apiRequest<ApiResponse<any[]>>(`/automation/templates${q}`, { token });
       } catch {
-        const temps = JSON.parse(localStorage.getItem('tz_mock_templates') || '[]');
-        const newTemp = { id: `temp-${Date.now()}`, ...body, createdAt: new Date().toISOString() };
-        temps.push(newTemp);
-        localStorage.setItem('tz_mock_templates', JSON.stringify(temps));
+        return { success: true, data: getMockAutomationTemplates() };
+      }
+    },
+    async createTemplate(data: any, token?: string): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>('/automation/templates', { method: 'POST', body: JSON.stringify(data), token });
+      } catch {
+        const temps = getMockAutomationTemplates();
+        const newTemp = { id: `temp-${Date.now()}`, ...data, createdAt: new Date().toISOString() };
+        temps.unshift(newTemp);
+        saveMockAutomationTemplates(temps);
         return { success: true, data: newTemp };
       }
     },
-    async updateTemplate(id: string, body: any, token?: string): Promise<ApiResponse<any>> {
+    async updateTemplate(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
       try {
-        return await apiRequest<ApiResponse<any>>(`/notifications/templates/${id}`, { method: 'PUT', body: JSON.stringify(body), token });
+        return await apiRequest<ApiResponse<any>>(`/automation/templates/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
       } catch {
-        const temps = JSON.parse(localStorage.getItem('tz_mock_templates') || '[]');
+        const temps = getMockAutomationTemplates();
         const idx = temps.findIndex((t: any) => t.id === id);
         if (idx !== -1) {
-          temps[idx] = { ...temps[idx], ...body };
-          localStorage.setItem('tz_mock_templates', JSON.stringify(temps));
+          temps[idx] = { ...temps[idx], ...data };
+          saveMockAutomationTemplates(temps);
           return { success: true, data: temps[idx] };
         }
         return { success: false, data: null };
@@ -2731,11 +2705,11 @@ export const api = {
     },
     async deleteTemplate(id: string, token?: string): Promise<ApiResponse<any>> {
       try {
-        return await apiRequest<ApiResponse<any>>(`/notifications/templates/${id}`, { method: 'DELETE', token });
+        return await apiRequest<ApiResponse<any>>(`/automation/templates/${id}`, { method: 'DELETE', token });
       } catch {
-        const temps = JSON.parse(localStorage.getItem('tz_mock_templates') || '[]');
+        const temps = getMockAutomationTemplates();
         const filtered = temps.filter((t: any) => t.id !== id);
-        localStorage.setItem('tz_mock_templates', JSON.stringify(filtered));
+        saveMockAutomationTemplates(filtered);
         return { success: true, data: null };
       }
     },
@@ -2743,34 +2717,29 @@ export const api = {
       try {
         return await apiRequest<ApiResponse<any[]>>('/automation/scheduler/jobs', { token });
       } catch {
-        return {
-          success: true,
-          data: [
-            { name: 'LOW_STOCK_SCAN', description: 'Checks branch parts inventory counts against low buffer limits.', cron: '0 9 * * *' },
-            { name: 'WARRANTY_EXPIRY_SCAN', description: 'Scans warranties expiring within 30 days and sends alerts.', cron: '0 10 * * *' },
-            { name: 'PENDING_PAYMENT_SCAN', description: 'Scans unpaid invoices past 14 days and triggers collection.', cron: '0 11 * * *' },
-            { name: 'DAILY_CLOSING', description: 'Scans branches checking daily cash drawer balancing compliance.', cron: '0 23 * * *' }
-          ]
-        };
+        return { success: true, data: getMockAutomationJobs() };
       }
     },
     async fetchSchedulerLogs(token?: string): Promise<ApiResponse<any[]>> {
       try {
         return await apiRequest<ApiResponse<any[]>>('/automation/scheduler/logs', { token });
       } catch {
-        return {
-          success: true,
-          data: [
-            { id: 'log-1', jobName: 'LOW_STOCK_SCAN', status: 'SUCCESS', message: 'Scanned 12 items, 2 warning triggers sent', startedAt: new Date().toISOString(), finishedAt: new Date().toISOString() }
-          ]
-        };
+        return { success: true, data: getMockAutomationExecutions() };
       }
     },
     async triggerScheduler(token?: string): Promise<ApiResponse<any>> {
       try {
         return await apiRequest<ApiResponse<any>>('/automation/scheduler/trigger', { method: 'POST', token });
       } catch {
-        return { success: true, data: null };
+        return { success: true, data: { triggeredJobs: 4, message: 'All scheduled scan routines executed successfully.' } };
+      }
+    },
+    async fetchWebhookLogs(query?: any, token?: string): Promise<ApiResponse<any[]>> {
+      try {
+        const q = typeof query === 'string' ? `?ruleId=${query}` : '';
+        return await apiRequest<ApiResponse<any[]>>(`/automation/webhooks/logs${q}`, { token });
+      } catch {
+        return { success: true, data: getMockWebhookLogs() };
       }
     }
   },
@@ -4504,155 +4473,6 @@ export const api = {
     },
     async revokeApiKey(id: string, token?: string): Promise<ApiResponse<any>> {
       return apiRequest<ApiResponse<any>>(`/integrations/api-keys/${id}`, { method: 'DELETE', token });
-    }
-  },
-
-  automation: {
-    async fetchRules(token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        return await apiRequest<ApiResponse<any[]>>('/automation/rules', { token });
-      } catch {
-        return { success: true, data: getMockAutomationRules() };
-      }
-    },
-    async createRule(data: any, token?: string): Promise<ApiResponse<any>> {
-      try {
-        return await apiRequest<ApiResponse<any>>('/automation/rules', { method: 'POST', body: JSON.stringify(data), token });
-      } catch {
-        const rules = getMockAutomationRules();
-        const newRule = { id: `rule-${Date.now()}`, ...data, createdAt: new Date().toISOString() };
-        rules.unshift(newRule);
-        saveMockAutomationRules(rules);
-        return { success: true, data: newRule };
-      }
-    },
-    async updateRule(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
-      try {
-        return await apiRequest<ApiResponse<any>>(`/automation/rules/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
-      } catch {
-        const rules = getMockAutomationRules();
-        const idx = rules.findIndex((r: any) => r.id === id);
-        if (idx !== -1) {
-          rules[idx] = { ...rules[idx], ...data };
-          saveMockAutomationRules(rules);
-          return { success: true, data: rules[idx] };
-        }
-        return { success: false, data: null };
-      }
-    },
-    async deleteRule(id: string, token?: string): Promise<ApiResponse<any>> {
-      try {
-        return await apiRequest<ApiResponse<any>>(`/automation/rules/${id}`, { method: 'DELETE', token });
-      } catch {
-        const rules = getMockAutomationRules();
-        const filtered = rules.filter((r: any) => r.id !== id);
-        saveMockAutomationRules(filtered);
-        return { success: true, data: null };
-      }
-    },
-    async simulateRule(id: string, context: any, token?: string): Promise<ApiResponse<any>> {
-      try {
-        return await apiRequest<ApiResponse<any>>(`/automation/rules/${id}/simulate`, { method: 'POST', body: JSON.stringify({ context }), token });
-      } catch {
-        return {
-          success: true,
-          data: {
-            matchResult: true,
-            evaluatedConditions: [{ field: 'status', operator: 'EQUALS', matched: true }],
-            potentialActions: ['SEND_NOTIFICATION', 'GENERATE_WARRANTY']
-          }
-        };
-      }
-    },
-    async fetchExecutions(query?: any, token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        return await apiRequest<ApiResponse<any[]>>('/automation/executions', { token });
-      } catch {
-        return { success: true, data: getMockAutomationExecutions() };
-      }
-    },
-    async retryExecution(id: string, token?: string): Promise<ApiResponse<any>> {
-      try {
-        return await apiRequest<ApiResponse<any>>(`/automation/executions/${id}/retry`, { method: 'POST', token });
-      } catch {
-        const execs = getMockAutomationExecutions();
-        const found = execs.find((e: any) => e.id === id);
-        if (found) {
-          found.status = 'SUCCESS';
-          saveMockAutomationExecutions(execs);
-        }
-        return { success: true, data: found || null };
-      }
-    },
-    async fetchTemplates(query?: any, token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        return await apiRequest<ApiResponse<any[]>>('/automation/templates', { token });
-      } catch {
-        return { success: true, data: getMockAutomationTemplates() };
-      }
-    },
-    async createTemplate(data: any, token?: string): Promise<ApiResponse<any>> {
-      try {
-        return await apiRequest<ApiResponse<any>>('/automation/templates', { method: 'POST', body: JSON.stringify(data), token });
-      } catch {
-        const temps = getMockAutomationTemplates();
-        const newTemp = { id: `temp-${Date.now()}`, ...data, createdAt: new Date().toISOString() };
-        temps.unshift(newTemp);
-        saveMockAutomationTemplates(temps);
-        return { success: true, data: newTemp };
-      }
-    },
-    async updateTemplate(id: string, data: any, token?: string): Promise<ApiResponse<any>> {
-      try {
-        return await apiRequest<ApiResponse<any>>(`/automation/templates/${id}`, { method: 'PUT', body: JSON.stringify(data), token });
-      } catch {
-        const temps = getMockAutomationTemplates();
-        const idx = temps.findIndex((t: any) => t.id === id);
-        if (idx !== -1) {
-          temps[idx] = { ...temps[idx], ...data };
-          saveMockAutomationTemplates(temps);
-          return { success: true, data: temps[idx] };
-        }
-        return { success: false, data: null };
-      }
-    },
-    async deleteTemplate(id: string, token?: string): Promise<ApiResponse<any>> {
-      try {
-        return await apiRequest<ApiResponse<any>>(`/automation/templates/${id}`, { method: 'DELETE', token });
-      } catch {
-        const temps = getMockAutomationTemplates();
-        const filtered = temps.filter((t: any) => t.id !== id);
-        saveMockAutomationTemplates(filtered);
-        return { success: true, data: null };
-      }
-    },
-    async fetchSchedulerJobs(token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        return await apiRequest<ApiResponse<any[]>>('/automation/scheduler/jobs', { token });
-      } catch {
-        return { success: true, data: getMockAutomationJobs() };
-      }
-    },
-    async fetchSchedulerLogs(token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        return await apiRequest<ApiResponse<any[]>>('/automation/scheduler/logs', { token });
-      } catch {
-        return { success: true, data: getMockAutomationExecutions() };
-      }
-    },
-    async triggerScheduler(token?: string): Promise<ApiResponse<any>> {
-      try {
-        return await apiRequest<ApiResponse<any>>('/automation/scheduler/trigger', { method: 'POST', token });
-      } catch {
-        return { success: true, data: { triggeredJobs: 4, message: 'All scheduled scan routines executed successfully.' } };
-      }
-    },
-    async fetchWebhookLogs(query?: any, token?: string): Promise<ApiResponse<any[]>> {
-      try {
-        return await apiRequest<ApiResponse<any[]>>('/automation/webhooks/logs', { token });
-      } catch {
-        return { success: true, data: getMockWebhookLogs() };
-      }
     }
   }
 };
