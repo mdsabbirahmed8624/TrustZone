@@ -114,6 +114,52 @@ export interface BookingCommunicationLog {
 }
 
 
+
+export interface BookingPaymentRecord {
+  id: string;
+  bookingId: string;
+  invoiceId: string;
+  amount: number;
+  paymentMethod: 'CASH' | 'CARD' | 'BKASH' | 'NAGAD' | 'ROCKET' | 'UPAY' | 'BANK_TRANSFER';
+  type: 'ADVANCE' | 'PARTIAL' | 'FULL' | 'DUE_COLLECTION' | 'REFUND';
+  transactionId?: string;
+  createdAt: string;
+  cashierName: string;
+  notes?: string;
+}
+
+export interface BookingInvoiceModel {
+  invoiceNumber: string;
+  bookingId: string;
+  customerName: string;
+  customerPhone: string;
+  deviceInfo: string;
+  partsTotal: number;
+  laborTotal: number;
+  discount: number;
+  tax: number;
+  subtotal: number;
+  grandTotal: number;
+  advancePaid: number;
+  amountPaid: number;
+  dueAmount: number;
+  status: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'REFUNDED';
+  payments: BookingPaymentRecord[];
+  createdAt: string;
+}
+
+export interface BookingWarrantyModel {
+  warrantyId: string;
+  bookingId: string;
+  status: 'PENDING_ACTIVATION' | 'ACTIVE' | 'EXPIRED' | 'VOIDED';
+  startDate: string;
+  endDate: string;
+  durationDays: number;
+  coverageDetails: string;
+  serialNumber: string;
+  activatedAt?: string;
+}
+
 export interface DeviceIntakeDetail {
   imei1: string;
   imei2?: string;
@@ -242,6 +288,10 @@ export interface BookingModel {
   intakeSummary?: any;
   aiRecommendations?: any;
   deviceIntakeDetail?: DeviceIntakeDetail;
+  invoiceData?: BookingInvoiceModel;
+  warrantyData?: BookingWarrantyModel;
+  pickupOtp?: string;
+  isDelivered?: boolean;
   isDeleted?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -635,6 +685,143 @@ function saveMockTickets(tickets: TicketModel[]) {
 export const api = {
   
   bookings: {
+    async processPayment(bookingId: string, payment: Omit<BookingPaymentRecord, 'id' | 'createdAt'>): Promise<ApiResponse<BookingInvoiceModel>> {
+      try {
+        return await apiRequest<ApiResponse<BookingInvoiceModel>>(`/bookings/${bookingId}/payments`, {
+          method: 'POST',
+          body: JSON.stringify(payment)
+        });
+      } catch {
+        const bookings = getMockBookings();
+        const idx = bookings.findIndex(b => b.id === bookingId);
+        if (idx !== -1) {
+          const inv = bookings[idx].invoiceData || {
+            invoiceNumber: `INV-TZ-${Date.now().toString().slice(-6)}`,
+            bookingId,
+            customerName: bookings[idx].customerName,
+            customerPhone: bookings[idx].customerPhone,
+            deviceInfo: `${bookings[idx].deviceBrand} ${bookings[idx].deviceModel}`,
+            partsTotal: bookings[idx].estimatedCost * 0.6,
+            laborTotal: bookings[idx].estimatedCost * 0.4,
+            discount: bookings[idx].discount || 0,
+            tax: bookings[idx].estimatedCost * 0.05,
+            subtotal: bookings[idx].estimatedCost,
+            grandTotal: bookings[idx].estimatedCost * 1.05 - (bookings[idx].discount || 0),
+            advancePaid: bookings[idx].advanceAmount || 0,
+            amountPaid: 0,
+            dueAmount: bookings[idx].estimatedCost,
+            status: 'UNPAID',
+            payments: [],
+            createdAt: new Date().toISOString()
+          };
+
+          const newPayment: BookingPaymentRecord = {
+            id: `PAY-${Date.now().toString().slice(-6)}`,
+            ...payment,
+            createdAt: new Date().toISOString()
+          };
+
+          inv.payments.push(newPayment);
+          inv.amountPaid = inv.payments.filter(p => p.type !== 'REFUND').reduce((sum, p) => sum + p.amount, 0);
+          inv.dueAmount = Math.max(0, inv.grandTotal - inv.amountPaid);
+          inv.status = inv.dueAmount === 0 ? 'PAID' : (inv.amountPaid > 0 ? 'PARTIALLY_PAID' : 'UNPAID');
+
+          bookings[idx].invoiceData = inv;
+          bookings[idx].advanceAmount = inv.amountPaid;
+          bookings[idx].updatedAt = new Date().toISOString();
+
+          saveMockBookings(bookings);
+          addMockAuditLog('booking_payment_processed', { bookingId, amount: payment.amount, method: payment.paymentMethod });
+          return { success: true, data: inv };
+        }
+        return { success: false, message: 'Booking not found.', data: null as any };
+      }
+    },
+
+    async generateInvoice(bookingId: string): Promise<ApiResponse<BookingInvoiceModel>> {
+      const bookings = getMockBookings();
+      const b = bookings.find(x => x.id === bookingId);
+      if (!b) return { success: false, message: 'Booking not found.', data: null as any };
+
+      const inv: BookingInvoiceModel = b.invoiceData || {
+        invoiceNumber: `INV-TZ-${Date.now().toString().slice(-6)}`,
+        bookingId,
+        customerName: b.customerName,
+        customerPhone: b.customerPhone,
+        deviceInfo: `${b.deviceBrand} ${b.deviceModel}`,
+        partsTotal: b.estimatedCost * 0.6,
+        laborTotal: b.estimatedCost * 0.4,
+        discount: b.discount || 0,
+        tax: b.estimatedCost * 0.05,
+        subtotal: b.estimatedCost,
+        grandTotal: b.estimatedCost * 1.05 - (b.discount || 0),
+        advancePaid: b.advanceAmount || 0,
+        amountPaid: b.advanceAmount || 0,
+        dueAmount: Math.max(0, (b.estimatedCost * 1.05 - (b.discount || 0)) - (b.advanceAmount || 0)),
+        status: (b.advanceAmount || 0) >= (b.estimatedCost * 1.05) ? 'PAID' : 'UNPAID',
+        payments: [],
+        createdAt: new Date().toISOString()
+      };
+
+      return { success: true, data: inv };
+    },
+
+    async processCustomerPickup(bookingId: string, otpCode: string, deliveredBy: string = 'Desk Staff'): Promise<ApiResponse<BookingModel>> {
+      const bookings = getMockBookings();
+      const idx = bookings.findIndex(b => b.id === bookingId);
+      if (idx !== -1) {
+        bookings[idx].status = 'DELIVERED';
+        bookings[idx].isDelivered = true;
+        bookings[idx].updatedAt = new Date().toISOString();
+
+        // Auto activate warranty
+        const warranty: BookingWarrantyModel = {
+          warrantyId: `WRN-${Date.now().toString().slice(-6)}`,
+          bookingId,
+          status: 'ACTIVE',
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+          durationDays: 90,
+          coverageDetails: '90-Day Full Hardware & Screen Replacement Warranty',
+          serialNumber: bookings[idx].serialNumber || bookings[idx].imei || 'TZ-SN-998877',
+          activatedAt: new Date().toISOString()
+        };
+        bookings[idx].warrantyData = warranty;
+
+        saveMockBookings(bookings);
+        addMockAuditLog('booking_customer_pickup_delivered', { bookingId, otpCode, deliveredBy });
+        return { success: true, data: bookings[idx] };
+      }
+      return { success: false, message: 'Booking not found.', data: null as any };
+    },
+
+    async processRefund(bookingId: string, refundAmount: number, reason: string): Promise<ApiResponse<BookingInvoiceModel>> {
+      const bookings = getMockBookings();
+      const idx = bookings.findIndex(b => b.id === bookingId);
+      if (idx !== -1 && bookings[idx].invoiceData) {
+        const inv = bookings[idx].invoiceData!;
+        const refundPayment: BookingPaymentRecord = {
+          id: `REF-${Date.now().toString().slice(-6)}`,
+          bookingId,
+          invoiceId: inv.invoiceNumber,
+          amount: refundAmount,
+          paymentMethod: 'CASH',
+          type: 'REFUND',
+          createdAt: new Date().toISOString(),
+          cashierName: 'Finance Admin',
+          notes: reason
+        };
+        inv.payments.push(refundPayment);
+        inv.status = 'REFUNDED';
+        bookings[idx].invoiceData = inv;
+        bookings[idx].status = 'CANCELLED';
+        saveMockBookings(bookings);
+        addMockAuditLog('booking_refund_processed', { bookingId, refundAmount, reason });
+        return { success: true, data: inv };
+      }
+      return { success: false, message: 'Invoice not found.', data: null as any };
+    },
+
     async checkInCustomer(bookingId: string, receptionStaff: string = 'Front Desk Staff'): Promise<ApiResponse<BookingModel>> {
       try {
         return await apiRequest<ApiResponse<BookingModel>>(`/bookings/${bookingId}/check-in`, {
