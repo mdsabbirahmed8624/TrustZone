@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Separate tokens for Customer and Admin
@@ -44,7 +44,7 @@ export function middleware(request: NextRequest) {
   });
 }
 
-// Ensure middleware runs only on relevant path groups
+// Ensure proxy runs only on relevant path groups
 export const config = {
   matcher: ['/admin/:path*', '/dashboard/:path*'],
 };
