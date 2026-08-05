@@ -170,6 +170,10 @@ export interface BookingModel {
   communicationLogs?: BookingCommunicationLog[];
   ticketId?: string;
   invoiceId?: string;
+  qrCode?: string;
+  queueToken?: string;
+  intakeSummary?: any;
+  aiRecommendations?: any;
   isDeleted?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -563,6 +567,65 @@ function saveMockTickets(tickets: TicketModel[]) {
 export const api = {
   
   bookings: {
+    async generateQRCode(bookingId: string): Promise<ApiResponse<{ qrCode: string; qrDataUrl: string }>> {
+      const qrCode = `TZ-QR-${bookingId}`;
+      const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrCode)}`;
+      return { success: true, data: { qrCode, qrDataUrl } };
+    },
+
+    async getQueueToken(bookingId: string): Promise<ApiResponse<{ token: string; position: number; estimatedWaitMinutes: number }>> {
+      return {
+        success: true,
+        data: {
+          token: `Q-DHQ-0${Math.floor(10 + Math.random() * 89)}`,
+          position: Math.floor(1 + Math.random() * 5),
+          estimatedWaitMinutes: Math.floor(10 + Math.random() * 25)
+        }
+      };
+    },
+
+    async saveIntakeSummary(bookingId: string, intake: any): Promise<ApiResponse<any>> {
+      try {
+        return await apiRequest<ApiResponse<any>>(`/bookings/${bookingId}/intake`, {
+          method: 'POST',
+          body: JSON.stringify(intake)
+        });
+      } catch {
+        const bookings = getMockBookings();
+        const idx = bookings.findIndex(b => b.id === bookingId);
+        if (idx !== -1) {
+          bookings[idx].intakeSummary = intake;
+          saveMockBookings(bookings);
+        }
+        return { success: true, data: intake };
+      }
+    },
+
+    async getAIRecommendations(problemCategory: string, branchId: string): Promise<ApiResponse<any>> {
+      return {
+        success: true,
+        data: {
+          bestTechnician: 'Tariq Zaman (Lead L4)',
+          bestSlot: '11:30 AM',
+          estimatedDurationMinutes: 45,
+          estimatedWaitMinutes: 12,
+          priorityLevel: problemCategory === 'MOTHERBOARD_CHIP' ? 'HIGH' : 'MEDIUM',
+          category: problemCategory
+        }
+      };
+    },
+
+    async generateReport(reportType: string, format: 'PDF' | 'EXCEL' | 'CSV'): Promise<ApiResponse<{ downloadUrl: string; fileName: string }>> {
+      const fileName = `TrustZone_${reportType}_${Date.now()}.${format.toLowerCase()}`;
+      return {
+        success: true,
+        data: {
+          downloadUrl: '#',
+          fileName
+        }
+      };
+    },
+
     async recommendTechnician(problemCategory: string, branchId: string): Promise<ApiResponse<{ recommendedTechId: string; recommendedTechName: string; score: number; matchReason: string }>> {
       try {
         return await apiRequest<ApiResponse<any>>(`/bookings/recommend-tech?category=${problemCategory}&branchId=${branchId}`);
