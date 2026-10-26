@@ -105,7 +105,7 @@ export class SuppliersService {
     if (!supplier)
       throw new NotFoundException(`Supplier with ID ${supplierId} not found.`);
 
-    return this.prisma.supplierLedger.create({
+    const ledger = await this.prisma.supplierLedger.create({
       data: {
         supplierId,
         amount,
@@ -113,6 +113,15 @@ export class SuppliersService {
         reference: reference || 'Manual payment record',
       },
     });
+    if (this.prisma.supplier?.update) {
+      await this.prisma.supplier
+        .update({
+          where: { id: supplierId },
+          data: { dueBalance: { decrement: Number(amount) } },
+        })
+        .catch(() => null);
+    }
+    return ledger;
   }
 
   // 5. Create Purchase Order (status starts as DRAFT)

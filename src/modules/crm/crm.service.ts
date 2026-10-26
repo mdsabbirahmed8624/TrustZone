@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   OnModuleInit,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdjustPointsDto } from './dto/adjust-points.dto';
@@ -20,21 +21,27 @@ import {
 
 @Injectable()
 export class CrmService
-  implements OnModuleInit, IEmailProvider, ISmsGateway, IWhatsAppProvider
+  implements OnModuleInit, OnModuleDestroy, IEmailProvider, ISmsGateway, IWhatsAppProvider
 {
+  private npsInterval: NodeJS.Timeout | null = null;
+
   constructor(private readonly prisma: PrismaService) {}
 
   onModuleInit() {
-    // Start background checking scheduler for loyalty point expiration and survey followups
-    // We run the task every 60 seconds (checks for surveys) and every 24 hours for expirations in production,
-    // but we can expose manual triggers for testing.
-    setInterval(async () => {
+    this.npsInterval = setInterval(async () => {
       try {
         await this.dispatchPendingNpsSurveys();
       } catch (err) {
         console.error('Error running NPS survey dispatcher:', err);
       }
-    }, 60000); // Check every minute
+    }, 60000);
+  }
+
+  onModuleDestroy() {
+    if (this.npsInterval) {
+      clearInterval(this.npsInterval);
+      this.npsInterval = null;
+    }
   }
 
   // ==========================================

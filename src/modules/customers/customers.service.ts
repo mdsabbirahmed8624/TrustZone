@@ -474,9 +474,15 @@ export class CustomersService {
     return device;
   }
 
-  // Delete Device from Customer
+  // Delete Device from Customer (with ownership verification)
   async deleteDevice(customerId: string, deviceId: string) {
-    await this.findOne(customerId);
+    const customer = await this.findOne(customerId);
+    const ownsDevice = customer.devices?.some((d: any) => d.id === deviceId);
+    if (customer.devices && !ownsDevice) {
+      throw new NotFoundException(
+        `Device ${deviceId} does not belong to customer ${customerId}.`,
+      );
+    }
     await this.prisma.device.delete({
       where: { id: deviceId },
     });
@@ -516,9 +522,15 @@ export class CustomersService {
     return comm;
   }
 
-  // Delete Customer Document
+  // Delete Customer Document (with ownership verification)
   async deleteDocument(customerId: string, documentId: string) {
-    await this.findOne(customerId);
+    const customer = await this.findOne(customerId);
+    const ownsDoc = customer.documents?.some((d: any) => d.id === documentId);
+    if (customer.documents && !ownsDoc) {
+      throw new NotFoundException(
+        `Document ${documentId} does not belong to customer ${customerId}.`,
+      );
+    }
     await this.prisma.customerDocument.delete({
       where: { id: documentId },
     });
@@ -552,6 +564,38 @@ export class CustomersService {
         where: { customerId: dupId },
         data: { customerId: primaryId },
       });
+
+      if (this.prisma.warranty?.updateMany) {
+        await this.prisma.warranty.updateMany({
+          where: { customerId: dupId },
+          data: { customerId: primaryId },
+        });
+      }
+      if (this.prisma.loyaltyTransaction?.updateMany) {
+        await this.prisma.loyaltyTransaction.updateMany({
+          where: { customerId: dupId },
+          data: { customerId: primaryId },
+        });
+      }
+      if (this.prisma.customerActivity?.updateMany) {
+        await this.prisma.customerActivity.updateMany({
+          where: { customerId: dupId },
+          data: { customerId: primaryId },
+        });
+      }
+
+      const dupRecord = await this.prisma.customer.findUnique({
+        where: { id: dupId },
+      });
+      if (dupRecord) {
+        await this.prisma.customer.update({
+          where: { id: primaryId },
+          data: {
+            loyaltyPoints: { increment: Number(dupRecord.loyaltyPoints || 0) },
+            dueBalance: { increment: Number(dupRecord.dueBalance || 0) },
+          },
+        });
+      }
 
       // Soft delete duplicate customer
       await this.prisma.customer.update({

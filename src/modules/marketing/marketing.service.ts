@@ -152,15 +152,26 @@ export class MarketingService {
         where: { id: { in: dto.targetAudienceIds } },
       });
 
-      for (const cust of customers) {
-        await this.prisma.campaignMember.create({
-          data: {
+      if (customers.length > 0 && this.prisma.campaignMember?.createMany) {
+        await this.prisma.campaignMember.createMany({
+          data: customers.map((cust) => ({
             campaignId: campaign.id,
             recipient: cust.email || cust.phone,
             name: `${cust.firstName} ${cust.lastName}`,
             status: 'PENDING',
-          },
+          })),
         });
+      } else {
+        for (const cust of customers) {
+          await this.prisma.campaignMember.create({
+            data: {
+              campaignId: campaign.id,
+              recipient: cust.email || cust.phone,
+              name: `${cust.firstName} ${cust.lastName}`,
+              status: 'PENDING',
+            },
+          });
+        }
       }
     }
 
@@ -223,19 +234,28 @@ export class MarketingService {
   async executeCampaignSend(id: string) {
     const campaign = await this.getCampaign(id);
 
-    // Simulate multi-channel messaging dispatch (SMS, WhatsApp, Email, Push)
-    const members = await this.prisma.campaignMember.findMany({
-      where: { campaignId: id },
-    });
-
-    for (const member of members) {
-      await this.prisma.campaignMember.update({
-        where: { id: member.id },
+    // Batch dispatch multi-channel campaign messages
+    if (this.prisma.campaignMember?.updateMany) {
+      await this.prisma.campaignMember.updateMany({
+        where: { campaignId: id },
         data: {
           status: 'DELIVERED',
           sentAt: new Date(),
         },
       });
+    } else {
+      const members = await this.prisma.campaignMember.findMany({
+        where: { campaignId: id },
+      });
+      for (const member of members) {
+        await this.prisma.campaignMember.update({
+          where: { id: member.id },
+          data: {
+            status: 'DELIVERED',
+            sentAt: new Date(),
+          },
+        });
+      }
     }
 
     return this.prisma.campaign.update({
@@ -273,7 +293,7 @@ export class MarketingService {
         });
       case 'WARRANTY_EXPIRING':
         return this.prisma.customer.findMany({
-          where: { tickets: { some: { status: 'DELIVERED' } } },
+          where: { tickets: { some: { status: { in: ['delivered', 'DELIVERED'] } } } },
         });
       default:
         return this.prisma.customer.findMany({ take: 50 });

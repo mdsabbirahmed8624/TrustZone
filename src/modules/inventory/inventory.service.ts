@@ -149,6 +149,24 @@ export class InventoryService {
       orderBy: { name: 'asc' },
     });
 
+    // Fetch all active tickets requiring parts in a single batch query instead of N+1 queries per part
+    const allActiveTickets =
+      parts.length > 0
+        ? (await this.prisma.ticket.findMany({
+            where: {
+              status: { in: ['booked', 'diagnosing', 'repairing'] },
+            },
+            select: { id: true, partsRequired: true },
+          })) || []
+        : [];
+
+    const reservedBySku = new Map<string, number>();
+    for (const t of allActiveTickets) {
+      for (const sku of (t as any).partsRequired || []) {
+        reservedBySku.set(sku, (reservedBySku.get(sku) || 0) + 1);
+      }
+    }
+
     const results = [];
     for (const part of parts) {
       // Calculate total stock (sum across all branches)
@@ -160,15 +178,8 @@ export class InventoryService {
       // Valuation = totalStock * basePrice
       const valuation = totalStock * Number(part.basePrice);
 
-      // Calculate reserved stock dynamically (tickets in booked, diagnosing, repairing requiring this SKU)
-      const activeTickets = await this.prisma.ticket.findMany({
-        where: {
-          status: { in: ['booked', 'diagnosing', 'repairing'] },
-          partsRequired: { has: part.sku },
-        },
-        select: { id: true },
-      });
-      const reservedStock = activeTickets.length;
+      // Lookup reserved stock in O(1) from batch map
+      const reservedStock = reservedBySku.get(part.sku) || 0;
 
       // Filter branch specific stock if requested
       let branchStock = null;
@@ -277,6 +288,18 @@ export class InventoryService {
   async adjustStock(partId: string, dto: AdjustStockDto) {
     const part = await this.prisma.part.findUnique({ where: { id: partId } });
     if (!part) throw new NotFoundException(`Part with ID ${partId} not found.`);
+
+    if (dto.quantityDelta < 0 && this.prisma.branchInventory?.findUnique) {
+      const existingBi = await this.prisma.branchInventory.findUnique({
+        where: { branchId_partId: { branchId: dto.branchId, partId } },
+      });
+      const currentQty = existingBi ? existingBi.quantity : 0;
+      if (currentQty + dto.quantityDelta < 0) {
+        throw new BadRequestException(
+          `Insufficient stock for negative adjustment. Current stock: ${currentQty}, adjustment: ${dto.quantityDelta}`,
+        );
+      }
+    }
 
     // Upsert BranchInventory record
     const bi = await this.prisma.branchInventory.upsert({

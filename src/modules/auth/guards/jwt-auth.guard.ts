@@ -50,6 +50,24 @@ export class JwtAuthGuard implements CanActivate {
       const secret = this.configService.get<string>('JWT_SECRET_KEY');
       const payload = jwt.verify(token, secret) as any;
 
+      const cacheKey = `auth:user:${payload.sub}`;
+      const cachedUserStr = await this.redis.get(cacheKey);
+      if (cachedUserStr) {
+        try {
+          const cachedUser = JSON.parse(cachedUserStr);
+          if (
+            cachedUser.lockoutUntil &&
+            new Date(cachedUser.lockoutUntil) > new Date()
+          ) {
+            throw new UnauthorizedException('Account is temporarily locked.');
+          }
+          request.user = cachedUser;
+          return true;
+        } catch (parseErr) {
+          if (parseErr instanceof UnauthorizedException) throw parseErr;
+        }
+      }
+
       // Fetch fresh user data from database to check active roles and account state
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
@@ -65,18 +83,23 @@ export class JwtAuthGuard implements CanActivate {
         throw new UnauthorizedException('Account is temporarily locked.');
       }
 
-      // Bind decoded claims to request context
-      request.user = {
+      const userContext = {
         id: user.id,
         email: user.email,
         role: user.role,
         branchId: user.branchId,
         permissions: user.roleRelation?.permissions || [],
+        lockoutUntil: user.lockoutUntil,
       };
+
+      await this.redis.set(cacheKey, JSON.stringify(userContext), 60);
+
+      // Bind decoded claims to request context
+      request.user = userContext;
 
       return true;
     } catch (e) {
-      console.error('JWT Auth Guard Error:', e);
+      if (e instanceof UnauthorizedException) throw e;
       throw new UnauthorizedException('Invalid or expired token.');
     }
   }

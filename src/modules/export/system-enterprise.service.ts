@@ -12,8 +12,22 @@ export class SystemEnterpriseService {
   // ==========================================
   // PHASE C: SOFT DELETE & RESTORE
   // ==========================================
+  private readonly allowedSoftDeleteModels = new Set([
+    'ticket',
+    'customer',
+    'invoice',
+    'part',
+    'user',
+    'backgroundjob',
+    'scheduledtask',
+    'businessrule',
+  ]);
+
   async softDelete(modelName: string, id: string) {
-    const table = this.prisma[modelName.toLowerCase()];
+    const key = (modelName || '').toLowerCase();
+    const table = this.allowedSoftDeleteModels.has(key)
+      ? this.prisma[key]
+      : null;
     if (!table) throw new BadRequestException(`Invalid model: ${modelName}`);
 
     return table.update({
@@ -23,7 +37,10 @@ export class SystemEnterpriseService {
   }
 
   async restoreRecord(modelName: string, id: string) {
-    const table = this.prisma[modelName.toLowerCase()];
+    const key = (modelName || '').toLowerCase();
+    const table = this.allowedSoftDeleteModels.has(key)
+      ? this.prisma[key]
+      : null;
     if (!table) throw new BadRequestException(`Invalid model: ${modelName}`);
 
     return table.update({
@@ -286,56 +303,52 @@ export class SystemEnterpriseService {
 
     const lowerQuery = query.toLowerCase();
 
-    // 1. Search Users
-    const users = await this.prisma.user.findMany({
-      where: {
-        isDeleted: false,
-        OR: [
-          { firstName: { contains: query, mode: 'insensitive' } },
-          { lastName: { contains: query, mode: 'insensitive' } },
-          { email: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      take: 5,
-    });
-
-    // 2. Search Customers
-    const customers = await this.prisma.customer.findMany({
-      where: {
-        isDeleted: false,
-        OR: [
-          { firstName: { contains: query, mode: 'insensitive' } },
-          { lastName: { contains: query, mode: 'insensitive' } },
-          { email: { contains: query, mode: 'insensitive' } },
-          { phone: { contains: query } },
-        ],
-      },
-      take: 5,
-    });
-
-    // 3. Search Parts
-    const parts = await this.prisma.part.findMany({
-      where: {
-        isDeleted: false,
-        OR: [
-          { sku: { contains: query, mode: 'insensitive' } },
-          { name: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      take: 5,
-    });
-
-    // 4. Search Tickets
-    const tickets = await this.prisma.ticket.findMany({
-      where: {
-        isDeleted: false,
-        OR: [
-          { diagnosisNotes: { contains: query, mode: 'insensitive' } },
-          { internalNotes: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      take: 5,
-    });
+    // Execute all 4 entity searches concurrently via Promise.all
+    const [users, customers, parts, tickets] = await Promise.all([
+      this.prisma.user.findMany({
+        where: {
+          isDeleted: false,
+          OR: [
+            { firstName: { contains: query, mode: 'insensitive' } },
+            { lastName: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        take: 5,
+      }),
+      this.prisma.customer.findMany({
+        where: {
+          isDeleted: false,
+          OR: [
+            { firstName: { contains: query, mode: 'insensitive' } },
+            { lastName: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
+            { phone: { contains: query } },
+          ],
+        },
+        take: 5,
+      }),
+      this.prisma.part.findMany({
+        where: {
+          isDeleted: false,
+          OR: [
+            { sku: { contains: query, mode: 'insensitive' } },
+            { name: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        take: 5,
+      }),
+      this.prisma.ticket.findMany({
+        where: {
+          isDeleted: false,
+          OR: [
+            { diagnosisNotes: { contains: query, mode: 'insensitive' } },
+            { internalNotes: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        take: 5,
+      }),
+    ]);
 
     return {
       users: users.map((u) => ({

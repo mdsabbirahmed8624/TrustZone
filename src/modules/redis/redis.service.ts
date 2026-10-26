@@ -193,10 +193,21 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return cached.value;
   }
 
-  async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
-    const expiresAt = ttlSeconds ? Date.now() + ttlSeconds * 1000 : undefined;
-    this.memoryFallback.set(key, { value, expiresAt });
+  private pruneMemoryFallback() {
+    if (this.memoryFallback.size < 5000) return;
+    const now = Date.now();
+    for (const [k, v] of this.memoryFallback.entries()) {
+      if (v.expiresAt && now > v.expiresAt) {
+        this.memoryFallback.delete(k);
+      }
+    }
+    if (this.memoryFallback.size >= 5000) {
+      const oldestKey = this.memoryFallback.keys().next().value;
+      if (oldestKey) this.memoryFallback.delete(oldestKey);
+    }
+  }
 
+  async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
     if (this.client && this.isConnected) {
       try {
         if (ttlSeconds) {
@@ -204,10 +215,43 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         } else {
           await this.client.set(key, value);
         }
+        return;
       } catch (e) {
-        // Suppress error when Redis is down
+        // Fall through to memory fallback when Redis fails
       }
     }
+
+    this.pruneMemoryFallback();
+    const expiresAt = ttlSeconds ? Date.now() + ttlSeconds * 1000 : undefined;
+    this.memoryFallback.set(key, { value, expiresAt });
+  }
+
+  async incrWithTtl(key: string, ttlSeconds: number): Promise<number> {
+    if (this.client && this.isConnected) {
+      try {
+        const count = await this.client.incr(key);
+        if (count === 1) {
+          await this.client.expire(key, ttlSeconds);
+        }
+        return count;
+      } catch (e) {
+        // Fallback to memory
+      }
+    }
+
+    const now = Date.now();
+    const existing = this.memoryFallback.get(key);
+    if (!existing || (existing.expiresAt && now > existing.expiresAt)) {
+      this.pruneMemoryFallback();
+      this.memoryFallback.set(key, {
+        value: '1',
+        expiresAt: now + ttlSeconds * 1000,
+      });
+      return 1;
+    }
+    const nextVal = (parseInt(existing.value, 10) || 0) + 1;
+    existing.value = String(nextVal);
+    return nextVal;
   }
 
   async del(key: string): Promise<void> {

@@ -43,33 +43,33 @@ export class TechniciansService {
 
     const results = [];
     for (const tech of techs) {
-      // Calculate active workloads (tickets currently in diagnosing/repairing status)
-      const pendingCount = await this.prisma.ticket.count({
-        where: {
-          assignedTechId: tech.id,
-          status: { in: ['diagnosing', 'repairing'] },
-        },
-      });
-
-      const completedCount = await this.prisma.ticket.count({
-        where: {
-          assignedTechId: tech.id,
-          status: { in: ['ready', 'delivered'] },
-        },
-      });
-
-      // Calculate Average Repair Time (completed repairs with repairedAt & diagnosticCompletedAt timestamps)
-      const ticketsWithTimes = await this.prisma.ticket.findMany({
-        where: {
-          assignedTechId: tech.id,
-          repairedAt: { not: null },
-          diagnosticCompletedAt: { not: null },
-        },
-        select: {
-          diagnosticCompletedAt: true,
-          repairedAt: true,
-        },
-      });
+      // Execute workload and repair-time queries concurrently instead of sequentially
+      const [pendingCount, completedCount, ticketsWithTimes] =
+        await Promise.all([
+          this.prisma.ticket.count({
+            where: {
+              assignedTechId: tech.id,
+              status: { in: ['diagnosing', 'repairing'] },
+            },
+          }),
+          this.prisma.ticket.count({
+            where: {
+              assignedTechId: tech.id,
+              status: { in: ['ready', 'delivered'] },
+            },
+          }),
+          this.prisma.ticket.findMany({
+            where: {
+              assignedTechId: tech.id,
+              repairedAt: { not: null },
+              diagnosticCompletedAt: { not: null },
+            },
+            select: {
+              diagnosticCompletedAt: true,
+              repairedAt: true,
+            },
+          }),
+        ]);
 
       let totalMinutes = 0;
       let repairTimeCount = 0;

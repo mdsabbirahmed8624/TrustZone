@@ -21,8 +21,9 @@ export class FinanceService {
   // PERIOD & LOCK CONTROL
   // ==========================================
 
-  private async checkPeriodLock(date: Date) {
-    const period = await this.prisma.accountingPeriod.findFirst({
+  private async checkPeriodLock(date: Date, txClient?: any) {
+    const db = txClient || this.prisma;
+    const period = await db.accountingPeriod.findFirst({
       where: {
         startDate: { lte: date },
         endDate: { gte: date },
@@ -215,28 +216,31 @@ export class FinanceService {
   // DOUBLE-ENTRY JOURNAL ENGINE
   // ==========================================
 
-  async createJournalEntry(data: {
-    date?: Date;
-    description?: string;
-    referenceModule: string;
-    referenceId?: string;
-    branchId: string;
-    createdById: string;
-    isReversal?: boolean;
-    reversedEntryId?: string;
-    lines: {
-      accountId: string;
-      debit: number;
-      credit: number;
-      customerId?: string;
-      supplierId?: string;
+  async createJournalEntry(
+    data: {
+      date?: Date;
       description?: string;
-    }[];
-  }) {
+      referenceModule: string;
+      referenceId?: string;
+      branchId: string;
+      createdById: string;
+      isReversal?: boolean;
+      reversedEntryId?: string;
+      lines: {
+        accountId: string;
+        debit: number;
+        credit: number;
+        customerId?: string;
+        supplierId?: string;
+        description?: string;
+      }[];
+    },
+    txClient?: any,
+  ) {
     const date = data.date || new Date();
 
     // Period lock check
-    const period = await this.checkPeriodLock(date);
+    const period = await this.checkPeriodLock(date, txClient);
 
     // Double-entry validation
     const totalDebits = data.lines.reduce(
@@ -264,8 +268,12 @@ export class FinanceService {
     const voucherSeq = Math.floor(100000 + Math.random() * 900000);
     const voucherNumber = `JV-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}-${voucherSeq}`;
 
-    // Execute database transaction
-    return this.prisma.$transaction(async (tx) => {
+    const executeInTx = txClient
+      ? (fn: (tx: any) => Promise<any>) => fn(txClient)
+      : (fn: (tx: any) => Promise<any>) => this.prisma.$transaction(fn);
+
+    // Execute database transaction (reuses parent tx if provided)
+    return executeInTx(async (tx) => {
       const entry = await tx.journalEntry.create({
         data: {
           voucherNumber,
@@ -523,7 +531,7 @@ export class FinanceService {
             description: `Revenue Credit for invoice ${invoiceNumber}`,
           },
         ],
-      });
+      }, tx);
 
       return invoice;
     });
@@ -671,7 +679,7 @@ export class FinanceService {
             description: `A/R credited from invoice collection`,
           },
         ],
-      });
+      }, tx);
 
       return payment;
     });
@@ -744,7 +752,7 @@ export class FinanceService {
             description: `Supplier paid from account ${payAccount.name}`,
           },
         ],
-      });
+      }, tx);
 
       return ledgerEntry;
     });
@@ -1048,7 +1056,7 @@ export class FinanceService {
             description: `Credit payment source: ${cashAccount.name}`,
           },
         ],
-      });
+      }, tx);
 
       return updated;
     });
@@ -1132,7 +1140,7 @@ export class FinanceService {
             description: `Income credit: ${dto.category}`,
           },
         ],
-      });
+      }, tx);
 
       return income;
     });
@@ -1200,7 +1208,7 @@ export class FinanceService {
             description: `Credit source transfer account`,
           },
         ],
-      });
+      }, tx);
 
       return transfer;
     });
@@ -1271,7 +1279,7 @@ export class FinanceService {
             description: `Adjustment credit line`,
           },
         ],
-      });
+      }, tx);
 
       return adj;
     });
@@ -1480,23 +1488,30 @@ export class FinanceService {
       amount: Number(e._sum.amount || 0),
     }));
 
-    // Branch Revenue comparison
+    // Branch Revenue comparison (grouped in memory without N+1 queries)
     const branches = await this.prisma.branch.findMany();
-    const branchComparison = [];
+    const allMonthJournals = branchId
+      ? await this.prisma.journalEntry.findMany({
+          where: { date: { gte: monthStart } },
+          include: { lines: { include: { account: true } } },
+        })
+      : monthJournals;
 
-    for (const b of branches) {
-      const bJournals = await this.prisma.journalEntry.findMany({
-        where: { branchId: b.id, date: { gte: monthStart } },
-        include: { lines: { include: { account: true } } },
-      });
-      const bRev = calculateRev(bJournals);
-      const bExp = calculateExp(bJournals);
-      branchComparison.push({
-        branchName: b.name,
-        revenue: bRev,
-        expense: bExp,
-      });
+    const journalsByBranch = new Map<string, any[]>();
+    for (const j of allMonthJournals) {
+      const list = journalsByBranch.get(j.branchId) || [];
+      list.push(j);
+      journalsByBranch.set(j.branchId, list);
     }
+
+    const branchComparison = branches.map((b) => {
+      const bJournals = journalsByBranch.get(b.id) || [];
+      return {
+        branchName: b.name,
+        revenue: calculateRev(bJournals),
+        expense: calculateExp(bJournals),
+      };
+    });
 
     return {
       todayRevenue,
@@ -1829,6 +1844,11 @@ export class FinanceService {
   async deleteExpense(id: string) {
     const expense = await this.prisma.expense.findUnique({ where: { id } });
     if (!expense) throw new NotFoundException(`Expense ${id} not found.`);
+    if (expense.status === 'APPROVED') {
+      throw new BadRequestException(
+        'Cannot delete an approved expense that has already been posted to the general ledger. Reverse its journal entry instead.',
+      );
+    }
 
     await this.prisma.expense.delete({ where: { id } });
     return { success: true, message: `Expense ${id} deleted successfully.` };

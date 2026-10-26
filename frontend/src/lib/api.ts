@@ -457,23 +457,26 @@ export async function apiRequest<T = unknown>(
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, config);
     if (!response.ok) {
-      const errBody = (await response.json().catch(() => ({}))) as { message?: string };
-      throw new Error(errBody.message || `API request failed: ${response.status}`);
+      const errBody = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        error?: { message?: string };
+      };
+      const serverMsg = errBody?.error?.message || errBody?.message;
+      if (response.status >= 502 && response.status <= 504) {
+        throw new Error('BACKEND_OFFLINE');
+      }
+      throw new Error(serverMsg || `HTTP_ERROR_${response.status}`);
     }
-    return await response.json() as T;
+    return (await response.json()) as T;
   } catch (error: unknown) {
     const err = error as Error;
     if (
-      err.message &&
-      (err.message.includes('fetch') ||
-        err.message.includes('Failed to fetch') ||
-        err.message.includes('BACKEND_OFFLINE') ||
-        err.message.includes('API request failed') ||
-        err.message.includes('505') ||
-        err.message.includes('500') ||
-        err.message.includes('502') ||
-        err.message.includes('503') ||
-        err.message.includes('504'))
+      err instanceof TypeError ||
+      (err.message &&
+        (err.message.includes('Failed to fetch') ||
+          err.message.includes('NetworkError') ||
+          err.message.includes('ECONNREFUSED') ||
+          err.message.includes('BACKEND_OFFLINE')))
     ) {
       throw new Error('BACKEND_OFFLINE');
     }

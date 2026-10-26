@@ -129,13 +129,32 @@ export class TicketsService {
   ) {
     const ticket = await this.findOne(ticketId);
 
+    const consumedLog: string[] = [];
     for (const p of parts) {
+      if (!p.quantity || p.quantity <= 0) {
+        throw new BadRequestException('Part consumption quantity must be > 0.');
+      }
       const part = await this.prisma.part.findUnique({
         where: { id: p.partId },
       });
       if (!part) continue;
 
-      // Update branch inventory stock
+      if (this.prisma.branchInventory?.findUnique) {
+        const bi = await this.prisma.branchInventory.findUnique({
+          where: {
+            branchId_partId: {
+              branchId: ticket.branchId,
+              partId: p.partId,
+            },
+          },
+        });
+        if (bi && bi.quantity < p.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock for part ${part.name || p.partId}. Available: ${bi.quantity}, Requested: ${p.quantity}`,
+          );
+        }
+      }
+
       await this.prisma.branchInventory.upsert({
         where: {
           branchId_partId: {
@@ -153,26 +172,29 @@ export class TicketsService {
         },
       });
 
-      // Log Stock Movement
       await this.prisma.stockMovement.create({
         data: {
           branchId: ticket.branchId,
           partId: p.partId,
           quantityDelta: -p.quantity,
           type: 'CONSUMED',
+          referenceTicketId: ticketId,
+        },
+      });
+      consumedLog.push(`Part ID ${p.partId} (x${p.quantity})`);
+    }
+
+    if (consumedLog.length > 0) {
+      await this.prisma.ticketHistory.create({
+        data: {
+          ticketId,
+          oldStatus: ticket.status,
+          newStatus: ticket.status,
+          updatedById: userId || null,
+          notes: `Inventory parts consumed: ${consumedLog.join(', ')}.`,
         },
       });
     }
-
-    await this.prisma.ticketHistory.create({
-      data: {
-        ticketId,
-        oldStatus: ticket.status,
-        newStatus: ticket.status,
-        updatedById: userId || null,
-        notes: `Inventory parts consumed: ${parts.map((p) => `Part ID ${p.partId} (x${p.quantity})`).join(', ')}.`,
-      },
-    });
 
     return this.findOne(ticketId);
   }
@@ -450,6 +472,18 @@ export class TicketsService {
   async addSignature(id: string, signatureData: string, updatedById?: string) {
     const ticket = await this.findOne(id);
 
+    if ((this.prisma as any).workOrderSignature?.create) {
+      await (this.prisma as any).workOrderSignature.create({
+        data: {
+          ticketId: id,
+          signeeName: ticket.customer
+            ? `${ticket.customer.firstName} ${ticket.customer.lastName}`.trim()
+            : 'Customer',
+          signatureUrl: signatureData,
+        },
+      });
+    }
+
     await this.prisma.ticketHistory.create({
       data: {
         ticketId: id,
@@ -530,7 +564,7 @@ export class TicketsService {
       },
     });
 
-    if (!ticket) {
+    if (!ticket || (ticket as any).isDeleted) {
       throw new NotFoundException(`Ticket with ID ${id} not found.`);
     }
 
@@ -760,7 +794,7 @@ export class TicketsService {
       },
     });
 
-    if (dto.status === 'delivered') {
+    if (dto.status === 'delivered' && !ticket.deliveredAt) {
       eventBus.emit(AutomationEvents.TICKET_DELIVERED, { ticketId: id });
       await this.financeService.recordRepairDeliveryJournal(
         id,

@@ -24,7 +24,11 @@ export class RedisLockService {
       }
       return false;
     } catch (error) {
-      // Fallback for mock environments / simple tests
+      // Fallback with NX check so concurrent callers cannot overwrite an active lock
+      const existing = await this.redis.get(lockKey);
+      if (existing) {
+        return false;
+      }
       await this.redis.set(lockKey, 'locked', ttlSeconds);
       this.logger.log(`Acquired lock (fallback) for key: ${lockKey}`);
       return true;

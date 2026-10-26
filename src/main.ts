@@ -24,6 +24,7 @@ async function bootstrap() {
       'api/v2/(.*)',
       'api/v13/(.*)',
       'api/v14/(.*)',
+      'api/v15/(.*)',
     ],
   });
 

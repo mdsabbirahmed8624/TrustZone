@@ -31,17 +31,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
     // Map Prisma Database Errors to Clean API Errors (Security: No SQL leaks)
     if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       switch (exception.code) {
-        case 'P2002': // Unique constraint failure
+        case 'P2002':
           status = HttpStatus.CONFLICT;
           message = `Unique constraint failed on field: ${(exception.meta?.target as string[])?.join(', ') || 'unknown'}`;
           code = 'UNIQUE_CONSTRAINT_FAILED';
           break;
-        case 'P2003': // Foreign key constraint failure
+        case 'P2003':
           status = HttpStatus.BAD_REQUEST;
-          message = `Foreign key constraint failed. Related record not found.`;
+          message = 'Foreign key constraint failed. Related record not found.';
           code = 'FOREIGN_KEY_CONSTRAINT_FAILED';
           break;
-        case 'P2025': // Record not found
+        case 'P2025':
           status = HttpStatus.NOT_FOUND;
           message =
             (exception.meta?.cause as string) ||
@@ -54,9 +54,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
           code = `DATABASE_ERROR_${exception.code}`;
           break;
       }
-    }
-    // Handle standard NestJS HTTP Exceptions
-    else if (exception instanceof HttpException) {
+    } else if (
+      exception instanceof Prisma.PrismaClientValidationError ||
+      exception instanceof Prisma.PrismaClientUnknownRequestError
+    ) {
+      status = HttpStatus.BAD_REQUEST;
+      message = 'Invalid database query parameters.';
+      code = 'DATABASE_VALIDATION_ERROR';
+    } else if (exception instanceof HttpException) {
       status = exception.getStatus();
       const resContent = exception.getResponse() as any;
       message =
@@ -67,19 +72,23 @@ export class HttpExceptionFilter implements ExceptionFilter {
         typeof resContent === 'object' && resContent.error
           ? resContent.error.replace(/\s+/g, '_').toUpperCase()
           : 'HTTP_EXCEPTION';
-    }
-    // Handle generic Javascript Errors
-    else if (exception instanceof Error) {
+    } else if (
+      exception instanceof Error &&
+      process.env.NODE_ENV !== 'production'
+    ) {
       message = exception.message;
     }
 
+    const formattedMessage = Array.isArray(message)
+      ? 'Request parameters failed validation.'
+      : message;
+
     response.status(status).json({
       success: false,
+      message: formattedMessage,
       error: {
         code,
-        message: Array.isArray(message)
-          ? 'Request parameters failed validation.'
-          : message,
+        message: formattedMessage,
         details: Array.isArray(message)
           ? message.map((msg) => ({
               field: msg.split(' ')[0] || 'unknown',

@@ -47,7 +47,7 @@ export class FinanceController {
   // ACCOUNTS
   // ==========================================
 
-  @Get('accounts')
+  @Get('coa')
   @Permissions('finance.read')
   @HttpCode(HttpStatus.OK)
   async getAccounts(@Query('branchId') branchId?: string) {
@@ -57,7 +57,7 @@ export class FinanceController {
     };
   }
 
-  @Post('accounts')
+  @Post('coa')
   @Permissions('finance.settings')
   @HttpCode(HttpStatus.CREATED)
   async createAccount(@Body() dto: CreateAccountDto) {

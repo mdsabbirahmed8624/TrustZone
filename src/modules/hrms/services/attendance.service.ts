@@ -33,7 +33,7 @@ export class AttendanceService {
     }
 
     const now = new Date();
-    const isLate = now.getHours() >= 9 && now.getMinutes() > 15; // 09:15 AM threshold
+    const isLate = now.getHours() > 9 || (now.getHours() === 9 && now.getMinutes() > 15); // 09:15 AM threshold
 
     const attendance = await this.prisma.attendance.upsert({
       where: { userId_date: { userId, date: today } },

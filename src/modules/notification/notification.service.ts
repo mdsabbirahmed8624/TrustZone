@@ -150,7 +150,7 @@ export class NotificationService {
 
     // Always create in-app notification records for auditing if userId is present
     let inAppRecord = null;
-    if (dto.userId && (dto.channel === 'IN_APP' || true)) {
+    if (dto.userId) {
       inAppRecord = await this.prisma.notification.create({
         data: {
           userId: dto.userId,
@@ -172,28 +172,32 @@ export class NotificationService {
       console.log(
         `[MOCK DISPATCH] Channel: ${dto.channel}, Title: ${dto.title}, Msg: ${finalMessage}`,
       );
-      // Record customer communication if applicable (if we can resolve user email or phone)
-      if (dto.userId) {
+      // Record customer communication only if a matching Customer record exists (prevents P2003 FK error)
+      if (dto.userId && this.prisma.customer?.findFirst) {
         const u = await this.prisma.user.findUnique({
           where: { id: dto.userId },
         });
         if (u) {
-          // If this corresponds to customer alerts or similar
-          await this.prisma.customerCommunication.create({
-            data: {
-              customerId: 'd1111111-1111-1111-1111-111111111111', // System placeholder or resolve
-              type:
-                dto.channel === 'EMAIL'
-                  ? 'Email'
-                  : dto.channel === 'SMS'
-                    ? 'SMS'
-                    : 'WhatsApp',
-              subject: dto.title,
-              message: finalMessage,
-              status: 'Sent',
-              staffName: 'System Automation',
-            },
+          const customer = await this.prisma.customer.findFirst({
+            where: { email: u.email },
           });
+          if (customer) {
+            await this.prisma.customerCommunication.create({
+              data: {
+                customerId: customer.id,
+                type:
+                  dto.channel === 'EMAIL'
+                    ? 'Email'
+                    : dto.channel === 'SMS'
+                      ? 'SMS'
+                      : 'WhatsApp',
+                subject: dto.title,
+                message: finalMessage,
+                status: 'Sent',
+                staffName: 'System Automation',
+              },
+            });
+          }
         }
       }
     }
@@ -358,6 +362,8 @@ export class NotificationService {
       where.role = data.targetId;
     if (data.targetAudience === 'TECHNICIANS')
       where.role = { in: ['TECHNICIAN', 'SENIOR_TECHNICIAN'] };
+    if (data.targetAudience === 'CUSTOMERS')
+      where.role = { in: ['customer', 'CUSTOMER'] };
 
     const targetUsers = await this.prisma.user.findMany({
       where,
@@ -379,19 +385,34 @@ export class NotificationService {
       },
     });
 
-    // Create individual in-app notifications for each target user
-    if (!data.scheduledAt) {
-      for (const u of targetUsers) {
-        await this.prisma.notification.create({
-          data: {
+    // Batch-create in-app notifications for target users
+    if (!data.scheduledAt && targetUsers.length > 0) {
+      if (this.prisma.notification?.createMany) {
+        await this.prisma.notification.createMany({
+          data: targetUsers.map((u) => ({
             userId: u.id,
             title: data.subject,
             message: data.body,
             type: 'INFORMATION',
             priority: 'HIGH',
             channel: 'WEBSOCKET',
-          },
+          })),
         });
+      } else {
+        for (const u of targetUsers) {
+          await this.prisma.notification.create({
+            data: {
+              userId: u.id,
+              title: data.subject,
+              message: data.body,
+              type: 'INFORMATION',
+              priority: 'HIGH',
+              channel: 'WEBSOCKET',
+            },
+          });
+        }
+      }
+      for (const u of targetUsers) {
         this.emitRealtimeEvent(u.id, 'NEW_NOTIFICATION', {
           title: data.subject,
           body: data.body,

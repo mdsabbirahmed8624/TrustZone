@@ -21,14 +21,56 @@ export class CalendarService {
 
     const calendarItems: any[] = [];
 
-    // 1. Fetch Repairs (Tickets) based on SLA Deadline
-    const tickets = await this.prisma.ticket.findMany({
-      where: {
-        branchId: userBranchId,
-        slaDeadline: { gte: start, lte: end },
-      },
-      include: { customer: true, device: true },
-    });
+    // Fetch all 6 calendar event sources concurrently using Promise.all
+    const [tickets, tasks, leaves, warranties, rmas, customEvents] =
+      await Promise.all([
+        this.prisma.ticket.findMany({
+          where: {
+            branchId: userBranchId,
+            slaDeadline: { gte: start, lte: end },
+          },
+          include: { customer: true, device: true },
+        }),
+        this.prisma.task.findMany({
+          where: {
+            assignedToId: userId,
+            deadline: { gte: start, lte: end },
+          },
+        }),
+        this.prisma.leaveRequest.findMany({
+          where: {
+            userId,
+            startDate: { lte: end },
+            endDate: { gte: start },
+            status: 'approved',
+          },
+          include: { user: true },
+        }),
+        this.prisma.warranty.findMany({
+          where: {
+            branchId: userBranchId,
+            endDate: { gte: start, lte: end },
+          },
+        }),
+        this.prisma.supplierRma.findMany({
+          where: {
+            branchId: userBranchId,
+            replacementEta: { gte: start, lte: end },
+          },
+        }),
+        this.prisma.calendarEvent.findMany({
+          where: {
+            OR: [
+              { userId },
+              { branchId: userBranchId },
+              { userId: null, branchId: null },
+            ],
+            startDate: { gte: start },
+            endDate: { lte: end },
+          },
+        }),
+      ]);
+
     tickets.forEach((t) => {
       calendarItems.push({
         id: `ticket-${t.id}`,
@@ -42,13 +84,6 @@ export class CalendarService {
       });
     });
 
-    // 2. Fetch Tasks
-    const tasks = await this.prisma.task.findMany({
-      where: {
-        assignedToId: userId,
-        deadline: { gte: start, lte: end },
-      },
-    });
     tasks.forEach((tk) => {
       calendarItems.push({
         id: `task-${tk.id}`,
@@ -62,16 +97,6 @@ export class CalendarService {
       });
     });
 
-    // 3. Fetch Leave Requests
-    const leaves = await this.prisma.leaveRequest.findMany({
-      where: {
-        userId,
-        startDate: { lte: end },
-        endDate: { gte: start },
-        status: 'approved',
-      },
-      include: { user: true },
-    });
     leaves.forEach((l) => {
       calendarItems.push({
         id: `leave-${l.id}`,
@@ -85,13 +110,6 @@ export class CalendarService {
       });
     });
 
-    // 4. Fetch Warranty Expirations
-    const warranties = await this.prisma.warranty.findMany({
-      where: {
-        branchId: userBranchId,
-        endDate: { gte: start, lte: end },
-      },
-    });
     warranties.forEach((w) => {
       calendarItems.push({
         id: `warranty-${w.id}`,
@@ -105,13 +123,6 @@ export class CalendarService {
       });
     });
 
-    // 5. Fetch PO Replacement ETAs (Supplier RMAs)
-    const rmas = await this.prisma.supplierRma.findMany({
-      where: {
-        branchId: userBranchId,
-        replacementEta: { gte: start, lte: end },
-      },
-    });
     rmas.forEach((r) => {
       calendarItems.push({
         id: `rma-${r.id}`,
@@ -123,19 +134,6 @@ export class CalendarService {
         status: r.status,
         originalId: r.id,
       });
-    });
-
-    // 6. Fetch Custom Events (CalendarEvent)
-    const customEvents = await this.prisma.calendarEvent.findMany({
-      where: {
-        OR: [
-          { userId },
-          { branchId: userBranchId },
-          { userId: null, branchId: null },
-        ],
-        startDate: { gte: start },
-        endDate: { lte: end },
-      },
     });
     customEvents.forEach((ce) => {
       calendarItems.push({

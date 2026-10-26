@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { BulkUserActionDto } from './dto/bulk-user.dto';
 import * as bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
 
 export const MODULE_PERMISSIONS = [
   'dashboard',
@@ -158,7 +159,7 @@ export class UsersService {
       );
     }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const hashedPassword = await argon2.hash(dto.password);
 
     const user = await this.prisma.user.create({
       data: {
@@ -218,7 +219,7 @@ export class UsersService {
         throw new BadRequestException(
           'Password must be at least 8 characters long.',
         );
-      data.password = await bcrypt.hash(dto.password, 10);
+      data.password = await argon2.hash(dto.password);
     }
 
     const updated = await this.prisma.user.update({
@@ -237,7 +238,7 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException(`User ${id} not found`);
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data: {
         status,
@@ -245,6 +246,14 @@ export class UsersService {
         lockoutUntil: status === 'ACTIVE' ? null : undefined,
       },
     });
+    const {
+      password: _p,
+      mfaSecret: _m,
+      passwordResetToken: _r,
+      emailVerificationToken: _e,
+      ...safeUser
+    } = updated as any;
+    return safeUser;
   }
 
   async deleteUser(id: string) {
@@ -307,6 +316,15 @@ export class UsersService {
     if (role.isSystem)
       throw new BadRequestException('System core roles cannot be deleted.');
 
+    const assignedUsers = await this.prisma.user.count({
+      where: { OR: [{ roleId: id }, { role: role.name }] },
+    });
+    if (assignedUsers > 0) {
+      throw new BadRequestException(
+        `Cannot delete role "${role.name}" while ${assignedUsers} user(s) are assigned to it.`,
+      );
+    }
+
     return this.prisma.role.delete({ where: { id } });
   }
 
@@ -341,17 +359,27 @@ export class UsersService {
       notificationPref?: any;
     },
   ) {
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data,
     });
+    const {
+      password: _p,
+      mfaSecret: _m,
+      passwordResetToken: _r,
+      emailVerificationToken: _e,
+      ...safeProfile
+    } = updated as any;
+    return safeProfile;
   }
 
   async changePassword(userId: string, currentPass: string, newPass: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    const isValid = await bcrypt.compare(currentPass, user.password);
+    const isValid = user.password.startsWith('$argon2')
+      ? await argon2.verify(user.password, currentPass).catch(() => false)
+      : await bcrypt.compare(currentPass, user.password).catch(() => false);
     if (!isValid)
       throw new BadRequestException('Current password does not match.');
 
@@ -360,11 +388,13 @@ export class UsersService {
         'New password must be at least 8 characters long.',
       );
 
-    const hashedPassword = await bcrypt.hash(newPass, 10);
-    return this.prisma.user.update({
+    const hashedPassword = await argon2.hash(newPass);
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: { password: hashedPassword },
     });
+    const { password: _p, mfaSecret: _m, ...safeUser } = updated as any;
+    return safeUser;
   }
 
   // ==========================================

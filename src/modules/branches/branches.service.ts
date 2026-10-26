@@ -17,10 +17,10 @@ export class BranchesService {
   async getBranchDashboardStats(branchId?: string) {
     const totalBranches = await this.prisma.branch.count();
     const activeBranches = await this.prisma.branch.count({
-      where: { status: 'ACTIVE' },
+      where: { status: { in: ['ACTIVE', 'active'] } },
     });
     const inactiveBranches = await this.prisma.branch.count({
-      where: { status: 'INACTIVE' },
+      where: { status: { in: ['INACTIVE', 'inactive'] } },
     });
     const maintenanceBranches = await this.prisma.branch.count({
       where: { status: 'MAINTENANCE' },
@@ -38,14 +38,14 @@ export class BranchesService {
 
     // Daily & Monthly Revenue
     const dailyInvoices = await this.prisma.invoice.aggregate({
-      where: { ...whereBranch, status: 'PAID', createdAt: { gte: startOfDay } },
+      where: { ...whereBranch, status: { in: ['PAID', 'paid'] }, createdAt: { gte: startOfDay } },
       _sum: { total: true },
     });
 
     const monthlyInvoices = await this.prisma.invoice.aggregate({
       where: {
         ...whereBranch,
-        status: 'PAID',
+        status: { in: ['PAID', 'paid'] },
         createdAt: { gte: startOfMonth },
       },
       _sum: { total: true },
@@ -427,6 +427,40 @@ export class BranchesService {
       throw new NotFoundException(`Branch transfer ${id} not found`);
 
     if (
+      status === 'COMPLETED' &&
+      transfer.transferType === 'INVENTORY' &&
+      transfer.entityId &&
+      this.prisma.branchInventory?.upsert
+    ) {
+      const qty = transfer.quantity || 1;
+      await this.prisma.branchInventory
+        .update({
+          where: {
+            branchId_partId: {
+              branchId: transfer.fromBranchId,
+              partId: transfer.entityId,
+            },
+          },
+          data: { quantity: { decrement: qty } },
+        })
+        .catch(() => null);
+      await this.prisma.branchInventory
+        .upsert({
+          where: {
+            branchId_partId: {
+              branchId: transfer.toBranchId,
+              partId: transfer.entityId,
+            },
+          },
+          update: { quantity: { increment: qty } },
+          create: {
+            branchId: transfer.toBranchId,
+            partId: transfer.entityId,
+            quantity: qty,
+          },
+        })
+        .catch(() => null);
+    } else if (
       status === 'COMPLETED' &&
       transfer.transferType === 'TICKET' &&
       transfer.entityId

@@ -8,6 +8,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
   private pendingTimeouts: NodeJS.Timeout[] = [];
   private isProcessing = false;
   private isDestroyed = false;
+  private lastAutoScanDate: string | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -20,8 +21,11 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     const isReady = await this.isDatabaseReady();
     if (isReady) {
       console.log('[Scheduler] Database is ready. Starting tick loop.');
-      // Start scheduler tick loop (runs every 60s)
-      this.tickInterval = setInterval(() => this.runScheduledScans(), 60000);
+      // Check hourly whether today's daily scans have been executed
+      this.tickInterval = setInterval(
+        () => this.runScheduledScans(true),
+        3600000,
+      );
       // Execute a scan immediately in background after 5s startup delay
       const startupTimeout = setTimeout(() => this.runScheduledScans(), 5000);
       this.pendingTimeouts.push(startupTimeout);
@@ -61,9 +65,14 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
   // ==========================================
   // Scheduled Scans Orchestrator
   // ==========================================
-  async runScheduledScans() {
+  async runScheduledScans(isAutoTick = false) {
     if (this.isProcessing || this.isDestroyed) return;
+    const todayKey = new Date().toISOString().split('T')[0];
+    if (isAutoTick && this.lastAutoScanDate === todayKey) {
+      return;
+    }
     this.isProcessing = true;
+    this.lastAutoScanDate = todayKey;
 
     console.log(
       '[Scheduler] Initiating daily closing and scanning routines...',

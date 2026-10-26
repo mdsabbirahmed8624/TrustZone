@@ -66,7 +66,17 @@ export class LedgerService {
   /**
    * Retrieves all Chart of Accounts
    */
-  async getAccounts() {
-    return this.prisma.chartOfAccount.findMany({ orderBy: { code: 'asc' } });
+  async getAccounts(branchId?: string) {
+    const coaList = await this.prisma.chartOfAccount.findMany({
+      orderBy: { code: 'asc' },
+    });
+    if (!branchId || !this.prisma.financialAccount?.findMany) {
+      return coaList;
+    }
+    const faList = await this.prisma.financialAccount.findMany({
+      where: { OR: [{ branchId }, { branchId: null }] },
+      orderBy: { accountNumber: 'asc' },
+    });
+    return faList.length > 0 ? faList : coaList;
   }
 }

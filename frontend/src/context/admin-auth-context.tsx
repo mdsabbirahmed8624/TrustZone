@@ -60,7 +60,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
   const [sessions, setSessions] = useState<AdminSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [tempAuthData, setTempAuthData] = useState<{ user: AdminUser; token: string; rememberMe: boolean } | null>(null);
+  const [tempAuthData, setTempAuthData] = useState<{ user: AdminUser; token: string; refreshToken?: string; rememberMe: boolean } | null>(null);
   const router = useRouter();
   
   // Timeout references
@@ -116,7 +116,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const logout = useCallback(async () => {
     setIsLoading(true);
     const token = localStorage.getItem('tz_admin_token');
-    const refresh = localStorage.getItem('tz_refresh_token') || 'mock-ref';
+    const refresh = localStorage.getItem('tz_admin_refresh_token') || localStorage.getItem('tz_refresh_token') || '';
     
     try {
       if (token) {
@@ -130,6 +130,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSessions([]);
     localStorage.removeItem('tz_admin_user');
     localStorage.removeItem('tz_admin_token');
+    localStorage.removeItem('tz_admin_refresh_token');
     deleteCookie('tz_admin_token');
     
     router.push('/admin/login');
@@ -141,10 +142,10 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const res = await api.auth.adminLogin({ email, password });
       if (res && res.success) {
-        const { accessToken, user } = res.data as { accessToken: string; user: AdminUser };
+        const { accessToken, refreshToken, user } = res.data as { accessToken: string; refreshToken?: string; user: AdminUser };
         
         // Defer auth context updates until OTP is successfully entered
-        setTempAuthData({ user, token: accessToken, rememberMe });
+        setTempAuthData({ user, token: accessToken, refreshToken, rememberMe });
       }
     } catch (err) {
       setIsLoading(false);
@@ -160,12 +161,13 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (code === '123456') {
           try {
             if (tempAuthData) {
-              const { user, token, rememberMe } = tempAuthData;
+              const { user, token, refreshToken, rememberMe } = tempAuthData;
               
               // Commit authentication data
               setAdminUser(user);
               localStorage.setItem('tz_admin_user', JSON.stringify(user));
               localStorage.setItem('tz_admin_token', token);
+              if (refreshToken) localStorage.setItem('tz_admin_refresh_token', refreshToken);
               
               const cookieExpiryDays = rememberMe ? 7 : undefined;
               setCookie('tz_admin_token', token, cookieExpiryDays);
@@ -229,8 +231,13 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }, 15 * 60 * 1000);
     };
 
+    let lastReset = 0;
     const handleInteraction = () => {
-      resetTimer();
+      const now = Date.now();
+      if (now - lastReset > 5000) {
+        lastReset = now;
+        resetTimer();
+      }
     };
 
     // User interactions to track

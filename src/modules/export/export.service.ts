@@ -192,22 +192,34 @@ export class ExportService {
     return csvRows.join('\n');
   }
 
+  private escapeHtml(str: string): string {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   private convertToHTMLPrint(data: any[], module: string): string {
-    // Return clean HTML wrapper for PDF print
+    // Return HTML-escaped wrapper for PDF print (prevents Stored XSS)
     const rowsHtml = data
       .map((item) => {
         const cells = Object.keys(item)
-          .map(
-            (key) =>
-              `<td>${typeof item[key] === 'object' ? JSON.stringify(item[key]) : item[key]}</td>`,
-          )
+          .map((key) => {
+            const rawVal =
+              typeof item[key] === 'object'
+                ? JSON.stringify(item[key])
+                : item[key];
+            return `<td>${this.escapeHtml(String(rawVal ?? ''))}</td>`;
+          })
           .join('');
         return `<tr>${cells}</tr>`;
       })
       .join('\n');
 
     const headersHtml = Object.keys(data[0] || {})
-      .map((key) => `<th>${key}</th>`)
+      .map((key) => `<th>${this.escapeHtml(key)}</th>`)
       .join('');
 
     return `

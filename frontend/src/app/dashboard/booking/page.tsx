@@ -52,12 +52,22 @@ export default function BookingWizard() {
     e.preventDefault();
     setLoading(true);
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const rawBaseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+      const apiPrefix = rawBaseUrl.endsWith('/api/v1') ? rawBaseUrl : `${rawBaseUrl}/api/v1`;
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('tz_token') || localStorage.getItem('token')
+          : null;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const endpoint = token ? `${baseUrl}/api/v1/tickets` : `${baseUrl}/api/v1/tickets/public-booking`;
+      const selectedBranchObj =
+        businessConfig.branches.find((b) => b.name === formData.branch) ||
+        businessConfig.branches[0];
+      const resolvedBranchId =
+        selectedBranchObj?.id || 'd1111111-1111-1111-1111-111111111111';
+
+      const endpoint = token ? `${apiPrefix}/tickets` : `${apiPrefix}/tickets/public-booking`;
       const bodyPayload = token
         ? {
             customerFirstName: user?.firstName || 'Customer',
@@ -68,7 +78,7 @@ export default function BookingWizard() {
             deviceModel: formData.model || 'Standard Model',
             deviceSerialNumber: formData.serial || undefined,
             deviceImei: formData.imei || undefined,
-            branchId: businessConfig.branches[0]?.id || 'd1111111-1111-1111-1111-111111111111',
+            branchId: resolvedBranchId,
             faults: [formData.issue],
             slaDeadline: formData.date ? new Date(formData.date).toISOString() : new Date(Date.now() + 86400000).toISOString(),
             estimatedCost: 0,

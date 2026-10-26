@@ -407,10 +407,24 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
     let status = 'SUCCESS';
 
     try {
+      const parsedUrl = new URL(url);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        throw new Error(`Unsupported webhook protocol: ${parsedUrl.protocol}`);
+      }
+      if (
+        process.env.NODE_ENV === 'production' &&
+        /^(localhost|127\.|10\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/i.test(
+          parsedUrl.hostname,
+        )
+      ) {
+        throw new Error('Webhook target points to a restricted internal host.');
+      }
+
       const response = await fetch(url, {
         method,
         headers,
         body: method !== 'GET' ? JSON.stringify(payload) : undefined,
+        signal: AbortSignal.timeout(10000),
       });
       responseStatus = response.status;
       responseBody = await response.text();

@@ -38,14 +38,30 @@ export class SyncEngineService {
 
     for (const step of steps) {
       const modelName = step.entityName.toLowerCase();
+      const allowedSyncEntities = new Set([
+        'ticket',
+        'devicediagnostic',
+        'techniciantelemetry',
+        'customer',
+        'device',
+      ]);
 
-      // Check if model exists in prisma client
-      if (!this.prisma[modelName]) {
+      // Enforce strict entity allowlist & check if model exists in prisma client
+      if (!allowedSyncEntities.has(modelName) || !this.prisma[modelName]) {
         this.logger.warn(
-          `Model ${step.entityName} is not registered in Prisma.`,
+          `Model ${step.entityName} is not permitted or registered for offline sync.`,
         );
         continue;
       }
+
+      const {
+        role: _r,
+        password: _p,
+        permissions: _perm,
+        isSystem: _sys,
+        ...sanitizedData
+      } = step.data || {};
+      step.data = sanitizedData;
 
       // Fetch current server version
       const serverRecord = await this.prisma[modelName].findUnique({

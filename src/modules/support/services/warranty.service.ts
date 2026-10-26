@@ -29,9 +29,15 @@ export class WarrantyService {
     const warrantyNumber =
       data.warrantyCode || `TZ-WARR-${Date.now().toString().slice(-6)}`;
 
+    let customerId = data.customerId;
+    if (!customerId && (this.prisma as any).customer?.findFirst) {
+      const firstCust = await (this.prisma as any).customer.findFirst();
+      customerId = firstCust?.id;
+    }
+
     const warranty = await this.prisma.warranty.create({
       data: {
-        customerId: data.customerId || undefined,
+        customerId: customerId as string,
         warrantyNumber,
         warrantyType: data.warrantyType || 'SERVICE',
         deviceBrand: data.deviceBrand || 'Generic',

@@ -17,21 +17,21 @@ async function main() {
       name: 'Dhanmondi Head Office (Metro Shopping Mall)',
       address: 'Level 4, Shop #412, Metro Shopping Mall, Mirpur Road, Dhanmondi, Dhaka 1209',
       timezone: 'Asia/Dhaka',
-      status: 'active',
+      status: 'ACTIVE',
     },
     {
       id: BRANCH_BANANI,
       name: 'Banani Laboratory Branch (Road 11)',
       address: 'Level 2, Plot #45, Road 11, Banani, Dhaka 1213',
       timezone: 'Asia/Dhaka',
-      status: 'active',
+      status: 'ACTIVE',
     },
     {
       id: BRANCH_MIRPUR,
       name: 'Mirpur-10 Diagnostic Desk (Opposite Fire Station)',
       address: 'Level 1, Section 10, Sector C, Mirpur, Dhaka 1216',
       timezone: 'Asia/Dhaka',
-      status: 'active',
+      status: 'ACTIVE',
     },
   ];
 
@@ -72,7 +72,7 @@ async function main() {
         'read:invoices', 'write:invoices',
         'read:warranty', 'write:warranty',
         'read:reports',
-        'read:finance',
+        'read:finance', 'write:finance', 'finance.read', 'finance.write', 'finance.settings', 'finance.approve', 'hr:read', 'hr:write',
         'read:marketing',
         'read:crm',
         'read:branches', 'write:branches',
@@ -107,7 +107,7 @@ async function main() {
       permissions: [
         'read:dashboard',
         'read:invoices', 'write:invoices',
-        'read:finance', 'write:finance',
+        'read:finance', 'write:finance', 'finance.read', 'finance.write', 'finance.settings', 'finance.approve', 'hr:read', 'hr:write', 'write:finance',
         'read:reports'
       ],
       isSystem: true,

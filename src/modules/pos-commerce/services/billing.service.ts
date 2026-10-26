@@ -51,7 +51,11 @@ export class BillingService {
       const coupon = await this.prisma.coupon.findUnique({
         where: { code: data.couponCode },
       });
-      if (coupon && coupon.isActive) {
+      const isNotExpired =
+        !coupon?.expiryDate || new Date(coupon.expiryDate) >= new Date();
+      const meetsMinOrder =
+        !coupon?.minOrderValue || subtotal >= Number(coupon.minOrderValue);
+      if (coupon && coupon.isActive && isNotExpired && meetsMinOrder) {
         if (coupon.discountType === 'PERCENTAGE') {
           discountAmount = subtotal * (Number(coupon.discountValue) / 100);
         } else {

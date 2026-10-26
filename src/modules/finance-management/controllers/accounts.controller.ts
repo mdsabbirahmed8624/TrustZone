@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -49,8 +50,9 @@ export class AccountsController {
 
   @Get()
   @Permissions('finance:read')
-  async getAccounts() {
-    return this.ledgerService.getAccounts();
+  async getAccounts(@Query('branchId') branchId?: string) {
+    const accounts = await this.ledgerService.getAccounts(branchId);
+    return branchId ? { success: true, data: accounts } : accounts;
   }
 
   @Post('cost-centers')

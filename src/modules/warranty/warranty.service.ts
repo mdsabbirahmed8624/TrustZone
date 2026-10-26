@@ -273,6 +273,11 @@ export class WarrantyService {
         `Cannot claim against an inactive warranty. Status is: ${warranty.status}`,
       );
     }
+    if (warranty.endDate && new Date() > new Date(warranty.endDate)) {
+      throw new BadRequestException(
+        'Cannot claim against an expired warranty certificate.',
+      );
+    }
 
     const seq = Math.floor(100000 + Math.random() * 900000);
     const claimNumber = `TZ-CLM-${seq}`;
@@ -774,36 +779,29 @@ export class WarrantyService {
   // 4. ANALYTICS & REPORTS Exporter
   // ==========================================
 
-  // Dashboard Stats
+  // Dashboard Stats (Executed concurrently via Promise.all)
   async getDashboardStats() {
-    const activeWarranties = await this.prisma.warranty.count({
-      where: { status: 'ACTIVE' },
-    });
-    const expiredWarranties = await this.prisma.warranty.count({
-      where: { status: 'EXPIRED' },
-    });
-    const voidedWarranties = await this.prisma.warranty.count({
-      where: { status: 'VOID' },
-    });
-
-    // Claims status breakdown
-    const pendingClaims = await this.prisma.warrantyClaim.count({
-      where: { status: 'PENDING' },
-    });
-    const inspectionClaims = await this.prisma.warrantyClaim.count({
-      where: { status: 'INSPECTION' },
-    });
-    const approvedClaims = await this.prisma.warrantyClaim.count({
-      where: { status: 'APPROVED' },
-    });
-    const rejectedClaims = await this.prisma.warrantyClaim.count({
-      where: { status: 'REJECTED' },
-    });
-
-    // Supplier RMA counts
-    const activeRmas = await this.prisma.supplierRma.count({
-      where: { status: { in: ['PENDING', 'SHIPPED'] } },
-    });
+    const [
+      activeWarranties,
+      expiredWarranties,
+      voidedWarranties,
+      pendingClaims,
+      inspectionClaims,
+      approvedClaims,
+      rejectedClaims,
+      activeRmas,
+    ] = await Promise.all([
+      this.prisma.warranty.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.warranty.count({ where: { status: 'EXPIRED' } }),
+      this.prisma.warranty.count({ where: { status: 'VOID' } }),
+      this.prisma.warrantyClaim.count({ where: { status: 'PENDING' } }),
+      this.prisma.warrantyClaim.count({ where: { status: 'INSPECTION' } }),
+      this.prisma.warrantyClaim.count({ where: { status: 'APPROVED' } }),
+      this.prisma.warrantyClaim.count({ where: { status: 'REJECTED' } }),
+      this.prisma.supplierRma.count({
+        where: { status: { in: ['PENDING', 'SHIPPED'] } },
+      }),
+    ]);
 
     // Monthly trends claims
     // Consolidated stats structure

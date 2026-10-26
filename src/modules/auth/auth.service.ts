@@ -35,8 +35,11 @@ export class AuthService implements OnModuleInit {
       const admin = await this.prisma.user.findUnique({
         where: { email: 'admin@trustzone.care' },
       });
-      const hash = await argon2.hash('Password123!');
       if (!admin) {
+        const defaultAdminPassword =
+          this.configService.get<string>('DEFAULT_ADMIN_PASSWORD') ||
+          'Password123!';
+        const hash = await argon2.hash(defaultAdminPassword);
         await this.prisma.user.create({
           data: {
             email: 'admin@trustzone.care',
@@ -48,19 +51,7 @@ export class AuthService implements OnModuleInit {
           },
         });
         console.log(
-          '[AuthService] Production Super Admin user seeded successfully.',
-        );
-      } else {
-        await this.prisma.user.update({
-          where: { id: admin.id },
-          data: {
-            password: hash,
-            failedLoginAttempts: 0,
-            lockoutUntil: null,
-          },
-        });
-        console.log(
-          '[AuthService] Production Super Admin user password hash & lockout refreshed.',
+          '[AuthService] Default Super Admin user seeded on initial setup.',
         );
       }
     } catch (err) {
@@ -152,38 +143,51 @@ export class AuthService implements OnModuleInit {
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        password: passwordHash,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        role: 'customer', // Default role
-        branchId: dto.branchId || null,
-        isEmailVerified: false,
-        emailVerificationToken: verificationToken,
-        emailVerificationExpires: verificationExpires,
-      },
-    });
+    const runTx =
+      typeof (this.prisma as any).$transaction === 'function'
+        ? (fn: (tx: any) => Promise<any>) => (this.prisma as any).$transaction(fn)
+        : (fn: (tx: any) => Promise<any>) => fn(this.prisma);
 
-    // Create Customer record linked to User email
-    await this.prisma.customer.create({
-      data: {
-        email: dto.email,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        phone: dto.phone,
-      },
+    const user = await runTx(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          email: dto.email,
+          password: passwordHash,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          role: 'customer',
+          branchId: dto.branchId || null,
+          isEmailVerified: false,
+          emailVerificationToken: verificationToken,
+          emailVerificationExpires: verificationExpires,
+        },
+      });
+
+      await tx.customer.create({
+        data: {
+          email: dto.email,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          phone: dto.phone,
+          branchId: dto.branchId || null,
+        },
+      });
+
+      return createdUser;
     });
 
     await this.logAction(user.id, 'register_success', ipAddress, {
       email: dto.email,
     });
 
+    const isProd =
+      (this.configService.get<string>('NODE_ENV') || process.env.NODE_ENV) ===
+      'production';
+
     return {
       userId: user.id,
       email: user.email,
-      verificationToken, // Returned in API response for direct test validation
+      ...(isProd ? {} : { verificationToken }),
     };
   }
 
@@ -296,6 +300,7 @@ export class AuthService implements OnModuleInit {
       user.id,
       user.email,
       user.role,
+      (user as any).branchId,
     );
 
     // Save hashed refresh token to active sessions list
@@ -406,6 +411,7 @@ export class AuthService implements OnModuleInit {
       user.id,
       user.email,
       user.role,
+      (user as any).branchId,
     );
     const newTokenHash = this.hashToken(newRefreshToken);
     const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -835,23 +841,29 @@ export class AuthService implements OnModuleInit {
 
     const devices = await this.prisma.userDevice.findMany({
       where: { userId },
+      select: { id: true },
     });
 
-    for (const d of devices) {
-      await this.prisma.userDevice.update({
-        where: { id: d.id },
+    if (devices.length > 0) {
+      const now = new Date();
+      await this.prisma.userDevice.updateMany({
+        where: { userId },
         data: {
-          lastLogoutAt: new Date(),
-          lastUsedAt: new Date(),
+          lastLogoutAt: now,
+          lastUsedAt: now,
         },
       });
-      await this.logDeviceEvent(
-        d.id,
-        DeviceEventType.LOGOUT,
-        ipAddress,
-        userAgent,
-        'Logged out all devices.',
-      );
+      if (this.prisma.deviceEvent?.createMany) {
+        await this.prisma.deviceEvent.createMany({
+          data: devices.map((d) => ({
+            deviceId: d.id,
+            eventType: DeviceEventType.LOGOUT,
+            ipAddress: ipAddress || null,
+            userAgent: userAgent || null,
+            details: 'Logged out all devices.',
+          })),
+        });
+      }
     }
 
     await this.logAction(userId, 'logout_all_devices', ipAddress);
@@ -1007,14 +1019,20 @@ export class AuthService implements OnModuleInit {
 
     await this.logAction(user.id, 'password_reset_requested', ipAddress);
 
+    const isProd =
+      (this.configService.get<string>('NODE_ENV') || process.env.NODE_ENV) ===
+      'production';
+
     return {
       success: true,
-      resetToken, // Returned in response for testing
+      ...(isProd ? {} : { resetToken }),
     };
   }
 
-  // 7. Reset Password with validation checks
+  // 7. Reset Password with validation checks and active session revocation
   async resetPassword(dto: ResetPasswordDto, ipAddress?: string) {
+    this.validatePasswordStrength(dto.password);
+
     const user = await this.prisma.user.findFirst({
       where: {
         passwordResetToken: dto.token,
@@ -1036,10 +1054,16 @@ export class AuthService implements OnModuleInit {
         password: newHash,
         passwordResetToken: null,
         passwordResetExpires: null,
-        failedLoginAttempts: 0, // Reset lockout attempts
+        failedLoginAttempts: 0,
         lockoutUntil: null,
       },
     });
+
+    if (this.prisma.session?.deleteMany) {
+      await this.prisma.session.deleteMany({
+        where: { userId: user.id },
+      });
+    }
 
     await this.logAction(user.id, 'password_reset_success', ipAddress);
   }
@@ -1107,21 +1131,7 @@ export class AuthService implements OnModuleInit {
     );
 
     if (!isPasswordValid) {
-      if (
-        dto.email === 'admin@trustzone.care' &&
-        dto.password === 'Password123!'
-      ) {
-        const newHash = await argon2.hash('Password123!');
-        await this.prisma.user.update({
-          where: { id: user.id },
-          data: {
-            password: newHash,
-            lockoutUntil: null,
-            failedLoginAttempts: 0,
-          },
-        });
-        isPasswordValid = true;
-      } else {
+      {
         const attempts = user.failedLoginAttempts + 1;
         let lockoutUntil: Date | null = null;
 
@@ -1188,6 +1198,7 @@ export class AuthService implements OnModuleInit {
       user.id,
       user.email,
       user.role,
+      (user as any).branchId,
     );
 
     const tokenHash = this.hashToken(refreshToken);
@@ -1206,8 +1217,8 @@ export class AuthService implements OnModuleInit {
 
       await this.logAction(user.id, 'admin_login_success', ipAddress, {
         userAgent,
-        browser: userAgent?.includes('Chrome') ? 'Chrome' : 'Web Browser',
-        device: userAgent?.includes('Mobile') ? 'Mobile Device' : 'Desktop PC',
+        browser: this.parseBrowser(userAgent),
+        device: this.parseDevice(userAgent),
       });
     } catch (err) {
       console.warn('Session creation warning during admin login:', err);
@@ -1275,7 +1286,7 @@ export class AuthService implements OnModuleInit {
   }
 
   // JWT Generator Helper
-  private generateTokens(userId: string, email: string, role: string) {
+  private generateTokens(userId: string, email: string, role: string, branchId?: string | null) {
     const secret =
       this.configService.get<string>('JWT_SECRET_KEY') ||
       this.configService.get<string>('JWT_SECRET') ||
@@ -1285,7 +1296,7 @@ export class AuthService implements OnModuleInit {
       this.configService.get<string>('JWT_REFRESH_SECRET') ||
       'tz_default_jwt_refresh_secret_key_2026_super_secure';
 
-    const accessToken = jwt.sign({ sub: userId, email, role }, secret, {
+    const accessToken = jwt.sign({ sub: userId, email, role, branchId: branchId || null }, secret, {
       expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
     });
 
